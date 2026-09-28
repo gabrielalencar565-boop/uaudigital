@@ -3,9 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { UserRound, Save, Trash2, Plus, Images, Bell, Play, VolumeX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import {
   NOTIFICATION_SOUNDS,
   getCategorySound,
@@ -30,7 +31,7 @@ import { WhatsAppPreferencesCard } from "./WhatsAppPreferencesCard";
 
 const settingsSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
-  role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  role_titles: z.array(z.string()).min(1, "Selecione ao menos um cargo"),
   birth_date: z.string().optional(),
 });
 
@@ -61,7 +62,7 @@ export function ConfiguracoesPanel() {
 
   const form = useForm<SettingsValues>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: { full_name: "", role_title: "", birth_date: "" },
+    defaultValues: { full_name: "", role_titles: [], birth_date: "" },
   });
 
   // carregar dados atuais
@@ -71,7 +72,7 @@ export function ConfiguracoesPanel() {
     setLoading(true);
     supabase
       .from("profiles")
-      .select("full_name, role_title, avatar_url")
+      .select("full_name, role_titles, avatar_url")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -91,7 +92,7 @@ export function ConfiguracoesPanel() {
             if (data) {
               form.reset({
                 full_name: data.full_name ?? "",
-                role_title: data.role_title ?? "",
+                role_titles: data.role_titles ?? [],
                 birth_date: (tmData as any)?.birth_date ?? "",
               });
               setAvatarUrl(normalizeAvatarUrl(data.avatar_url) ?? null);
@@ -145,7 +146,7 @@ export function ConfiguracoesPanel() {
       // atualizar perfil (privado)
       const prof = await supabase
         .from("profiles")
-        .update({ full_name: v.full_name, role_title: v.role_title, avatar_url: nextAvatarUrl })
+        .update({ full_name: v.full_name, role_titles: v.role_titles, avatar_url: nextAvatarUrl })
         .eq("user_id", user.id);
       if (prof.error) throw prof.error;
 
@@ -157,7 +158,7 @@ export function ConfiguracoesPanel() {
           {
             user_id: user.id,
             display_name: v.full_name,
-            role_title: v.role_title,
+            role_titles: v.role_titles,
             avatar_url: nextAvatarUrl,
             is_active: true,
             birth_date: v.birth_date || null,
@@ -227,10 +228,15 @@ export function ConfiguracoesPanel() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role_title">Cargo</Label>
-              <Input id="role_title" placeholder="Ex.: Editor" {...form.register("role_title")} />
-              {form.formState.errors.role_title && (
-                <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>
+              <Controller
+                control={form.control}
+                name="role_titles"
+                render={({ field }) => (
+                  <CargoMultiSelect selected={field.value} onChange={field.onChange} />
+                )}
+              />
+              {form.formState.errors.role_titles && (
+                <p className="text-sm text-danger">{form.formState.errors.role_titles.message}</p>
               )}
             </div>
 

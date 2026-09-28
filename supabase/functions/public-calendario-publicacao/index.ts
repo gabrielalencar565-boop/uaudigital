@@ -64,11 +64,11 @@ Deno.serve(async (req) => {
       if (pubsError) console.error("public-calendario-publicacao pubs query error:", pubsError.message);
 
       const taskIds = [...new Set((pubs ?? []).map((p: any) => p.task_id))];
-      const byTask = new Map<string, { id: string; url: string; type: string | null }[]>();
+      const byTask = new Map<string, { id: string; url: string; type: string | null; name: string | null }[]>();
       if (taskIds.length > 0) {
         const { data: atts } = await admin
           .from("pm_attachments")
-          .select("id, task_id, public_url, file_type, order_index")
+          .select("id, task_id, public_url, file_type, file_name, order_index")
           .in("task_id", taskIds)
           // Only "final" content is client-facing — production materials (category
           // "material") are internal working files, same rule as everywhere else that
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         for (const a of (atts ?? []) as any[]) {
           if (!a.public_url) continue;
           const list = byTask.get(a.task_id) ?? [];
-          list.push({ id: a.id, url: a.public_url, type: a.file_type });
+          list.push({ id: a.id, url: a.public_url, type: a.file_type, name: a.file_name ?? null });
           byTask.set(a.task_id, list);
         }
       }
@@ -96,14 +96,14 @@ Deno.serve(async (req) => {
       // chosen from a sibling "Capa" task during the PDF stage), so it may not be in
       // byTask at all. Fetch any such covers separately so they still resolve below.
       const coverIds = [...new Set((pubs ?? []).map((p: any) => p.cover_attachment_id).filter(Boolean))];
-      const coverById = new Map<string, { id: string; url: string; type: string | null }>();
+      const coverById = new Map<string, { id: string; url: string; type: string | null; name: string | null }>();
       if (coverIds.length > 0) {
         const { data: coverAtts } = await admin
           .from("pm_attachments")
-          .select("id, public_url, file_type")
+          .select("id, public_url, file_type, file_name")
           .in("id", coverIds);
         for (const a of (coverAtts ?? []) as any[]) {
-          if (a.public_url) coverById.set(a.id, { id: a.id, url: a.public_url, type: a.file_type });
+          if (a.public_url) coverById.set(a.id, { id: a.id, url: a.public_url, type: a.file_type, name: a.file_name ?? null });
         }
       }
 

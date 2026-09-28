@@ -39,12 +39,10 @@ export function useRole(userId?: string) {
   }, [userId]);
 
   const isAdmin = useMemo(() => roles.includes("admin"), [roles]);
-  const isPlanner = useMemo(() => roles.includes("planner"), [roles]);
   // Quem mantém a plataforma em si (você) — distinto de "admin", que no modelo multi-tenant
   // futuro será o dono de cada agência cliente. Relatos de problema e o conteúdo da Central
   // de Ajuda (changelog/FAQ) são gerenciados só por developers, nunca por admins de agência.
   const isDeveloper = useMemo(() => roles.includes("developer"), [roles]);
-  const canManageTasks = isAdmin || isPlanner;
 
-  return { roles, isAdmin, isPlanner, isDeveloper, canManageTasks, loading };
+  return { roles, isAdmin, isDeveloper, loading };
 }

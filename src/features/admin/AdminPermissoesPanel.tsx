@@ -7,19 +7,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useFeaturePermissions, type FeaturePermission } from "@/hooks/use-permission";
 import { type AppRole } from "@/hooks/use-role";
-import { ROLE_OPTIONS } from "@/lib/role-options";
+import { useCargos } from "@/hooks/use-cargos";
 
 // "admin" fica de fora da lista editável de propósito — é sempre permitido em usePermission()
 // e deixar desmarcar aqui só criaria a falsa impressão de que dá pra tirar o próprio acesso de
-// admin a uma tela (inclusive a esta).
+// admin a uma tela (inclusive a esta). "planner"/"collaborator" não aparecem mais aqui: ninguém
+// é atribuído a esses papéis (substituídos pelos cargos), só "developer" ainda é um papel real.
 const EDITABLE_ROLES: { value: Exclude<AppRole, "admin">; label: string }[] = [
-  { value: "planner", label: "Planner" },
-  { value: "collaborator", label: "Colaborador" },
   { value: "developer", label: "Developer" },
 ];
 
 export function AdminPermissoesPanel() {
   const permsQ = useFeaturePermissions();
+  const cargosQ = useCargos();
   const qc = useQueryClient();
 
   const grouped = useMemo(() => {
@@ -105,11 +105,11 @@ export function AdminPermissoesPanel() {
                       {r.label}
                     </label>
                   ))}
-                  {ROLE_OPTIONS.map((c) => (
-                    <label key={c.value} className="flex cursor-pointer items-center gap-2 text-sm">
+                  {(cargosQ.data ?? []).map((c) => (
+                    <label key={c.id} className="flex cursor-pointer items-center gap-2 text-sm">
                       <Checkbox
-                        checked={perm.allowed_cargos.includes(c.value)}
-                        onCheckedChange={(checked) => toggleCargo(perm, c.value, checked === true)}
+                        checked={perm.allowed_cargos.includes(c.label)}
+                        onCheckedChange={(checked) => toggleCargo(perm, c.label, checked === true)}
                       />
                       {c.label}
                     </label>

@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
-import { useRole } from "@/hooks/use-role";
+import { usePermission } from "@/hooks/use-permission";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -677,8 +677,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
   // Correction mode for completed snapshots
   const { user: sessionUser } = useSession();
-  const { isAdmin: isRoleAdmin, isPlanner } = useRole(sessionUser?.id);
-  const canCorrect = isRoleAdmin || isPlanner;
+  const canCorrect = usePermission("action_manage_tasks");
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !task.is_extra_demand;
   const [correctionMode, setCorrectionMode] = useState(false);
 

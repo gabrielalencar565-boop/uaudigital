@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ROLE_OPTIONS } from "@/lib/role-options";
+import { useCargos } from "@/hooks/use-cargos";
 
 type XPSettings = {
   rank_1_xp: number;
@@ -43,6 +43,7 @@ export function XPAutomationPanel() {
 // ============ Settings ============
 function SettingsPanel() {
   const qc = useQueryClient();
+  const cargosQ = useCargos();
   const q = useQuery({
     queryKey: ["xp_settings"],
     queryFn: async () => {
@@ -134,17 +135,17 @@ function SettingsPanel() {
           <div>
             <Label className="mb-2 block">Cargos elegíveis</Label>
             <div className="flex flex-wrap gap-2">
-              {ROLE_OPTIONS.map(r => {
-                const active = s.video_destaque_roles.includes(r.value);
+              {(cargosQ.data ?? []).map(c => {
+                const active = s.video_destaque_roles.includes(c.label);
                 return (
                   <Badge
-                    key={r.value}
+                    key={c.id}
                     variant={active ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => toggleRole(r.value)}
+                    onClick={() => toggleRole(c.label)}
                   >
                     {active && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                    {r.label}
+                    {c.label}
                   </Badge>
                 );
               })}

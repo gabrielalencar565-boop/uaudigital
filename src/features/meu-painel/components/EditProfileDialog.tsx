@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ROLE_OPTIONS } from "@/lib/role-options";
+import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ import { toast } from "sonner";
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
-  role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  role_titles: z.array(z.string()).min(1, "Selecione ao menos um cargo"),
   birth_date: z.string().optional(),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -179,7 +179,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: "", role_title: "", birth_date: "" },
+    defaultValues: { full_name: "", role_titles: [], birth_date: "" },
   });
 
   // Load current profile when dialog opens
@@ -188,7 +188,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
     let cancelled = false;
     supabase
       .from("profiles")
-      .select("full_name, role_title, avatar_url, banner_photo_url")
+      .select("full_name, role_titles, avatar_url, banner_photo_url")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -203,7 +203,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
             if (data) {
               form.reset({
                 full_name: data.full_name ?? "",
-                role_title: data.role_title ?? "",
+                role_titles: data.role_titles ?? [],
                 birth_date: (tmData as any)?.birth_date ?? "",
               });
               setAvatarUrl(data.avatar_url ?? null);
@@ -304,7 +304,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
 
       const prof = await supabase
         .from("profiles")
-        .update({ full_name: v.full_name, role_title: v.role_title, avatar_url: nextAvatarUrl, banner_photo_url: nextBannerUrl })
+        .update({ full_name: v.full_name, role_titles: v.role_titles, avatar_url: nextAvatarUrl, banner_photo_url: nextBannerUrl })
         .eq("user_id", user.id);
       if (prof.error) throw prof.error;
 
@@ -314,7 +314,7 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           {
             user_id: user.id,
             display_name: v.full_name,
-            role_title: v.role_title,
+            role_titles: v.role_titles,
             avatar_url: nextAvatarUrl,
             banner_photo_url: nextBannerUrl,
             is_active: true,
@@ -486,27 +486,15 @@ export function EditProfileDialog({ open, onOpenChange, onSaved }: EditProfileDi
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit_role_title">Cargo</Label>
             <Controller
               control={form.control}
-              name="role_title"
+              name="role_titles"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="edit_role_title">
-                    <SelectValue placeholder="Selecione seu cargo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CargoMultiSelect selected={field.value} onChange={field.onChange} />
               )}
             />
-            {form.formState.errors.role_title && (
-              <p className="text-sm text-destructive">{form.formState.errors.role_title.message}</p>
+            {form.formState.errors.role_titles && (
+              <p className="text-sm text-destructive">{form.formState.errors.role_titles.message}</p>
             )}
           </div>
 
