@@ -3,8 +3,6 @@ import { Label } from "@/components/ui/label";
 import type { AppRole } from "@/hooks/use-role";
 
 const AVAILABLE_ROLES: { value: AppRole; label: string; desc: string }[] = [
-  { value: "collaborator", label: "Colaborador", desc: "Pode concluir tarefas atribuídas" },
-  { value: "planner", label: "Planejador", desc: "Pode criar e editar tarefas" },
   { value: "admin", label: "Administrador", desc: "Acesso total ao sistema" },
 ];
 
@@ -45,11 +43,6 @@ export function RoleSelector({ selectedRoles, onChange, disabled }: RoleSelector
           </label>
         ))}
       </div>
-      {selectedRoles.length === 0 && (
-        <p className="text-xs text-warning">
-          Usuário sem permissões não poderá acessar o sistema
-        </p>
-      )}
     </div>
   );
 }

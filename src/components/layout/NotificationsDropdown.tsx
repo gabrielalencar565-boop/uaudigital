@@ -27,7 +27,7 @@ function timeAgo(timestamp: string): string {
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested";
   title: string;
   subtitle: string;
   timestamp: string;
@@ -123,6 +123,27 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
         .eq("status", "aberto")
         .order("created_at", { ascending: false })
         .limit(50);
+      return data ?? [];
+    },
+  });
+
+  // Cliente aprovou ou pediu alteração numa publicação (tela pública /aprovacao/:token →
+  // public-calendario-publicacao) — avisa quem está com a tarefa daquela publicação. Como
+  // status fica gravado na própria linha (não é um log de eventos), o item some quando o
+  // responsável marca como lida/dispensa, do mesmo jeito que uma menção.
+  const calendarFeedbackQ = useQuery({
+    queryKey: ["notifications_calendar_feedback", user?.id],
+    enabled: !!user?.id,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("calendar_publications")
+        .select("id, task_id, status, client_feedback, client_responded_at, pm_tasks!inner(id, title, assignee_id)")
+        .in("status", ["aprovada", "alteracao_solicitada"])
+        .eq("pm_tasks.assignee_id", user!.id)
+        .not("client_responded_at", "is", null)
+        .order("client_responded_at", { ascending: false })
+        .limit(30);
       return data ?? [];
     },
   });
@@ -297,9 +318,34 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       });
     }
 
+    (calendarFeedbackQ.data ?? []).forEach((cp: any) => {
+      const taskTitle = cp.pm_tasks?.title ?? "Publicação";
+      if (cp.status === "aprovada") {
+        items.push({
+          id: `cal-approved-${cp.id}`,
+          key: `cal-approved-${cp.id}`,
+          type: "calendar_approved",
+          title: `Cliente aprovou: ${taskTitle}`,
+          subtitle: "Publicação aprovada no Cronograma",
+          timestamp: cp.client_responded_at,
+          taskId: cp.task_id,
+        });
+      } else if (cp.status === "alteracao_solicitada") {
+        items.push({
+          id: `cal-change-${cp.id}`,
+          key: `cal-change-${cp.id}`,
+          type: "calendar_change_requested",
+          title: `Cliente pediu alteração: ${taskTitle}`,
+          subtitle: (cp.client_feedback ?? "").substring(0, 100),
+          timestamp: cp.client_responded_at,
+          taskId: cp.task_id,
+        });
+      }
+    });
+
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, membersMap, today, formatMentionContent, dismissedKeys]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, membersMap, today, formatMentionContent, dismissedKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 

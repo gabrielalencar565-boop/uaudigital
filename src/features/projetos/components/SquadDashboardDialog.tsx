@@ -13,6 +13,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts";
+import { getStagesForRoles } from "@/lib/role-stage-mapping";
 
 const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -24,28 +25,18 @@ const STAGE_COLORS: Record<string, string> = {
   design: "#EC4899", pdf: "#F59E0B", alteracoes: "#EF4444", agendamento: "#10B981",
 };
 
-// Role → stages mapping
-const ROLE_STAGES: Record<string, string[]> = {
-  "social media": ["planejamento", "pdf", "alteracoes", "agendamento"],
-  "videomaker": ["captacao", "edicao_videos"],
-  "designer": ["design"],
-};
-
-function getRoleStages(roleTitle: string | undefined | null): string[] {
-  if (!roleTitle) return [...STAGE_ORDER];
-  const normalized = roleTitle.toLowerCase().trim();
-  for (const [key, stages] of Object.entries(ROLE_STAGES)) {
-    if (normalized.includes(key)) return stages;
-  }
-  return [...STAGE_ORDER]; // fallback: all
+// Cargo → etapas agora vem de uma única fonte (src/lib/role-stage-mapping.ts) — esta
+// cópia local tinha nomes e regras divergentes (ex.: "videomaker" em vez de "Editor de
+// Vídeo", Social Media sem revisão) que já causaram desalinhamento real em produção.
+// Papéis puramente de revisão (Head de Conteúdo, Diretor de Arte, Diretor de Vídeo) não
+// têm etapa própria em STAGE_ORDER — caem no fallback "todas as etapas" abaixo, já que
+// esse dashboard mede produtividade por etapa de produção, não por revisão.
+function getRoleStages(roleTitles: string[] | undefined | null): string[] {
+  const stages = getStagesForRoles(roleTitles).filter((s): s is (typeof STAGE_ORDER)[number] => (STAGE_ORDER as readonly string[]).includes(s));
+  return stages.length > 0 ? stages : [...STAGE_ORDER];
 }
 
 function getRoleLabel(roleTitle: string | undefined | null): string {
-  if (!roleTitle) return "—";
-  const normalized = roleTitle.toLowerCase().trim();
-  if (normalized.includes("social media")) return "Social Media";
-  if (normalized.includes("videomaker")) return "Videomaker";
-  if (normalized.includes("designer")) return "Designer";
   return roleTitle || "—";
 }
 
@@ -80,7 +71,7 @@ interface SquadDashboardDialogProps {
   }>;
   squadInsights: string[];
   sqData: any;
-  teamMap: Record<string, { user_id: string; display_name: string; avatar_url: string | null; role_title: string }>;
+  teamMap: Record<string, { user_id: string; display_name: string; avatar_url: string | null; role_title: string; role_titles: string[] }>;
   squadMemberIds: string[];
   squadStages: any[];
   agendaTasks: any[];
@@ -153,7 +144,7 @@ export function SquadDashboardDialog({
       .map(uid => {
         const member = teamMap[uid];
         if (!member) return null;
-        const roleStages = getRoleStages(member.role_title);
+        const roleStages = getRoleStages(member.role_titles);
         const roleStageSet = new Set(roleStages);
 
         // Count stages completed by this person that match their role

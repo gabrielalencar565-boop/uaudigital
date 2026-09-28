@@ -111,9 +111,13 @@ export function useTodayScheduledPublications(todayKey: string) {
       );
 
       const clientIds = [...new Set(Array.from(clientIdByCalendarId.values()))];
+      // `is_active` filter here is what makes a disabled client's posts drop out below —
+      // a publication whose client isn't in `clientById` gets filtered out by the existing
+      // `client` null-check in the map/filter, no extra logic needed.
       const { data: clients, error: clientsErr } = await sb
         .from("clients")
         .select("id, name, logo_url")
+        .eq("is_active", true)
         .in("id", clientIds);
       if (clientsErr) throw clientsErr;
       const clientById = new Map<string, { name: string; logo_url: string | null }>(

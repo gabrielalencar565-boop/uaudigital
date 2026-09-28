@@ -26,6 +26,7 @@ import { useBatchUserRoles, useSetUserRoles } from "@/hooks/use-user-roles";
 import { RoleSelector } from "@/features/admin/components/RoleSelector";
 import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
 import { useSquads, useSquadMembers } from "@/features/projetos/hooks/use-squads";
+import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import type { AppRole } from "@/hooks/use-role";
 
 /* ───────── helpers ───────── */
@@ -48,8 +49,6 @@ function formatDate(dateStr: string | null) {
 
 const ROLE_MAP: Record<string, { label: string; color: string }> = {
   admin: { label: "Administrador", color: "border-sidebar text-sidebar" },
-  planner: { label: "Planejador", color: "border-warning text-warning" },
-  collaborator: { label: "Colaborador", color: "border-border text-foreground" },
 };
 
 /* ───────── component ───────── */
@@ -64,6 +63,7 @@ export function AdminPanel() {
   const [editRoleUser, setEditRoleUser] = useState<AdminUserRow | null>(null);
   const [editRoles, setEditRoles] = useState<AppRole[]>([]);
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
+  const [editRoleTitles, setEditRoleTitles] = useState<string[]>([]);
   const [resetLinkUser, setResetLinkUser] = useState<AdminUserRow | null>(null);
 
   const usersQ = useAdminUsers();
@@ -95,6 +95,7 @@ export function AdminPanel() {
     const currentRoles = rolesQ.data?.get(r.user_id) ?? [];
     setEditRoles(currentRoles);
     setEditSquadIds(userSquadMap.get(r.user_id) ?? []);
+    setEditRoleTitles(r.role_titles ?? []);
     setEditRoleUser(r);
   };
 
@@ -107,6 +108,27 @@ export function AdminPanel() {
         userId: editRoleUser.user_id,
         roles: editRoles,
       });
+
+      // Save cargos (mesmas duas tabelas que ConfiguracoesPanel.tsx mantém em sincronia;
+      // role_title -- a versão em texto, "Social Media, Designer" -- é sincronizada
+      // automaticamente por trigger a partir de role_titles, não precisa gravar à parte)
+      const currentTitles = editRoleUser.role_titles ?? [];
+      const titlesChanged =
+        currentTitles.length !== editRoleTitles.length ||
+        [...currentTitles].sort().join("|") !== [...editRoleTitles].sort().join("|");
+      if (titlesChanged) {
+        const prof = await supabase
+          .from("profiles")
+          .update({ role_titles: editRoleTitles })
+          .eq("user_id", editRoleUser.user_id);
+        if (prof.error) throw prof.error;
+        const tm = await supabase
+          .from("team_members")
+          .update({ role_titles: editRoleTitles })
+          .eq("user_id", editRoleUser.user_id);
+        if (tm.error) throw tm.error;
+        await qc.invalidateQueries({ queryKey: ["admin_users"] });
+      }
 
       // Save squad memberships: remove from old squads, add to new
       const currentSquads = userSquadMap.get(editRoleUser.user_id) ?? [];
@@ -321,8 +343,6 @@ export function AdminPanel() {
           <SelectContent>
             <SelectItem value="all">Todos os cargos</SelectItem>
             <SelectItem value="admin">Administrador</SelectItem>
-            <SelectItem value="planner">Planejador</SelectItem>
-            <SelectItem value="collaborator">Colaborador</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -404,6 +424,8 @@ export function AdminPanel() {
                 <p className="text-xs text-muted-foreground">{editRoleUser?.email}</p>
               </div>
             </div>
+
+            <CargoMultiSelect selected={editRoleTitles} onChange={setEditRoleTitles} disabled={savingAll} />
 
             <RoleSelector
               selectedRoles={editRoles}
@@ -502,6 +524,14 @@ function UserCard({
         <p className="font-semibold text-sm">{user.display_name}</p>
         <p className="text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</p>
       </div>
+
+      {/* Cargo */}
+      {user.role_title && (
+        <Badge variant="outline" className="gap-1 text-xs font-normal border-primary/40 text-primary">
+          <Users2 className="h-3 w-3" />
+          {user.role_title}
+        </Badge>
+      )}
 
       {/* Role badges */}
       {roleBadges}

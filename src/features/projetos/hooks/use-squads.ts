@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { autoAssignStagesForSquad } from "@/lib/role-stage-mapping";
 
 export function useSquads() {
   return useQuery({
@@ -106,9 +107,19 @@ export function useUpdateSquadMembers() {
         const { error } = await supabase.from("squad_members" as any).insert(rows as any);
         if (error) throw error;
       }
+      // Antes disso só uma edição de CLIENTE (trocar os squads dele) resincronizava os
+      // responsáveis fixos por etapa — trocar quem está NO squad ficava fora, então um
+      // cliente continuava com o responsável antigo até alguém reabrir e salvar a edição
+      // dele. Falha aqui não deve impedir a troca de membros em si.
+      try {
+        await autoAssignStagesForSquad(supabase, squadId);
+      } catch (assigneeErr) {
+        console.warn("autoAssignStagesForSquad failed (non-blocking):", assigneeErr);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["squad_members"] });
+      qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
       toast.success("Membros atualizados");
     },
     onError: (e: any) => toast.error(e.message),

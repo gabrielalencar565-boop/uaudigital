@@ -92,6 +92,7 @@ export type TeamMemberRow = {
   user_id: string;
   display_name: string;
   role_title: string;
+  role_titles: string[];
   avatar_url: string | null;
   is_active: boolean;
   birth_date: string | null;
@@ -154,7 +155,7 @@ export function useTeamMembers() {
     queryFn: async (): Promise<TeamMemberRow[]> => {
       const { data, error } = await supabase
         .from("team_members")
-        .select("user_id, display_name, role_title, avatar_url, is_active, birth_date")
+        .select("user_id, display_name, role_title, role_titles, avatar_url, is_active, birth_date")
         .eq("is_active", true)
         .order("display_name", { ascending: true });
       if (error) throw error;

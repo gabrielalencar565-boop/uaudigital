@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +78,62 @@ interface PublicationData {
   status: string;
   client_note: string | null;
   client_feedback: string | null;
-  media: { url: string; type: string | null }[];
+  // `url` may be a render-transformed image URL (see load() below) meant only for on-screen
+  // display; `downloadUrl` is always the original storage object, which is what a real
+  // download needs (the render endpoint re-encodes/resizes and isn't the source file).
+  media: { url: string; downloadUrl: string; type: string | null; name: string | null }[];
+}
+
+async function downloadFile(url: string, fileName: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("erro ao baixar");
+  const blob = await res.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+function mediaFileName(m: { type: string | null; name: string | null }, idx: number) {
+  if (m.name) return m.name;
+  const ext = m.type?.startsWith("video/") ? "mp4" : m.type?.startsWith("image/") ? "jpg" : "arquivo";
+  return `midia-${idx + 1}.${ext}`;
+}
+
+// One post's media can be multiple files (carrossel) — downloads each one in sequence,
+// same pattern as handleDownloadAll in PmAttachmentsSection.tsx.
+function downloadPublicationMedia(p: PublicationData) {
+  if (p.media.length === 0) {
+    toast.error("Nenhuma mídia disponível para baixar.");
+    return;
+  }
+  if (p.media.length === 1) {
+    const item = p.media[0];
+    toast.promise(downloadFile(item.downloadUrl, mediaFileName(item, 0)), {
+      loading: "Baixando...",
+      success: "Download concluído!",
+      error: "Erro ao baixar arquivo.",
+    });
+    return;
+  }
+  (async () => {
+    toast.info(`Baixando ${p.media.length} arquivos...`);
+    let failed = 0;
+    for (let i = 0; i < p.media.length; i++) {
+      try {
+        await downloadFile(p.media[i].downloadUrl, mediaFileName(p.media[i], i));
+        await new Promise((r) => setTimeout(r, 150));
+      } catch {
+        failed++;
+      }
+    }
+    if (failed > 0) toast.warning(`Download concluído. ${failed} arquivo${failed > 1 ? "s" : ""} falhou.`);
+    else toast.success("Download concluído!");
+  })();
 }
 
 function PublicListCard({ publication: p, idx, onClick, onApprove }: { publication: PublicationData; idx: number; onClick: () => void; onApprove: () => void }) {
@@ -238,25 +293,35 @@ function PublicListCard({ publication: p, idx, onClick, onApprove }: { publicati
           </div>
         )}
 
-        {p.status !== "aprovada" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              className="gap-1.5 rounded-full"
-              onClick={(e) => { e.stopPropagation(); onApprove(); }}
-            >
-              <Check className="h-3.5 w-3.5" /> Aprovar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 rounded-full"
-              onClick={(e) => { e.stopPropagation(); onClick(); }}
-            >
-              <MessageSquareWarning className="h-3.5 w-3.5" /> Solicitar alteração
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {p.status !== "aprovada" && (
+            <>
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-full"
+                onClick={(e) => { e.stopPropagation(); onApprove(); }}
+              >
+                <Check className="h-3.5 w-3.5" /> Aprovar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 rounded-full"
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+              >
+                <MessageSquareWarning className="h-3.5 w-3.5" /> Solicitar alteração
+              </Button>
+            </>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-full"
+            onClick={(e) => { e.stopPropagation(); downloadPublicationMedia(p); }}
+          >
+            <Download className="h-3.5 w-3.5" /> Baixar
+          </Button>
+        </div>
 
         <div className="mt-auto flex items-center justify-end">
           <Badge className={cn("rounded-full text-[10px]", statusMeta.className)} variant="secondary">{statusMeta.shortLabel}</Badge>
@@ -356,9 +421,13 @@ export default function AprovacaoPublic() {
           ...p,
           // Only images route through the image-transform endpoint — it can't serve video,
           // and the object-endpoint cache issue this works around only ever hit images.
-          media: p.media.map((m) =>
-            m.type?.startsWith("image/") ? { ...m, url: toStorageRenderUrl(m.url) ?? m.url } : m,
-          ),
+          // downloadUrl always keeps the original object URL (the render endpoint re-encodes
+          // and resizes, so it isn't the right source for an actual file download).
+          media: p.media.map((m) => ({
+            ...m,
+            downloadUrl: m.url,
+            url: m.type?.startsWith("image/") ? (toStorageRenderUrl(m.url) ?? m.url) : m.url,
+          })),
         })),
       );
       setNotFound(false);
@@ -588,7 +657,12 @@ export default function AprovacaoPublic() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedId(null)}><X className="h-4 w-4" /></Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadPublicationMedia(selected)} aria-label="Baixar mídia">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedId(null)}><X className="h-4 w-4" /></Button>
+                </div>
               </div>
 
               <div

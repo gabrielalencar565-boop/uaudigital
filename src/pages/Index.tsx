@@ -16,7 +16,7 @@ import { useRole } from "@/hooks/use-role";
 import { usePermission } from "@/hooks/use-permission";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ROLE_OPTIONS } from "@/lib/role-options";
+import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -52,7 +52,7 @@ function initials(name: string) {
 
 const profileSchema = z.object({
   full_name: z.string().trim().min(2, "Informe seu nome").max(120),
-  role_title: z.string().trim().min(2, "Informe seu cargo").max(120),
+  role_titles: z.array(z.string()).min(1, "Selecione ao menos um cargo"),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
@@ -105,7 +105,7 @@ const Index = () => {
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: "", role_title: "" },
+    defaultValues: { full_name: "", role_titles: [] },
   });
 
   useEffect(() => {
@@ -140,16 +140,16 @@ const Index = () => {
       const pub = supabase.storage.from("avatars").getPublicUrl(path);
       avatar_url = pub.data.publicUrl ?? null;
     }
-    const { error } = await supabase.from("profiles").insert({ user_id: user.id, full_name: v.full_name, role_title: v.role_title, avatar_url });
+    const { error } = await supabase.from("profiles").insert({ user_id: user.id, full_name: v.full_name, role_titles: v.role_titles, avatar_url });
     if (error) { toast.error(error.message); return; }
     try {
       const existing = await supabase.from("team_members").select("user_id").eq("user_id", user.id).maybeSingle();
       if (existing.error) throw existing.error;
       if (existing.data) {
-        const up = await supabase.from("team_members").update({ display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true }).eq("user_id", user.id);
+        const up = await supabase.from("team_members").update({ display_name: v.full_name, role_titles: v.role_titles, avatar_url, is_active: true }).eq("user_id", user.id);
         if (up.error) throw up.error;
       } else {
-        const ins = await supabase.from("team_members").insert({ user_id: user.id, display_name: v.full_name, role_title: v.role_title, avatar_url, is_active: true });
+        const ins = await supabase.from("team_members").insert({ user_id: user.id, display_name: v.full_name, role_titles: v.role_titles, avatar_url, is_active: true });
         if (ins.error) throw ins.error;
       }
     } catch (e: any) {
@@ -286,26 +286,14 @@ const Index = () => {
                 {form.formState.errors.full_name && <p className="text-sm text-danger">{form.formState.errors.full_name.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role_title">Cargo</Label>
                 <Controller
                   control={form.control}
-                  name="role_title"
+                  name="role_titles"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="role_title">
-                        <SelectValue placeholder="Selecione seu cargo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CargoMultiSelect selected={field.value} onChange={field.onChange} />
                   )}
                 />
-                {form.formState.errors.role_title && <p className="text-sm text-danger">{form.formState.errors.role_title.message}</p>}
+                {form.formState.errors.role_titles && <p className="text-sm text-danger">{form.formState.errors.role_titles.message}</p>}
               </div>
             </CardContent>
             <CardFooter>

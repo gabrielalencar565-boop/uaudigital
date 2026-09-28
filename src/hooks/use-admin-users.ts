@@ -6,6 +6,7 @@ export type AdminUserRow = {
   email: string;
   display_name: string;
   role_title: string;
+  role_titles: string[];
   avatar_url: string | null;
   is_active: boolean;
   access_status: "pending" | "approved" | "rejected" | null;

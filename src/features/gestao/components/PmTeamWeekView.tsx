@@ -284,13 +284,17 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
       ),
     [membersQ.data],
   );
-  const roleOptions = useMemo(() => Array.from(new Set(allTeamMembers.map((m) => m.role_title))).sort(), [allTeamMembers]);
+  // Uma pessoa pode ter mais de um cargo -- a lista de opções e o filtro trabalham por
+  // cargo individual (role_titles), não pela string já unida (role_title), senão alguém
+  // com 2 cargos apareceria como uma opção combinada só sua, em vez de casar com cada
+  // cargo que já existe no filtro.
+  const roleOptions = useMemo(() => Array.from(new Set(allTeamMembers.flatMap((m) => m.role_titles))).sort(), [allTeamMembers]);
 
   const teamMembers = useMemo(() => {
     let list = allTeamMembers;
     if (myTasksOnly && currentUserId) list = list.filter((m) => m.user_id === currentUserId);
     if (filterCollaborators.size > 0) list = list.filter((m) => filterCollaborators.has(m.user_id));
-    if (filterRoles.size > 0) list = list.filter((m) => filterRoles.has(m.role_title));
+    if (filterRoles.size > 0) list = list.filter((m) => m.role_titles.some((rt) => filterRoles.has(rt)));
     return list;
   }, [allTeamMembers, myTasksOnly, currentUserId, filterCollaborators, filterRoles]);
 

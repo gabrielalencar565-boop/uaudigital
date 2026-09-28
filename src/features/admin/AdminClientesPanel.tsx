@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { buildAssigneesForClient, mergeClientAssignees } from "@/lib/role-stage-mapping";
+import { autoAssignStagesForClient } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
@@ -511,46 +511,10 @@ export function AdminClientesPanel() {
       }
 
       // Auto-generate stage assignees from squad members
-      if (editSquadIds.length > 0) {
-        try {
-          const { data: squadMembers } = await supabase
-            .from("squad_members")
-            .select("user_id")
-            .in("squad_id", editSquadIds);
-
-          if (squadMembers && squadMembers.length > 0) {
-            const memberUserIds = squadMembers.map((sm: any) => sm.user_id);
-            const { data: tms } = await supabase
-              .from("team_members")
-              .select("user_id, role_title")
-              .in("user_id", memberUserIds)
-              .eq("is_active", true);
-
-            if (tms && tms.length > 0) {
-              const perStage = buildAssigneesForClient(
-                tms.map((tm: any) => ({ user_id: tm.user_id, role_title: tm.role_title }))
-              );
-              if (Object.keys(perStage).length > 0) {
-                const { data: flows } = await (supabase as any)
-                  .from("pm_stage_flows")
-                  .select("id, stage_assignees, is_default")
-                  .order("is_default", { ascending: false })
-                  .limit(1);
-                const defaultFlow = flows?.[0];
-                if (defaultFlow) {
-                  const existing = (defaultFlow.stage_assignees ?? {}) as Record<string, Record<string, any>>;
-                  const merged = mergeClientAssignees(existing, editClient.id, perStage);
-                  await (supabase as any)
-                    .from("pm_stage_flows")
-                    .update({ stage_assignees: merged, updated_at: new Date().toISOString() })
-                    .eq("id", defaultFlow.id);
-                }
-              }
-            }
-          }
-        } catch (assigneeErr) {
-          console.warn("Auto-assign failed (non-blocking):", assigneeErr);
-        }
+      try {
+        await autoAssignStagesForClient(supabase, editClient.id, editSquadIds);
+      } catch (assigneeErr) {
+        console.warn("Auto-assign failed (non-blocking):", assigneeErr);
       }
 
       clientsQ.refetch();

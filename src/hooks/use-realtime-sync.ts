@@ -49,7 +49,8 @@ type RealtimeTable =
   | "squads"
   | "squad_members"
   | "client_squads"
-  | "notification_reads";
+  | "notification_reads"
+  | "calendar_publications";
 
 const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   client_cycle_stages: [["client_cycle_stages"], ["magic2"]],
@@ -121,6 +122,10 @@ const TABLE_TO_QUERY_KEYS: Record<RealtimeTable, string[][]> = {
   squad_members: [["squad_members"]],
   client_squads: [["client_squads"]],
   notification_reads: [["notification_reads"]],
+  // Client responses (aprovar/pedir alteração, public-calendario-publicacao edge function)
+  // land here — the Cronograma panel's own view and the bell notification below both need
+  // to pick that up without waiting for an unrelated refetch.
+  calendar_publications: [["calendar_publications"], ["notifications_calendar_feedback"], ["today_scheduled_publications"]],
 };
 
 // PR-A: removidas pm_attachments e app_settings de CORE (mudam pouco / fetchadas sob demanda).
@@ -158,6 +163,7 @@ const SECONDARY_TABLES: RealtimeTable[] = [
   "squads",
   "client_cycles",
   "client_cycle_stages",
+  "calendar_publications",
 ];
 
 const CORE_TABLE_SET = new Set<RealtimeTable>(CORE_TABLES);

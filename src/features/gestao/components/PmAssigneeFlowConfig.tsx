@@ -19,19 +19,29 @@ function initials(n: string) {
 }
 
 // Stages that are editable independently
-// planejamento controls pdf, agendamento (revisão agora é independente)
+// planejamento controls pdf, agendamento
 const LINKED_STAGES = ["pdf", "agendamento"] as const;
-// Virtual stage 'revisao_pauta' = revisão da pauta (logo após Planejamento).
-// 'revisao' continua representando a revisão dos materiais (após Design/Vídeo).
-const VIRTUAL_REVISAO_PAUTA = { key: "revisao_pauta", label: "Revisão (Planejamento)" } as const;
+// A revisão vira 3 colunas virtuais, uma por origem — planejamento, design e vídeo têm
+// revisor próprio (Head de Conteúdo / Diretor de Arte / Diretor de Vídeo), cada um com seu
+// responsável fixo por cliente. A coluna genérica "Revisão" (chave 'revisao' pura) some daqui
+// porque nenhuma transição resolve mais pra ela (ver resolveAssigneeStageKey em
+// PmStageFlowConfig.tsx) — configurá-la aqui não teria efeito nenhum.
+const VIRTUAL_REVIEW_COLUMNS: Record<string, { key: string; label: string; insertAfter: string }> = {
+  revisao_pauta: { key: "revisao_pauta", label: "Revisão (Planejamento)", insertAfter: "planejamento" },
+  revisao_design: { key: "revisao_design", label: "Revisão (Design)", insertAfter: "design" },
+  revisao_video: { key: "revisao_video", label: "Revisão (Vídeo)", insertAfter: "edicao_videos" },
+};
 const EDITABLE_STAGES: { key: string; label: string }[] = (() => {
   const base = PM_ACTIVE_STAGES.filter(
-    s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega"
+    s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega" && s.key !== "revisao"
   );
-  // Insert revisao_pauta right after 'planejamento'
-  const idx = base.findIndex(s => s.key === "planejamento");
-  if (idx === -1) return [VIRTUAL_REVISAO_PAUTA, ...base];
-  return [...base.slice(0, idx + 1), VIRTUAL_REVISAO_PAUTA, ...base.slice(idx + 1)];
+  let result: { key: string; label: string }[] = [];
+  for (const stage of base) {
+    result.push(stage);
+    const virtual = Object.values(VIRTUAL_REVIEW_COLUMNS).find(v => v.insertAfter === stage.key);
+    if (virtual) result.push({ key: virtual.key, label: virtual.label });
+  }
+  return result;
 })();
 
 export function PmAssigneeFlowConfig() {
@@ -144,7 +154,7 @@ export function PmAssigneeFlowConfig() {
             Responsáveis por Cliente
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. <strong className="text-foreground">Revisão (Planejamento)</strong> é a revisão logo após o Planejamento; <strong className="text-foreground">Revisão</strong> é a dos materiais (após Design/Vídeo).
+            Defina quem é responsável fixo em cada etapa para cada cliente. Planejamento, PDF e Agendamento compartilham o mesmo responsável. Cada revisão (<strong className="text-foreground">Planejamento</strong>, <strong className="text-foreground">Design</strong> e <strong className="text-foreground">Vídeo</strong>) tem seu próprio responsável.
           </p>
         </div>
         {dirty && (
@@ -164,8 +174,8 @@ export function PmAssigneeFlowConfig() {
                   Cliente
                 </th>
                 {EDITABLE_STAGES.map(stage => {
-                  // revisao_pauta reusa cor de revisao
-                  const color = getStageCircleColor(stage.key === "revisao_pauta" ? "revisao" : stage.key);
+                  // As 3 colunas virtuais de revisão reusam a cor de 'revisao'
+                  const color = getStageCircleColor(stage.key in VIRTUAL_REVIEW_COLUMNS ? "revisao" : stage.key);
                   const isLinked = stage.key === "planejamento";
                   return (
                     <th key={stage.key} className="text-center px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground min-w-[160px]">

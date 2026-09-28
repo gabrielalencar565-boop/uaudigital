@@ -228,6 +228,33 @@ export type Database = {
           },
         ]
       }
+      cargos: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          order_index: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          order_index?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          order_index?: number
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -2828,6 +2855,7 @@ export type Database = {
           full_name: string
           id: string
           role_title: string
+          role_titles: string[]
           updated_at: string
           user_id: string
         }
@@ -2839,6 +2867,7 @@ export type Database = {
           full_name: string
           id?: string
           role_title: string
+          role_titles?: string[]
           updated_at?: string
           user_id: string
         }
@@ -2850,6 +2879,7 @@ export type Database = {
           full_name?: string
           id?: string
           role_title?: string
+          role_titles?: string[]
           updated_at?: string
           user_id?: string
         }
@@ -3372,6 +3402,7 @@ export type Database = {
           display_name: string
           is_active: boolean
           role_title: string
+          role_titles: string[]
           updated_at: string
           user_id: string
         }
@@ -3383,6 +3414,7 @@ export type Database = {
           display_name: string
           is_active?: boolean
           role_title: string
+          role_titles?: string[]
           updated_at?: string
           user_id: string
         }
@@ -3394,6 +3426,7 @@ export type Database = {
           display_name?: string
           is_active?: boolean
           role_title?: string
+          role_titles?: string[]
           updated_at?: string
           user_id?: string
         }
@@ -4061,6 +4094,10 @@ export type Database = {
           subject: string
         }[]
       }
+      has_feature_permission: {
+        Args: { _key: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4082,6 +4119,7 @@ export type Database = {
           is_active: boolean
           requested_at: string
           role_title: string
+          role_titles: string[]
           user_id: string
         }[]
       }

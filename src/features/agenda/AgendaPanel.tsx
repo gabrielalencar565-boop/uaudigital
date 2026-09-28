@@ -42,6 +42,7 @@ import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
 import { useMagic2InactiveAgendaClients } from "@/features/magic2/hooks/use-magic2";
 import { useRole } from "@/hooks/use-role";
+import { usePermission } from "@/hooks/use-permission";
 import { useSession } from "@/hooks/use-session";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
@@ -97,8 +98,9 @@ export function AgendaPanel() {
     user
   } = useSession();
   const {
-    isAdmin, canManageTasks
+    isAdmin
   } = useRole(user?.id);
+  const canManageTasks = usePermission("action_manage_tasks");
   const isMobile = useIsMobile();
   const normalizeName = useMemo(() => (v: string) => v.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{Diacritic}+/gu, "").replace(/\s+/g, " "), []);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));

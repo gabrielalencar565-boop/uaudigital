@@ -88,11 +88,21 @@ export function getFixedWatchers(stageAssignees: StageAssignees, stageKey: strin
   return [];
 }
 
-/** Resolve qual chave de stage_assignees usar ao avançar de uma etapa para outra.
- *  Caso especial: Planejamento → Revisão usa a chave virtual 'revisao_pauta'
- *  (revisão da pauta tem responsável próprio, separado da revisão de materiais). */
+// De qual etapa a tarefa está saindo → qual chave virtual de stage_assignees usar pra achar
+// o revisor fixo. Cada tipo de revisão (Head de Conteúdo/Diretor de Arte/Diretor de Vídeo)
+// tem seu próprio responsável por cliente, mesmo a tarefa em si só guardando
+// stage_current='revisao' nos três casos.
+const REVIEW_KEY_BY_SOURCE_STAGE: Record<string, string> = {
+  planejamento: "revisao_pauta",
+  design: "revisao_design",
+  edicao_videos: "revisao_video",
+};
+
+/** Resolve qual chave de stage_assignees usar ao avançar de uma etapa para outra. */
 export function resolveAssigneeStageKey(completedStage: string | undefined, nextStage: string): string {
-  if (completedStage === "planejamento" && nextStage === "revisao") return "revisao_pauta";
+  if (nextStage === "revisao" && completedStage && REVIEW_KEY_BY_SOURCE_STAGE[completedStage]) {
+    return REVIEW_KEY_BY_SOURCE_STAGE[completedStage];
+  }
   return nextStage;
 }
 

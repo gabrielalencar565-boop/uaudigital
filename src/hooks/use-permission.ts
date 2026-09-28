@@ -31,10 +31,11 @@ export function useFeaturePermissions() {
   });
 }
 
-function cargoMatches(myCargo: string | null | undefined, allowedCargos: string[]): boolean {
-  const normalized = (myCargo ?? "").trim().toLowerCase();
-  if (!normalized) return false;
-  return allowedCargos.some((c) => c.trim().toLowerCase() === normalized);
+function cargoMatches(myCargos: string[] | null | undefined, allowedCargos: string[]): boolean {
+  if (!myCargos || myCargos.length === 0) return false;
+  const mine = myCargos.map((c) => c.trim().toLowerCase()).filter(Boolean);
+  const allowed = allowedCargos.map((c) => c.trim().toLowerCase());
+  return mine.some((c) => allowed.includes(c));
 }
 
 // Gates a feature by its feature_permissions key. Admin always passes — the Permissões screen
@@ -53,6 +54,6 @@ export function usePermission(key: string): boolean {
     const perm = permsQ.data?.find((p) => p.key === key);
     if (!perm) return false;
     const roleMatch = perm.allowed_roles.some((r) => roles.includes(r));
-    return roleMatch || cargoMatches(myProfileQ.data?.role_title, perm.allowed_cargos);
+    return roleMatch || cargoMatches(myProfileQ.data?.role_titles, perm.allowed_cargos);
   }, [roles, myProfileQ.data, permsQ.data, key]);
 }
