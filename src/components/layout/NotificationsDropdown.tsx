@@ -343,9 +343,16 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       }
     });
 
-    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Não lidas primeiro (como grupo), lidas ficam atrás -- dentro de cada grupo, mais
+    // recente primeiro.
+    items.sort((a, b) => {
+      const aRead = readKeys.has(a.key);
+      const bRead = readKeys.has(b.key);
+      if (aRead !== bRead) return aRead ? 1 : -1;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, membersMap, today, formatMentionContent, dismissedKeys]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, membersMap, today, formatMentionContent, dismissedKeys, readKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 

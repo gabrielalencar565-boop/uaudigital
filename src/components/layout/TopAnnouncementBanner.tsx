@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Sparkles, X } from "lucide-react";
 import { useAppSettings } from "@/features/data/queries";
 import { useAppUpdateAvailable } from "@/hooks/use-app-update-available";
+import { useSession } from "@/hooks/use-session";
+import { useMyProfile } from "@/hooks/use-my-profile";
+import { supabase } from "@/integrations/supabase/client";
 import type { MainTab } from "@/components/layout/UauSidebarShell";
 import { setPendingMeuPainelAction, type MeuPainelPendingAction } from "@/lib/pending-meu-painel-action-store";
 import { setPendingHighlight } from "@/lib/pending-highlight-store";
@@ -25,17 +29,25 @@ function switchTab(tab: MainTab, action: string | null, targetSelector: string |
 export function TopAnnouncementBanner() {
   const appSettingsQ = useAppSettings();
   const { updateAvailable, reload } = useAppUpdateAvailable();
+  const { user } = useSession();
+  const myProfileQ = useMyProfile();
+  const qc = useQueryClient();
 
   const publishedAt = appSettingsQ.data?.whats_new_published_at ?? null;
   const announcementActive = !!appSettingsQ.data?.whats_new_enabled && !!appSettingsQ.data?.whats_new_title && !!publishedAt;
 
-  const [dismissedAt, setDismissedAt] = useState<string | null>(() => {
+  // Fonte da verdade é o perfil no banco (sincroniza entre dispositivos e não depende do
+  // navegador manter localStorage — modo privado, extensão de limpeza, etc. faziam o aviso
+  // "voltar" pra quem já tinha dispensado). localStorage só serve de cache otimista pra não
+  // piscar o aviso enquanto o perfil ainda está carregando.
+  const [localDismissedAt, setLocalDismissedAt] = useState<string | null>(() => {
     try {
       return localStorage.getItem(DISMISS_KEY);
     } catch {
       return null;
     }
   });
+  const dismissedAt = myProfileQ.data ? myProfileQ.data.whats_new_dismissed_at : localDismissedAt;
 
   // Republica (novo `publicado_em`) sempre reaparece, mesmo pra quem já tinha dispensado o aviso anterior.
   const announcementDismissed = announcementActive && dismissedAt === publishedAt;
@@ -47,7 +59,16 @@ export function TopAnnouncementBanner() {
     } catch {
       // localStorage indisponível (modo privado etc.) — só não persiste entre sessões
     }
-    setDismissedAt(publishedAt);
+    setLocalDismissedAt(publishedAt);
+
+    if (user?.id) {
+      Promise.all([
+        supabase.from("profiles").update({ whats_new_dismissed_at: publishedAt }).eq("user_id", user.id),
+        supabase.from("team_members").update({ whats_new_dismissed_at: publishedAt }).eq("user_id", user.id),
+      ]).then(() => {
+        qc.invalidateQueries({ queryKey: ["my_profile"] });
+      });
+    }
   };
 
   if (announcementActive && !announcementDismissed) {

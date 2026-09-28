@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFeaturePermissions, type FeaturePermission } from "@/hooks/use-permission";
 import { type AppRole } from "@/hooks/use-role";
 import { useCargos } from "@/hooks/use-cargos";
@@ -14,8 +15,24 @@ import { useCargos } from "@/hooks/use-cargos";
 // admin a uma tela (inclusive a esta). "planner"/"collaborator" não aparecem mais aqui: ninguém
 // é atribuído a esses papéis (substituídos pelos cargos), só "developer" ainda é um papel real.
 const EDITABLE_ROLES: { value: Exclude<AppRole, "admin">; label: string }[] = [
-  { value: "developer", label: "Developer" },
+  { value: "developer", label: "Desenvolvedor" },
 ];
+
+// Explica em uma frase o que cada ação/aba realmente libera — vira o tooltip do ícone de
+// informação ao lado do título. Mesmo padrão já usado aqui pras descrições de área (abaixo).
+const FEATURE_DESCRIPTIONS: Record<string, string> = {
+  tab_comercial: "Libera a aba Comercial no menu lateral (funil de leads, propostas).",
+  tab_financeiro: "Libera a aba Financeiro no menu lateral (receitas, despesas, lançamentos e metas).",
+  action_instagram_connect: "Conectar ou desconectar a conta do Instagram de um cliente no Cronograma.",
+  action_manage_publications: "Criar publicações e calendários de aprovação no Cronograma.",
+  action_manage_tags: "Editar ou apagar as tags usadas para classificar tarefas.",
+  action_manage_faq: "Criar, editar e apagar perguntas frequentes da Central de Ajuda.",
+  action_manage_changelog: "Publicar avisos de novidade no topo do sistema e itens no changelog da Central de Ajuda.",
+  action_manage_tasks: "Criar, editar, apagar e arrastar tarefas na Agenda, e corrigir tarefas já concluídas.",
+  action_manage_appeals: "Ver e decidir pedidos de recurso de quem discorda de uma penalização em uma tarefa.",
+  action_whatsapp_broadcast: "Disparar uma mensagem de WhatsApp em massa para toda a equipe.",
+  action_whatsapp_send: "Enviar uma mensagem manual de WhatsApp para uma pessoa específica.",
+};
 
 export function AdminPermissoesPanel() {
   const permsQ = useFeaturePermissions();
@@ -71,7 +88,7 @@ export function AdminPermissoesPanel() {
       <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/30 p-4">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <p className="text-sm text-muted-foreground">
-          Admin sempre tem acesso a tudo. Aqui você escolhe quais outros papéis (do sistema) ou
+          Dono da Agência sempre tem acesso a tudo. Aqui você escolhe quais outros papéis (do sistema) ou
           cargos (da equipe) também podem acessar cada aba/ação abaixo. Isso não cobre tudo que
           existe no sistema ainda — só o que já foi migrado para este painel.
         </p>
@@ -90,11 +107,23 @@ export function AdminPermissoesPanel() {
           <CardContent className="space-y-5">
             {perms.map((perm) => (
               <div key={perm.key} className="space-y-2.5 border-b border-border/40 pb-4 last:border-0 last:pb-0">
-                <div className="text-sm font-medium text-foreground">{perm.label}</div>
+                <div className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1 text-sm font-semibold text-primary">
+                  {perm.label}
+                  {FEATURE_DESCRIPTIONS[perm.key] && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 shrink-0 cursor-help opacity-80" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>{FEATURE_DESCRIPTIONS[perm.key]}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-2">
                   <label className="flex cursor-not-allowed items-center gap-2 text-sm text-muted-foreground">
                     <Checkbox checked disabled />
-                    Admin
+                    Dono da Agência
                   </label>
                   {EDITABLE_ROLES.map((r) => (
                     <label key={r.value} className="flex cursor-pointer items-center gap-2 text-sm">
