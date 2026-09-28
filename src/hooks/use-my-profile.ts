@@ -10,6 +10,7 @@ export type MyProfileRow = {
   role_titles: string[];
   avatar_url: string | null;
   banner_photo_url: string | null;
+  whats_new_dismissed_at: string | null;
 };
 
 /**
@@ -30,7 +31,7 @@ export function useMyProfile() {
       // Tenta primeiro buscar do profiles
       const { data: profile, error: profErr } = await supabase
         .from("profiles")
-        .select("user_id, full_name, role_title, role_titles, avatar_url, banner_photo_url")
+        .select("user_id, full_name, role_title, role_titles, avatar_url, banner_photo_url, whats_new_dismissed_at")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -45,7 +46,7 @@ export function useMyProfile() {
       // Fallback para team_members se não existir perfil
       const { data: member, error: memErr } = await supabase
         .from("team_members")
-        .select("user_id, display_name, role_title, role_titles, avatar_url, banner_photo_url")
+        .select("user_id, display_name, role_title, role_titles, avatar_url, banner_photo_url, whats_new_dismissed_at")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -57,6 +58,7 @@ export function useMyProfile() {
           role_titles: member.role_titles ?? [],
           avatar_url: normalizeAvatarUrl(member.avatar_url) ?? null,
           banner_photo_url: normalizeAvatarUrl(member.banner_photo_url) ?? null,
+          whats_new_dismissed_at: member.whats_new_dismissed_at,
         } as MyProfileRow;
       }
 
@@ -68,6 +70,7 @@ export function useMyProfile() {
         role_titles: [],
         avatar_url: null,
         banner_photo_url: null,
+        whats_new_dismissed_at: null,
       };
     },
   });

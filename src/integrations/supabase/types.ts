@@ -2858,6 +2858,7 @@ export type Database = {
           role_titles: string[]
           updated_at: string
           user_id: string
+          whats_new_dismissed_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -2870,6 +2871,7 @@ export type Database = {
           role_titles?: string[]
           updated_at?: string
           user_id: string
+          whats_new_dismissed_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -2882,6 +2884,7 @@ export type Database = {
           role_titles?: string[]
           updated_at?: string
           user_id?: string
+          whats_new_dismissed_at?: string | null
         }
         Relationships: []
       }
@@ -3405,6 +3408,7 @@ export type Database = {
           role_titles: string[]
           updated_at: string
           user_id: string
+          whats_new_dismissed_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -3417,6 +3421,7 @@ export type Database = {
           role_titles?: string[]
           updated_at?: string
           user_id: string
+          whats_new_dismissed_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -3429,6 +3434,7 @@ export type Database = {
           role_titles?: string[]
           updated_at?: string
           user_id?: string
+          whats_new_dismissed_at?: string | null
         }
         Relationships: []
       }
