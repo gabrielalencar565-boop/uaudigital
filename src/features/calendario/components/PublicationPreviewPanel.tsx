@@ -16,7 +16,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { cn } from "@/lib/utils";
 import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { supabase } from "@/integrations/supabase/client";
-import { CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
+import { CONTENT_TYPE_LABELS, FEED_ASPECT_CONTENT_TYPES, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
+import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/features/gestao/hooks/use-pm-data";
 import { downscaleVideoWithFallback, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
@@ -80,6 +81,8 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [capturingFrame, setCapturingFrame] = useState(false);
   const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);
   const [dragOverImageIndex, setDragOverImageIndex] = useState<number | null>(null);
+  const [feedCropSrc, setFeedCropSrc] = useState<string | null>(null);
+  const [feedCropFile, setFeedCropFile] = useState<File | null>(null);
   const frameVideoRef = useRef<HTMLVideoElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const timeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -138,6 +141,13 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   // failure on raw 4K exports.
   const uploadAsMedia = async (file: File) => {
     if (file.type.startsWith("image/")) {
+      // Carrossel/Post/Foto ocupam o feed no formato retrato — ajusta pro tamanho padrão
+      // (1080x1350) antes de subir. Stories e Reels têm proporções diferentes, sobem direto.
+      if (FEED_ASPECT_CONTENT_TYPES.includes(publication.content_type)) {
+        setFeedCropFile(file);
+        setFeedCropSrc(URL.createObjectURL(file));
+        return;
+      }
       uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
       return;
     }
@@ -169,6 +179,22 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     } finally {
       setVideoUpload(null);
     }
+  };
+
+  const handleFeedCropConfirm = (blob: Blob) => {
+    if (feedCropSrc) URL.revokeObjectURL(feedCropSrc);
+    const original = feedCropFile;
+    setFeedCropSrc(null);
+    setFeedCropFile(null);
+    if (!original) return;
+    const croppedFile = new File([blob], `${original.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
+    uploadCover.mutate({ task_id: publication.task_id, file: croppedFile, category: "final" });
+  };
+
+  const handleFeedCropCancel = () => {
+    if (feedCropSrc) URL.revokeObjectURL(feedCropSrc);
+    setFeedCropSrc(null);
+    setFeedCropFile(null);
   };
 
   const deleteCoverImage = async (imgId: string) => {
@@ -1106,6 +1132,18 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AvatarCropDialog
+        open={!!feedCropSrc}
+        imageSrc={feedCropSrc ?? ""}
+        title="Ajustar foto pro feed (1080x1350)"
+        aspect={4 / 5}
+        cropShape="rect"
+        outputWidth={1080}
+        outputHeight={1350}
+        onConfirm={handleFeedCropConfirm}
+        onCancel={handleFeedCropCancel}
+      />
     </>
   );
 }

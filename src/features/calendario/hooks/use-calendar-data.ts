@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { CalendarPublication, CalendarStatus, PublicationCalendar } from "../calendar-types";
+import type { CalendarPublication, CalendarStatus, PublicationCalendar, PublicationContentType } from "../calendar-types";
 
 const sb = supabase as any;
 
@@ -316,10 +316,10 @@ export function useTaskCalendarEntry(taskId: string | null) {
   return useQuery({
     enabled: !!taskId,
     queryKey: ["task_calendar_entry", taskId],
-    queryFn: async (): Promise<{ id: string; calendar_id: string } | null> => {
+    queryFn: async (): Promise<{ id: string; calendar_id: string; content_type: PublicationContentType } | null> => {
       const { data, error } = await sb
         .from("calendar_publications")
-        .select("id, calendar_id")
+        .select("id, calendar_id, content_type")
         .eq("task_id", taskId)
         .is("deleted_at", null)
         .maybeSingle();

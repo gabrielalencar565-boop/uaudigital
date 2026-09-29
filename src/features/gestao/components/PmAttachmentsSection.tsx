@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/upload-tray-store";
+import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 
 const sb = supabase as any;
 
@@ -280,6 +281,10 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   onSetCover?: (url: string) => void;
   currentCoverUrl?: string | null;
+  // Quando true, toda imagem anexada na categoria "Final" passa por um recorte pro formato
+  // de feed do Instagram (1080x1350) antes de subir — ligado só pra tarefas que alimentam
+  // uma publicação de Carrossel/Post/Foto no Cronograma (ver PmTaskDetailDialog.tsx).
+  cropFeedImages?: boolean;
 }
 
 function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUrl, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; isVideo?: boolean; posterUrl?: string; onClick?: () => void }) {
@@ -399,7 +404,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUr
   );
 }
 
-export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl }: Props) {
+export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl, cropFeedImages }: Props) {
   const upload = useUploadPmAttachment();
   const uploadResumable = useUploadPmAttachmentResumable();
   const queryClient = useQueryClient();
@@ -411,8 +416,45 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [renameDraft, setRenameDraft] = useState("");
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState<{ file: File; category: AttachmentCategory; existing: PmAttachment; resolve: () => void } | null>(null);
+  const [cropRequest, setCropRequest] = useState<{ src: string; file: File } | null>(null);
+  const cropResolveRef = useRef<((file: File) => void) | null>(null);
 
-  const performUpload = useCallback(async (file: File, category: AttachmentCategory) => {
+  // Abre o diálogo de recorte e devolve uma Promise que só resolve quando o usuário
+  // confirma (imagem recortada) ou cancela (imagem original, sem cortar) — performUpload
+  // aguarda isso antes de seguir pro upload de verdade.
+  const requestFeedCrop = useCallback((file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      cropResolveRef.current = resolve;
+      setCropRequest({ src: URL.createObjectURL(file), file });
+    });
+  }, []);
+
+  const handleFeedCropConfirm = useCallback((blob: Blob) => {
+    if (cropRequest) URL.revokeObjectURL(cropRequest.src);
+    const original = cropRequest?.file;
+    const croppedFile = new File(
+      [blob],
+      `${(original?.name ?? "foto").replace(/\.[^.]+$/, "")}.webp`,
+      { type: "image/webp" },
+    );
+    setCropRequest(null);
+    cropResolveRef.current?.(croppedFile);
+    cropResolveRef.current = null;
+  }, [cropRequest]);
+
+  const handleFeedCropCancel = useCallback(() => {
+    if (cropRequest) {
+      URL.revokeObjectURL(cropRequest.src);
+      cropResolveRef.current?.(cropRequest.file);
+    }
+    setCropRequest(null);
+    cropResolveRef.current = null;
+  }, [cropRequest]);
+
+  const performUpload = useCallback(async (rawFile: File, category: AttachmentCategory) => {
+    const file = cropFeedImages && category === "final" && rawFile.type.startsWith("image/")
+      ? await requestFeedCrop(rawFile)
+      : rawFile;
     const isVideo = file.type.startsWith("video/");
     const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category };
     setUploadingFiles(prev => [...prev, uploadEntry]);
@@ -508,7 +550,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       updateGlobalUpload(globalId, { status: "error", errorMessage: err?.message ?? "Erro ao enviar arquivo" });
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
-  }, [taskId, upload, uploadResumable]);
+  }, [taskId, upload, uploadResumable, cropFeedImages, requestFeedCrop]);
 
   // Attaching a file whose name matches one already here is ambiguous — could be an
   // updated version meant to replace it, or a genuinely different file that happens to
@@ -819,6 +861,18 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AvatarCropDialog
+        open={!!cropRequest}
+        imageSrc={cropRequest?.src ?? ""}
+        title="Ajustar foto pro feed (1080x1350)"
+        aspect={4 / 5}
+        cropShape="rect"
+        outputWidth={1080}
+        outputHeight={1350}
+        onConfirm={handleFeedCropConfirm}
+        onCancel={handleFeedCropCancel}
+      />
     </div>
   );
 }

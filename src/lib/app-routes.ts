@@ -143,7 +143,6 @@ export const APP_TAB_ROUTES: string[] = [
   "configuracoes/limpeza",
   "configuracoes/pontuacao",
   "configuracoes/aparencia",
-  "configuracoes/novidades",
   "configuracoes/whatsapp",
   ...Object.values(GESTAO_TAB_SLUGS).flatMap((slug) => [slug, `${slug}/:taskId`]),
 ];
