@@ -1,4 +1,5 @@
 import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -19,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { parseAppPath, tabPath } from "@/lib/app-routes";
+import type { AdminSubTab } from "@/features/admin/AdminContainer";
 
 // Painéis carregados sob demanda (só o que a aba ativa precisa entra no bundle inicial).
 const PerformancePanel = lazy(() => import("@/features/performance/PerformancePanel").then((m) => ({ default: m.PerformancePanel })));
@@ -63,10 +66,17 @@ const GESTAO_VIEW_MAP: Record<string, string> = {
   calendario_publicacao: "calendario",
   cronograma: "cronograma",
   fluxos: "fluxo",
+  gestao_por_cliente: "clientes",
+  gestao_montagem_pauta: "pauta",
 };
 
 const Index = () => {
-  const [tab, setTab] = useState<MainTab>("meu_painel");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { tab, adminSubTab, taskId, clienteId } = useMemo(
+    () => parseAppPath(location.pathname),
+    [location.pathname]
+  );
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
   // Quem além de admin pode ver Financeiro/Comercial é configurável em Configurações →
@@ -83,25 +93,25 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handler = () => setTab("desempenho");
+    const handler = () => navigate(tabPath("desempenho"));
     window.addEventListener("open-appeal-review", handler);
     return () => window.removeEventListener("open-appeal-review", handler);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
-    const handler = () => setTab("calendario_publicacao");
+    const handler = () => navigate(tabPath("calendario_publicacao"));
     window.addEventListener("open-calendario-publicacao", handler);
     return () => window.removeEventListener("open-calendario-publicacao", handler);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { tab?: MainTab } | undefined;
-      if (detail?.tab) setTab(detail.tab);
+      if (detail?.tab) navigate(tabPath(detail.tab));
     };
     window.addEventListener("uau:switch-tab", handler);
     return () => window.removeEventListener("uau:switch-tab", handler);
-  }, []);
+  }, [navigate]);
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -303,13 +313,30 @@ const Index = () => {
         </Card>
       );
     }
-    if (isGestaoTab) return <GestaoPanel forcedView={gestaoView} />;
+    if (isGestaoTab)
+      return (
+        <GestaoPanel
+          forcedView={gestaoView}
+          initialTaskId={taskId}
+          onTaskOpen={(id) => navigate(tabPath(tab, { taskId: id }))}
+          onTaskDialogClose={() => navigate(tabPath(tab))}
+        />
+      );
     if (tab === "visao_geral_projetos") return <ProjetosPanel />;
-    if (tab === "configuracoes" && isAdmin) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
+    if (tab === "configuracoes" && isAdmin)
+      return (
+        <AdminContainer
+          onNavigate={(t) => navigate(tabPath(t as MainTab))}
+          initialSubTab={(adminSubTab as AdminSubTab | undefined) ?? null}
+          onSubTabChange={(next) => navigate(tabPath("configuracoes", { adminSubTab: next }))}
+          initialClienteId={clienteId}
+          onClienteIdChange={(id) => navigate(tabPath("configuracoes", { adminSubTab: "clientes", clienteId: id }))}
+        />
+      );
     if (tab === "conversas" && isAdmin) return <ConversasPanel />;
     if (tab === "comercial" && canSeeComercial) return <ComercialPanel />;
     if (tab === "financeiro" && canSeeFinanceiro) return <FinanceiroPanel />;
-    if (tab === "fin_clientes" && canSeeFinanceiro) return <AdminContainer onNavigate={(t) => setTab(t as any)} />;
+    if (tab === "fin_clientes" && canSeeFinanceiro) return <AdminContainer onNavigate={(t) => navigate(tabPath(t as MainTab))} />;
     if (tab === "fin_receitas_despesas" && canSeeFinanceiro) return <FinReceitasDespesasTab />;
     if (tab === "fin_despesas_detalhadas" && canSeeFinanceiro) return <FinDespesasDetalhadasTab />;
     if (tab === "fin_lancamentos" && canSeeFinanceiro) return <FinLancamentosTab />;
@@ -360,7 +387,7 @@ const Index = () => {
       canSeeComercial={canSeeComercial}
       onTabChange={(next) => {
         try {
-          setTab(next);
+          navigate(tabPath(next));
           window.scrollTo({ top: 0, left: 0, behavior: "auto" });
         } catch (e) {
           console.error("Falha ao trocar de aba:", e);

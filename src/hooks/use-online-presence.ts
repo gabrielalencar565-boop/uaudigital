@@ -25,15 +25,21 @@ export function useOnlinePresence() {
   const { user } = useSession();
   const { data: profile } = useMyProfile();
   const syncedOnceRef = useRef(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isSubscribedRef = useRef(false);
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
 
   useEffect(() => {
     if (!user?.id) return;
 
     syncedOnceRef.current = false;
+    isSubscribedRef.current = false;
 
     const channel = supabase.channel(CHANNEL_NAME, {
       config: { presence: { key: user.id } },
     });
+    channelRef.current = channel;
 
     channel
       .on("presence", { event: "sync" }, () => {
@@ -172,16 +178,31 @@ export function useOnlinePresence() {
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
+          isSubscribedRef.current = true;
           await channel.track({
             user_id: user.id,
-            display_name: profile?.full_name ?? user.email?.split("@")[0] ?? "Usuário",
-            avatar_url: profile?.avatar_url ?? null,
+            display_name: profileRef.current?.full_name ?? user.email?.split("@")[0] ?? "Usuário",
+            avatar_url: profileRef.current?.avatar_url ?? null,
           } satisfies PresenceMeta);
         }
       });
 
     return () => {
+      isSubscribedRef.current = false;
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [user?.id, profile?.full_name, profile?.avatar_url, user?.email]);
+  }, [user?.id]);
+
+  // Atualiza os metadados de presença (nome/avatar) quando o perfil carrega ou muda,
+  // sem recriar o canal — recriar a cada mudança do perfil causava assinaturas
+  // sobrepostas e toasts duplicados de "fulano tá on!".
+  useEffect(() => {
+    if (!user?.id || !channelRef.current || !isSubscribedRef.current) return;
+    channelRef.current.track({
+      user_id: user.id,
+      display_name: profile?.full_name ?? user.email?.split("@")[0] ?? "Usuário",
+      avatar_url: profile?.avatar_url ?? null,
+    } satisfies PresenceMeta);
+  }, [profile?.full_name, profile?.avatar_url, user?.id, user?.email]);
 }

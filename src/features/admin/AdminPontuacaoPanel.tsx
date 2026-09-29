@@ -259,11 +259,7 @@ export function AdminPontuacaoPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <h2 className="text-2xl font-semibold tracking-tight">Pontuação</h2>
-      </div>
-
-      <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
+      <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Critérios por etapa</CardTitle>
           <CardDescription>
@@ -275,103 +271,8 @@ export function AdminPontuacaoPanel() {
 
           {!configQ.isLoading && (
             <>
-              <div className="rounded-lg border border-border/60 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Etapa</TableHead>
-                      <TableHead className="text-center w-[100px]">Pontos base</TableHead>
-                      <TableHead className="text-center w-[100px]">Penalidade atraso</TableHead>
-                      <TableHead className="text-center w-[90px]">Usa quantidade</TableHead>
-                      <TableHead className="text-center w-[120px]">Multiplicador extra</TableHead>
-                      <TableHead className="text-center w-[60px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sorted.map((row) => {
-                      const isCustom = row.stage.startsWith("custom_");
-                      const ck = row.color_key ?? null;
-                      const swatchClass = ck && !isHexColor(ck)
-                        ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-blue-500")
-                        : null;
-                      return (
-                      <TableRow key={row.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {isCustom && ck && (
-                              <span
-                                className={cn("h-3 w-3 rounded-full shrink-0 ring-1 ring-border/40", swatchClass ?? "")}
-                                style={!swatchClass && isHexColor(ck) ? { backgroundColor: ck } : undefined}
-                                aria-hidden
-                              />
-                            )}
-                            <span className="font-medium">{getVal(row, "label")}</span>
-                            {isCustom ? (
-                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">{row.stage}</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            step="0.5"
-                            className="w-20 mx-auto text-center h-8 tabular-nums"
-                            value={getVal(row, "base_points")}
-                            onChange={(e) => setVal(row, "base_points", Number(e.target.value))}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            step="0.5"
-                            className="w-20 mx-auto text-center h-8 tabular-nums"
-                            value={getVal(row, "late_penalty")}
-                            onChange={(e) => setVal(row, "late_penalty", Number(e.target.value))}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={getVal(row, "uses_quantity")}
-                            onCheckedChange={(v) => setVal(row, "uses_quantity", v)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            step="0.1"
-                            className="w-20 mx-auto text-center h-8 tabular-nums"
-                            value={getVal(row, "extra_demand_multiplier")}
-                            onChange={(e) => setVal(row, "extra_demand_multiplier", Number(e.target.value))}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {isCustom && (
-                            <button
-                              type="button"
-                              className="h-7 w-7 mx-auto flex items-center justify-center rounded-md hover:bg-destructive/20 transition-colors"
-                              title="Remover etapa periódica"
-                              disabled={deleteCustomStageMut.isPending}
-                              onClick={() => {
-                                if (confirm(`Remover a etapa "${row.label}"?`)) {
-                                  deleteCustomStageMut.mutate(row.stage);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
               {/* Create new periodic stage */}
-              <div className="mt-3 flex items-end gap-2 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
+              <div className="flex items-end gap-2 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
                 <div className="flex-1 space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Nova etapa periódica</label>
                   <Input
@@ -454,6 +355,88 @@ export function AdminPontuacaoPanel() {
                 Etapas periódicas são avulsas — não entram no fluxo do Kanban, Agenda ou Magic Number. Servem como referência de pontuação.
               </p>
 
+              <div className="mt-4 rounded-lg border border-border/60 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Etapa</TableHead>
+                      <TableHead className="text-center w-[100px]">Pontos base</TableHead>
+                      <TableHead className="text-center w-[100px]">Penalidade atraso</TableHead>
+                      <TableHead className="text-center w-[90px]">Usa quantidade</TableHead>
+                      <TableHead className="text-center w-[120px]">Multiplicador extra</TableHead>
+                      <TableHead className="text-center w-[60px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sorted.map((row) => {
+                      const isCustom = row.stage.startsWith("custom_");
+                      return (
+                      <TableRow key={row.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{getVal(row, "label")}</span>
+                            {isCustom && (
+                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            step="0.5"
+                            className="w-20 mx-auto text-center h-8 tabular-nums"
+                            value={getVal(row, "base_points")}
+                            onChange={(e) => setVal(row, "base_points", Number(e.target.value))}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            step="0.5"
+                            className="w-20 mx-auto text-center h-8 tabular-nums"
+                            value={getVal(row, "late_penalty")}
+                            onChange={(e) => setVal(row, "late_penalty", Number(e.target.value))}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={getVal(row, "uses_quantity")}
+                            onCheckedChange={(v) => setVal(row, "uses_quantity", v)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            className="w-20 mx-auto text-center h-8 tabular-nums"
+                            value={getVal(row, "extra_demand_multiplier")}
+                            onChange={(e) => setVal(row, "extra_demand_multiplier", Number(e.target.value))}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {isCustom && (
+                            <button
+                              type="button"
+                              className="h-7 w-7 mx-auto flex items-center justify-center rounded-md hover:bg-destructive/20 transition-colors"
+                              title="Remover etapa periódica"
+                              disabled={deleteCustomStageMut.isPending}
+                              onClick={() => {
+                                if (confirm(`Remover a etapa "${row.label}"?`)) {
+                                  deleteCustomStageMut.mutate(row.stage);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
               <div className="mt-4 flex justify-end">
                 <Button
                   variant="brand"
@@ -479,7 +462,7 @@ export function AdminPontuacaoPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Create new tag */}
-          <div className="flex items-end gap-3 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
+          <div className="flex items-end gap-2 p-3 rounded-lg border border-dashed border-border/60 bg-muted/20">
             <div className="flex-1 space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Nova etiqueta</label>
               <Input
@@ -550,40 +533,9 @@ export function AdminPontuacaoPanel() {
               onClick={handleCreateTag}
             >
               <Plus className="h-3.5 w-3.5" />
-              Criar
+              Criar etiqueta
             </Button>
           </div>
-
-          {/* Existing tags list */}
-          {globalTags.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Etiquetas existentes</p>
-              <div className="flex flex-wrap gap-2">
-                {globalTags.map(gt => {
-                  const rawTag = `${gt.name}:${gt.color_key}`;
-                  const tc = tagColor(rawTag);
-                  return (
-                    <div
-                      key={gt.id}
-                      className={cn("flex items-center gap-1.5 rounded-full pl-2.5 pr-1 py-1", tc.bg)}
-                      style={tc.style}
-                    >
-                      <span className={cn("text-xs font-medium", tc.text)} style={tc.style ? { color: tc.hex } : undefined}>
-                        {gt.name}
-                      </span>
-                      <button
-                        className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-destructive/30 transition-all"
-                        onClick={() => deleteTagWithScoring.mutate({ id: gt.id, name: gt.name, color_key: gt.color_key })}
-                        title="Remover etiqueta"
-                      >
-                        <Trash2 className="h-2.5 w-2.5 text-destructive" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Tag scoring table */}
           {!configQ.isLoading && tagRows.length > 0 && (
@@ -595,7 +547,9 @@ export function AdminPontuacaoPanel() {
                       <TableHead>Etiqueta</TableHead>
                       <TableHead className="text-center w-[100px]">Pontos base</TableHead>
                       <TableHead className="text-center w-[100px]">Penalidade atraso</TableHead>
+                      <TableHead className="text-center w-[90px]">Usa quantidade</TableHead>
                       <TableHead className="text-center w-[120px]">Multiplicador extra</TableHead>
+                      <TableHead className="text-center w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -606,13 +560,17 @@ export function AdminPontuacaoPanel() {
                       return (
                       <TableRow key={row.id}>
                         <TableCell>
-                          {tc ? (
-                            <Badge className={cn("text-xs h-6 px-2.5 gap-1 border-0", tc.bg, tc.text)}>
-                              {getVal(row, "label")}
-                            </Badge>
-                          ) : (
+                          <div className="flex items-center gap-2">
+                            {tc && (
+                              <span
+                                className={cn("h-3 w-3 rounded-full shrink-0 ring-1 ring-border/40", tc.dot)}
+                                style={tc.dotStyle}
+                                aria-hidden
+                              />
+                            )}
                             <span className="font-medium">{getVal(row, "label")}</span>
-                          )}
+                            <Badge variant="outline" className="text-[10px]">Etiqueta</Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <Input
@@ -633,6 +591,12 @@ export function AdminPontuacaoPanel() {
                           />
                         </TableCell>
                         <TableCell className="text-center">
+                          <Switch
+                            checked={getVal(row, "uses_quantity")}
+                            onCheckedChange={(v) => setVal(row, "uses_quantity", v)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
                           <Input
                             type="number"
                             step="0.1"
@@ -640,6 +604,23 @@ export function AdminPontuacaoPanel() {
                             value={getVal(row, "extra_demand_multiplier")}
                             onChange={(e) => setVal(row, "extra_demand_multiplier", Number(e.target.value))}
                           />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {matchedTag && (
+                            <button
+                              type="button"
+                              className="h-7 w-7 mx-auto flex items-center justify-center rounded-md hover:bg-destructive/20 transition-colors"
+                              title="Remover etiqueta"
+                              disabled={deleteTagWithScoring.isPending}
+                              onClick={() => {
+                                if (confirm(`Remover a etiqueta "${matchedTag.name}"?`)) {
+                                  deleteTagWithScoring.mutate(matchedTag);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          )}
                         </TableCell>
                       </TableRow>
                       );

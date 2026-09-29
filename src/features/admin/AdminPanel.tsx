@@ -16,6 +16,9 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +68,7 @@ export function AdminPanel() {
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
   const [editRoleTitles, setEditRoleTitles] = useState<string[]>([]);
   const [resetLinkUser, setResetLinkUser] = useState<AdminUserRow | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<AdminUserRow | null>(null);
 
   const usersQ = useAdminUsers();
   const squadsQ = useSquads();
@@ -317,13 +321,8 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
-        <h2 className="text-2xl font-semibold tracking-tight">Gestão de usuários</h2>
-      </div>
-
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <div className="relative flex-1 max-w-md">
           <Input
             value={filter}
@@ -387,7 +386,7 @@ export function AdminPanel() {
             user={r}
             roleBadges={getRoleBadges(r.user_id)}
             onEditRoles={() => openRoleEditor(r)}
-            onRevoke={() => revoke.mutate(r)}
+            onRevoke={() => setRevokeTarget(r)}
             onHide={() => hide.mutate(r)}
             onUnhide={() => unhide.mutate(r)}
             onGenerateResetLink={() => setResetLinkUser(r)}
@@ -403,6 +402,32 @@ export function AdminPanel() {
 
       {/* Dialog de link de reset */}
       <ResetLinkDialog user={resetLinkUser} onClose={() => setResetLinkUser(null)} />
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {revokeTarget?.display_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso revoga o acesso dessa pessoa ao sistema — remove os papéis dela e desativa
+              seu cadastro. Não apaga o histórico (tarefas, pontuação, etc.). Pra ela voltar a
+              acessar, alguém precisa aprovar uma nova solicitação de acesso.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (revokeTarget) revoke.mutate(revokeTarget);
+                setRevokeTarget(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       {/* Dialog de edição */}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle, Sparkles, ShieldCheck, Briefcase } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, MessageCircle, Sparkles, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
@@ -9,10 +9,9 @@ import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 import { AdminWhatsAppPanel } from "./AdminWhatsAppPanel";
 import { AdminNovidadesPanel } from "./AdminNovidadesPanel";
-import { AdminPermissoesPanel } from "./AdminPermissoesPanel";
 import { AdminCargosPanel } from "./AdminCargosPanel";
 
-type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "novidades" | "permissoes" | "cargos";
+export type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "novidades" | "cargos";
 
 type CardDef = {
   key: AdminSubTab | "fluxos";
@@ -24,8 +23,7 @@ type CardDef = {
 
 const CARDS: CardDef[] = [
   { key: "usuarios", title: "Usuários", description: "Gerencie os usuários do sistema, papéis de acesso e permissões da equipe.", icon: Users },
-  { key: "permissoes", title: "Permissões", description: "Escolha quais papéis e cargos podem acessar cada aba/ação com permissão configurável.", icon: ShieldCheck },
-  { key: "cargos", title: "Cargos", description: "Crie, renomeie, reordene ou desative os cargos da equipe (Social Media, Designer, etc.).", icon: Briefcase },
+  { key: "cargos", title: "Cargos", description: "Crie, renomeie, reordene ou desative os cargos da equipe, e escolha quais papéis e cargos acessam cada aba/ação.", icon: Briefcase },
   { key: "clientes", title: "Clientes", description: "Cadastre e edite os clientes ativos, expirados e encerrados da operação.", icon: Building2 },
   { key: "datas", title: "Datas internas", description: "Configure feriados, datas comemorativas e eventos internos do calendário.", icon: CalendarPlus },
   { key: "limpeza", title: "Limpeza", description: "Defina as tarefas recorrentes de limpeza, horários e responsáveis.", icon: SprayCan },
@@ -35,8 +33,33 @@ const CARDS: CardDef[] = [
   { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
-export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
-  const [subTab, setSubTab] = useState<AdminSubTab | null>(null);
+export function AdminContainer({
+  onNavigate,
+  initialSubTab = null,
+  onSubTabChange,
+  initialClienteId,
+  onClienteIdChange,
+}: {
+  onNavigate?: (tab: string) => void;
+  // Controlado pela URL (Index.tsx) quando disponível — cai no estado interno
+  // de sempre (sem os dois props abaixo) para quem ainda chama <AdminContainer />
+  // sem se importar com subaba (ex.: a aba "fin_clientes").
+  initialSubTab?: AdminSubTab | null;
+  onSubTabChange?: (subTab: AdminSubTab | null) => void;
+  initialClienteId?: string;
+  onClienteIdChange?: (clienteId: string | null) => void;
+} = {}) {
+  const [subTab, setSubTabState] = useState<AdminSubTab | null>(initialSubTab);
+
+  // Mantém em sincronia quando o valor vem de fora (voltar do navegador, link direto).
+  useEffect(() => {
+    setSubTabState(initialSubTab ?? null);
+  }, [initialSubTab]);
+
+  const setSubTab = (next: AdminSubTab | null) => {
+    setSubTabState(next);
+    onSubTabChange?.(next);
+  };
 
   const activeCard = subTab ? CARDS.find((c) => c.key === subTab) : null;
 
@@ -98,9 +121,13 @@ export function AdminContainer({ onNavigate }: { onNavigate?: (tab: string) => v
       ) : (
         <div className="opacity-0" style={{ animation: "fadeUp 0.4s ease-out forwards" }}>
           {subTab === "usuarios" && <AdminPanel />}
-          {subTab === "permissoes" && <AdminPermissoesPanel />}
           {subTab === "cargos" && <AdminCargosPanel />}
-          {subTab === "clientes" && <AdminClientesPanel />}
+          {subTab === "clientes" && (
+            <AdminClientesPanel
+              initialClientId={initialClienteId}
+              onClientDialogChange={(id) => onClienteIdChange?.(id)}
+            />
+          )}
           {subTab === "datas" && <AdminDatasInternasPanel />}
           {subTab === "limpeza" && <AdminLimpezaPanel />}
           {subTab === "pontuacao" && <AdminPontuacaoPanel />}

@@ -38,8 +38,8 @@ function cargoMatches(myCargos: string[] | null | undefined, allowedCargos: stri
   return mine.some((c) => allowed.includes(c));
 }
 
-// Gates a feature by its feature_permissions key. Admin always passes — the Permissões screen
-// (AdminPermissoesPanel) never lets "admin" be unchecked, so this is just a safety net against
+// Gates a feature by its feature_permissions key. Admin always passes — the permissions UI
+// (Admin → Cargos) never lets "admin" be unchecked, so this is just a safety net against
 // a row with an accidentally-empty allowed_roles locking every admin out of their own settings.
 // A key with no matching row (not yet migrated to this system) defaults to admin-only, matching
 // every gate's original hardcoded behavior before this table existed.
