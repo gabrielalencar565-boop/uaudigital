@@ -42,6 +42,8 @@ export type MainTab =
 "pauta_pessoas" |
 "calendario_publicacao" |
 "cronograma" |
+"gestao_por_cliente" |
+"gestao_montagem_pauta" |
 "fluxos" |
 "visao_do_dia" |
 "magic2" |

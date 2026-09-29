@@ -4,6 +4,11 @@ export type CalendarStatus = Database["public"]["Enums"]["calendar_status"];
 export type PublicationStatus = Database["public"]["Enums"]["publication_status"];
 export type PublicationContentType = Database["public"]["Enums"]["publication_content_type"];
 
+// Formatos que ocupam o feed do Instagram no formato retrato padrão (1080x1350) — usado
+// pra saber quando ajustar a foto automaticamente nesse tamanho ao anexar. Stories e Reels
+// têm proporções diferentes (9:16) e ficam de fora de propósito.
+export const FEED_ASPECT_CONTENT_TYPES: PublicationContentType[] = ["carrossel", "post", "foto"];
+
 export interface PublicationCalendar {
   id: string;
   client_id: string;

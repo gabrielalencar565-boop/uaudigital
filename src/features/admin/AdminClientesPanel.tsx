@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { autoAssignStagesForClient } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -211,7 +211,15 @@ function normalizeClientName(s: string): string {
     .replace(/\s+/g, " ");
 }
 
-export function AdminClientesPanel() {
+export function AdminClientesPanel({
+  initialClientId,
+  onClientDialogChange,
+}: {
+  // Id de cliente vindo da URL (/configuracoes/clientes/:clienteId) — abre o
+  // diálogo de edição automaticamente assim que a lista carregar.
+  initialClientId?: string;
+  onClientDialogChange?: (clientId: string | null) => void;
+} = {}) {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
   
@@ -304,8 +312,6 @@ export function AdminClientesPanel() {
     return all.filter((c) => c.is_active);
   }, [clientsQ.data, showInactive]);
 
-  const activeCount = useMemo(() => (clientsQ.data ?? []).filter((c) => c.is_active).length, [clientsQ.data]);
-  const inactiveCount = useMemo(() => (clientsQ.data ?? []).filter((c) => !c.is_active).length, [clientsQ.data]);
 
   const createForm = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
@@ -572,45 +578,44 @@ export function AdminClientesPanel() {
       end_reason: (client as any).end_reason ?? "",
     });
     setEditSquadIds(clientSquadMap.get(client.id) ?? []);
+    onClientDialogChange?.(client.id);
   };
+
+  // Link direto/F5 em /configuracoes/clientes/:clienteId — assim que a lista carrega,
+  // abre o diálogo de edição sozinho, sem precisar clicar em nada.
+  useEffect(() => {
+    if (!initialClientId || editClient?.id === initialClientId) return;
+    const found = (clientsQ.data ?? []).find((c) => c.id === initialClientId);
+    if (found) openEdit(found);
+  }, [initialClientId, clientsQ.data]);
 
   return (
     <div className="space-y-6">
-      <div
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between opacity-0"
-        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
-      >
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Configurações do Cliente</h2>
-          <p className="text-sm text-muted-foreground">
-            Cadastro único — sincroniza automaticamente com Financeiro e Magic Number. {activeCount} ativo(s) • {inactiveCount} pausado(s)
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
-            <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
-              <Filter className="inline h-3 w-3 mr-1" />
-              Mostrar pausados
-            </Label>
-          </div>
-          <Button variant="brand" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Cliente
-          </Button>
-        </div>
-      </div>
-
       <Card
         className="opacity-0"
-        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}
+        style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}
       >
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Clientes Cadastrados
-          </CardTitle>
-          <CardDescription>{clients.length} cliente(s) exibido(s)</CardDescription>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Clientes Cadastrados
+            </CardTitle>
+            <CardDescription>{clients.length} cliente(s) exibido(s)</CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
+              <Label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
+                <Filter className="inline h-3 w-3 mr-1" />
+                Mostrar pausados
+              </Label>
+            </div>
+            <Button variant="brand" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Cliente
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {clientsQ.isLoading ? (
@@ -758,7 +763,12 @@ export function AdminClientesPanel() {
 
       <ClientFormDialog
         open={!!editClient}
-        onOpenChange={(open) => !open && setEditClient(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditClient(null);
+            onClientDialogChange?.(null);
+          }
+        }}
         title="Editar Cliente"
         form={editForm}
         onSubmit={handleEdit}

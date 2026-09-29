@@ -84,7 +84,19 @@ const VIEW_TITLES: Record<string, string> = {
   responsaveis: "Responsáveis por etapa"
 };
 
-export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
+export function GestaoPanel({
+  forcedView,
+  initialTaskId,
+  onTaskOpen,
+  onTaskDialogClose,
+}: {
+  forcedView?: string;
+  // Id de tarefa vindo da URL (ex.: /tarefas/:taskId) — abre o diálogo já na
+  // primeira renderização, inclusive em link direto/F5.
+  initialTaskId?: string;
+  onTaskOpen?: (taskId: string) => void;
+  onTaskDialogClose?: () => void;
+} = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
 
@@ -99,7 +111,19 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
   const [filterStage, setFilterStage] = useState("__all__");
   const { data: periodicStages = [] } = usePeriodicStages();
 
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialTaskId ?? null);
+  // Mantém em sincronia quando o id vem de fora (URL) — link direto, F5, voltar do navegador.
+  useEffect(() => {
+    setSelectedTaskId(initialTaskId ?? null);
+  }, [initialTaskId]);
+  const openTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    onTaskOpen?.(taskId);
+  };
+  const closeTask = () => {
+    setSelectedTaskId(null);
+    onTaskDialogClose?.();
+  };
   const [calendarFocusRequest, setCalendarFocusRequest] = useState<CalendarioFocusRequest | null>(() => getPendingCalendarioFocus());
   useEffect(() => subscribePendingCalendarioFocus((v) => { if (v) setCalendarFocusRequest(v); }), []);
   const openTaskInCalendarioAndClose = (taskId: string) => {
@@ -359,7 +383,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           membersMap={membersMap}
           teamMembers={membersForSpecialDates}
           userId={user?.id ?? null}
-          onTaskClick={(t) => setSelectedTaskId(t.id)}
+          onTaskClick={(t) => openTask(t.id)}
           filterClient={filterClient}
           filterAssignee={filterAssignee}
           search={search}
@@ -379,7 +403,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           childTasksMap={childTasksMap}
           clientsMap={clientsMap}
           membersMap={membersMap}
-          onTaskClick={(t) => setSelectedTaskId(t.id)} />
+          onTaskClick={(t) => openTask(t.id)} />
 
         }
         {effectiveView === "equipe" &&
@@ -389,7 +413,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           membersMap={membersMap}
           clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           currentUserId={user?.id ?? null}
-          onTaskClick={(t) => setSelectedTaskId(t.id)}
+          onTaskClick={(t) => openTask(t.id)}
           onAddClick={(userId, dayKey) => {
             setCreateDefaultStatus(undefined);
             setCreateDefaultAssignee(userId);
@@ -400,7 +424,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
         }
         {effectiveView === "calendario" &&
         <CalendarioPublicacaoPanel
-          onOpenTask={(taskId) => setSelectedTaskId(taskId)}
+          onOpenTask={(taskId) => openTask(taskId)}
           focusRequest={calendarFocusRequest}
           onFocusHandled={() => setCalendarFocusRequest(null)}
         />
@@ -413,7 +437,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           members={membersList}
           clients={(clientsQ.data ?? []).map((c) => ({ id: c.id, name: c.name }))}
           isAdmin={isAdmin}
-          onTaskClick={(t) => setSelectedTaskId(t.id)} />
+          onTaskClick={(t) => openTask(t.id)} />
 
         }
         {effectiveView === "cronograma" &&
@@ -423,7 +447,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           clientsMap={clientsMap}
           membersMap={membersMap}
           filterClient={filterClient}
-          onTaskClick={(t) => setSelectedTaskId(t.id)} />
+          onTaskClick={(t) => openTask(t.id)} />
 
         }
         {effectiveView === "fluxo" &&
@@ -441,7 +465,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
       <PmTaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={closeTask}
         clientsMap={clientsMap}
         membersMap={membersMap}
         members={membersList}
@@ -469,7 +493,7 @@ export function GestaoPanel({ forcedView }: {forcedView?: string;} = {}) {
           }
           setCreateDefaultAssignee(undefined);
           setCreateForcedDueDate(undefined);
-          setSelectedTaskId(taskId);
+          openTask(taskId);
         }} />
       
     </div>);
