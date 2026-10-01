@@ -15,6 +15,8 @@ import {
 import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
+import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
+import { useMagicNumberConfig } from "@/features/data/queries";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
@@ -37,9 +39,13 @@ const SCORE_RANGES = [
 
 export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const now = new Date();
-  const currentDay = now.getDate();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
+  const cycleMY = getCycleMonthYear(now, magicDay);
+  const year = cycleMY.year;
+  const month = cycleMY.month;
+  // How many real days of the cycle's month have elapsed (0 while we've rolled over but that month hasn't started yet).
+  const currentDay = (now.getFullYear() === year && now.getMonth() + 1 === month) ? now.getDate() : 0;
 
   const [chartMode, setChartMode] = useState<"mensal" | "anual">("mensal");
   const [annualDialogOpen, setAnnualDialogOpen] = useState(false);
@@ -63,7 +69,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   // ── Progress line chart data (current + previous month) ──
   const progressData = useMemo(() => {
-    const totalDays = getDaysInMonth(now);
+    const totalDays = getDaysInMonth(new Date(year, month - 1, 1));
     const prevTotalDays = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
 
     return Array.from({ length: totalDays }, (_, i) => {
@@ -92,8 +98,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── Annual progress data (% completed before Magic Number per month) ──
   const annualProgressData = useMemo(() => {
     if (!yearData) return [];
-    const now2 = new Date();
-    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+    const currentMonth = month;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -105,7 +110,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
       const completedStages = monthStages.filter((s: any) => s.completed).length;
       const beforeMagic = monthStages.filter((s: any) =>
-        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= 27
+        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= magicDay
       ).length;
       const pct = totalStagesMonth > 0 ? Math.round((beforeMagic / totalStagesMonth) * 100) : 0;
 
@@ -115,7 +120,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         .map((s: any) => getBrazilDay(s.completed_at!));
       const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : null;
       const allDone = completedStages === totalStagesMonth && totalStagesMonth > 0;
-      const magicDiff = allDone && lastDay !== null ? 27 - lastDay : null;
+      const magicDiff = allDone && lastDay !== null ? magicDay - lastDay : null;
 
       return {
         mes: MONTH_SHORT[i],
@@ -151,8 +156,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── Proactivity Index per month ──
   const proactivityData = useMemo(() => {
     if (!yearData) return [];
-    const now2 = new Date();
-    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+    const currentMonth = month;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -175,7 +179,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
-        else if (day <= 27) weightedSum += 0.3;
+        else if (day <= magicDay) weightedSum += 0.3;
       }
 
       const before20 = completedStages.filter((s: any) => {
@@ -206,8 +210,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── IDO (Índice de Disciplina Operacional) per month ──
   const idoData = useMemo(() => {
     if (!yearData) return [];
-    const now2 = new Date();
-    const currentMonth = now2.getFullYear() === year ? now2.getMonth() + 1 : 12;
+    const currentMonth = month;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -229,7 +232,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
-        else if (day <= 27) weightedSum += 0.3;
+        else if (day <= magicDay) weightedSum += 0.3;
       }
       const proatividade = Math.round((weightedSum / completedStages.length) * 100);
 
@@ -241,8 +244,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       const allDone = completedStages.length === totalStagesMonth;
       let prazoScore: number;
       if (allDone) {
-        if (lastDay <= 24) prazoScore = 100;
-        else if (lastDay <= 27) prazoScore = 75;
+        if (lastDay <= magicDay - 3) prazoScore = 100;
+        else if (lastDay <= magicDay) prazoScore = 75;
         else prazoScore = 40;
       } else {
         prazoScore = 30;
@@ -291,8 +294,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
-    return computeAnnualScores(yearData, year, month);
-  }, [yearData, year, month]);
+    return computeAnnualScores(yearData, year, month, magicDay);
+  }, [yearData, year, month, magicDay]);
 
   const annualStats = useMemo(() => {
     const active = annualScoreData.filter(m => m.hasData && m.score > 0);
@@ -316,14 +319,14 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
     let prazoScore: number;
     if (doneStages === totalStages && totalStages > 0) {
-      if (lastDay <= 25) prazoScore = 100;
-      else if (lastDay <= 27) prazoScore = 85;
+      if (lastDay <= magicDay - 2) prazoScore = 100;
+      else if (lastDay <= magicDay) prazoScore = 85;
       else if (lastDay <= 30) prazoScore = 60;
       else prazoScore = 40;
     } else {
       if (currentDay <= 20) prazoScore = 80;
-      else if (currentDay <= 25) prazoScore = 65;
-      else if (currentDay <= 27) prazoScore = 50;
+      else if (currentDay <= magicDay - 2) prazoScore = 65;
+      else if (currentDay <= magicDay) prazoScore = 50;
       else prazoScore = 35;
     }
 
@@ -347,7 +350,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       } else if (counts.length === 1) {
         consistenciaScore = doneStages <= 3 ? 70 : 30;
       }
-      const spreadRatio = counts.length / Math.min(currentDay, 27);
+      const spreadRatio = counts.length / Math.min(currentDay, magicDay);
       consistenciaScore = Math.round(consistenciaScore * 0.7 + spreadRatio * 100 * 0.3);
       consistenciaScore = Math.max(0, Math.min(100, consistenciaScore));
     }
@@ -368,8 +371,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
     let prevPrazo: number;
     if (prevDone === prevTotalStages && prevTotalStages > 0) {
-      if (prevLastDay <= 25) prevPrazo = 100;
-      else if (prevLastDay <= 27) prevPrazo = 85;
+      if (prevLastDay <= magicDay - 2) prevPrazo = 100;
+      else if (prevLastDay <= magicDay) prevPrazo = 85;
       else if (prevLastDay <= 30) prevPrazo = 60;
       else prevPrazo = 40;
     } else {
@@ -393,7 +396,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         prevConsistencia = prevDone <= 3 ? 70 : 30;
       }
       const prevTotalDaysInMonth = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
-      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, 27);
+      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, magicDay);
       prevConsistencia = Math.round(prevConsistencia * 0.7 + spreadRatio * 100 * 0.3);
       prevConsistencia = Math.max(0, Math.min(100, prevConsistencia));
     }

@@ -9,7 +9,8 @@ import { useSession } from "@/hooks/use-session";
 import { useRole } from "@/hooks/use-role";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useTeamMembers } from "@/features/data/queries";
+import { useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
+import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Settings2, Users, CheckCircle2, Clock, FileText,
@@ -112,12 +113,14 @@ export function VisaoGeralTab() {
   const [editIcon, setEditIcon] = useState("shield");
 
   const teamQ = useTeamMembers();
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
 
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-  // Magic Number deadline is day 27
-  const magicDeadline = new Date(now.getFullYear(), now.getMonth(), 27);
+  // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
+  const cycleMY = getCycleMonthYear(now, magicDay);
+  const magicDeadline = new Date(cycleMY.year, cycleMY.month - 1, magicDay);
   const magicDaysLeft = Math.max(0, differenceInDays(magicDeadline, now));
 
   const pmTasksQ = useQuery({
@@ -161,11 +164,12 @@ export function VisaoGeralTab() {
 
   // Fetch Magic Number stages for current AND previous month (for squad speed + comparison)
   const magic2StagesQ = useQuery({
-    queryKey: ["magic2_squad_speed_v2", now.getFullYear(), now.getMonth() + 1],
+    queryKey: ["magic2_squad_speed_v2", cycleMY.year, cycleMY.month],
     queryFn: async () => {
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      const prevDate = subMonths(now, 1);
+      const year = cycleMY.year;
+      const month = cycleMY.month;
+      const cycleDate = new Date(year, month - 1, 1);
+      const prevDate = subMonths(cycleDate, 1);
       const prevYear = prevDate.getFullYear();
       const prevMonth = prevDate.getMonth() + 1;
 
@@ -311,8 +315,8 @@ export function VisaoGeralTab() {
       const day = new Date(s.completed_at).getDate();
       if (day <= 10) weightedSum += 1.0;
       else if (day <= 20) weightedSum += 0.6;
-      else if (day <= 27) weightedSum += 0.3;
-      totalDaysBefore += Math.max(0, 27 - day);
+      else if (day <= magicDay) weightedSum += 0.3;
+      totalDaysBefore += Math.max(0, magicDay - day);
     }
     return { speed: Math.round((weightedSum / stages.length) * 100), avgDays: Math.round(totalDaysBefore / stages.length) };
   };
@@ -779,7 +783,7 @@ export function VisaoGeralTab() {
                   </div>
                   <div>
                     <p className="text-base font-bold leading-none">Desempenho por Squad</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{format(now, "MMMM yyyy", { locale: ptBR })}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{format(new Date(cycleMY.year, cycleMY.month - 1, 1), "MMMM yyyy", { locale: ptBR })}</p>
                   </div>
                 </div>
                 <Tabs value={squadDashTab} onValueChange={(v) => setSquadDashTab(v as any)} className="w-auto">
@@ -960,7 +964,7 @@ export function VisaoGeralTab() {
                         <div className="mt-2 flex items-center gap-4 text-[11px] text-muted-foreground">
                           <span>{sq.completedEtapas}/{sq.totalEtapas} etapas concluídas</span>
                           <span>{sq.percentComplete}% do ciclo</span>
-                          {sq.avgDaysBeforeMagic > 0 && <span>~{sq.avgDaysBeforeMagic}d antes do dia 27</span>}
+                          {sq.avgDaysBeforeMagic > 0 && <span>~{sq.avgDaysBeforeMagic}d antes do dia {magicDay}</span>}
                         </div>
                       </div>
                     );

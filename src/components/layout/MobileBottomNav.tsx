@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MainTab } from "@/components/layout/UauSidebarShell";
+import { useAppSettings } from "@/features/data/queries";
 
 /* ── Sub-tab definitions per bottom tab ── */
 const SUB_TABS: Record<string, { key: MainTab; label: string; icon: React.ComponentType<any> }[]> = {
@@ -64,6 +65,7 @@ interface Props {
 
 export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, canSeeComercial }: Props) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const magicLabel = useAppSettings().data?.magic_number_label ?? "Magic Number";
 
   const activeKey = resolveActiveBottom(tab);
 
@@ -98,7 +100,8 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, c
     onTabChange(key);
   };
 
-  const currentSubTabs = expandedGroup ? (SUB_TABS[expandedGroup] || []) : [];
+  const currentSubTabs = (expandedGroup ? (SUB_TABS[expandedGroup] || []) : [])
+    .map((sub) => (sub.key === "magic2" ? { ...sub, label: magicLabel } : sub));
 
   return (
     <>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateMagic2Client } from "@/features/magic2/hooks/use-magic2";
-import { useClients } from "@/features/data/queries";
+import { useClients, useMagicNumberConfig } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 
 const schema = z.object({
@@ -20,6 +20,7 @@ type Values = z.infer<typeof schema>;
 
 export function CreateMagic2ClientCard({ year, month }: { year: number; month: number }) {
   const qc = useQueryClient();
+  const { label: magicLabel } = useMagicNumberConfig();
   const create = useCreateMagic2Client();
   const clientsQ = useClients();
   const [lastName, setLastName] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export function CreateMagic2ClientCard({ year, month }: { year: number; month: n
 
   const agendaClients = clientsQ.data ?? [];
   const subtitle = !lastName
-    ? "Vincule um cliente da Agenda ao Magic Number (sincroniza tarefas concluídas)."
+    ? `Vincule um cliente da Agenda ao ${magicLabel} (sincroniza tarefas concluídas).`
     : `"${lastName}" vinculado — tarefas concluídas aparecem no checklist.`;
 
   const onSubmit = async (v: Values) => {
@@ -60,7 +61,7 @@ export function CreateMagic2ClientCard({ year, month }: { year: number; month: n
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle>Começar do zero (Magic Number)</CardTitle>
+        <CardTitle>Começar do zero ({magicLabel})</CardTitle>
         <CardDescription>{subtitle}</CardDescription>
       </CardHeader>
       <form onSubmit={form.handleSubmit(onSubmit)}>

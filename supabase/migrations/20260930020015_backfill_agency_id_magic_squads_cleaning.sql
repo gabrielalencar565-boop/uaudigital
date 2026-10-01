@@ -1,0 +1,10 @@
+update public.magic2_clients set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.magic2_cycles set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.magic2_cycle_stages set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.magic2_client_links set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.squads set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.squad_members set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.client_squads set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.cleaning_categories set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.cleaning_schedules set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.cleaning_completions set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;

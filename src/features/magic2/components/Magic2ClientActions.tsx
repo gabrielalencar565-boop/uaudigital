@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { useClients } from "@/features/data/queries";
+import { useClients, useMagicNumberConfig } from "@/features/data/queries";
 import type { Magic2CycleRow } from "@/features/magic2/hooks/use-magic2";
 import { useCreateMagic2Client, useDeactivateMagic2ClientFromMonth, useSyncMagic2Year } from "@/features/magic2/hooks/use-magic2";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ type Props = {
 
 export function Magic2ClientActions({ year, month, cycles }: Props) {
   const qc = useQueryClient();
+  const { label: magicLabel } = useMagicNumberConfig();
   const clientsQ = useClients();
   const create = useCreateMagic2Client();
   const deactivate = useDeactivateMagic2ClientFromMonth();
@@ -55,7 +56,7 @@ export function Magic2ClientActions({ year, month, cycles }: Props) {
       if (link.error) throw link.error;
 
       await qc.invalidateQueries({ queryKey: ["magic2"] });
-      toast.success(`Cliente "${agendaCli.name}" adicionado no Magic Number`);
+      toast.success(`Cliente "${agendaCli.name}" adicionado no ${magicLabel}`);
       setAddAgendaClientId("");
       setAddOpen(false);
     } catch (e: any) {
@@ -119,7 +120,7 @@ export function Magic2ClientActions({ year, month, cycles }: Props) {
             <DialogHeader>
               <DialogTitle>Adicionar cliente</DialogTitle>
               <DialogDescription>
-                Vincula um cliente da Agenda ao Magic Number a partir de {String(month).padStart(2, "0")}/{year}.
+                Vincula um cliente da Agenda ao {magicLabel} a partir de {String(month).padStart(2, "0")}/{year}.
               </DialogDescription>
             </DialogHeader>
 

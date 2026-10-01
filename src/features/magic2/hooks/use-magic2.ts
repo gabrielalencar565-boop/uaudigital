@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import type { Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 function dateOnly(year: number, month: number, day: number) {
   // DATE no backend: YYYY-MM-DD
@@ -61,6 +62,7 @@ export function useMagic2Month(year: number, month: number) {
 
 export function useCreateMagic2Client() {
   const qc = useQueryClient();
+  const { day: magicDay } = useMagicNumberConfig();
   return useMutation({
     mutationFn: async ({
       name,
@@ -80,7 +82,7 @@ export function useCreateMagic2Client() {
         client_id: clientId,
         year,
         month: m,
-        due_date: dateOnly(year, m, 27),
+        due_date: dateOnly(year, m, magicDay),
         is_active: true,
       }));
 

@@ -1,0 +1,10 @@
+alter table public.magic2_clients add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.magic2_cycles add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.magic2_cycle_stages add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.magic2_client_links add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.squads add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.squad_members add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.client_squads add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.cleaning_categories add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.cleaning_schedules add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.cleaning_completions add column agency_id uuid references public.agencies(id) default public.current_agency_id();

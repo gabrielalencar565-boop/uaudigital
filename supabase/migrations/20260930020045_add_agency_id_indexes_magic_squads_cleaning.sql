@@ -1,0 +1,10 @@
+create index if not exists magic2_clients_agency_id_idx on public.magic2_clients (agency_id);
+create index if not exists magic2_cycles_agency_id_idx on public.magic2_cycles (agency_id);
+create index if not exists magic2_cycle_stages_agency_id_idx on public.magic2_cycle_stages (agency_id);
+create index if not exists magic2_client_links_agency_id_idx on public.magic2_client_links (agency_id);
+create index if not exists squads_agency_id_idx on public.squads (agency_id);
+create index if not exists squad_members_agency_id_idx on public.squad_members (agency_id);
+create index if not exists client_squads_agency_id_idx on public.client_squads (agency_id);
+create index if not exists cleaning_categories_agency_id_idx on public.cleaning_categories (agency_id);
+create index if not exists cleaning_schedules_agency_id_idx on public.cleaning_schedules (agency_id);
+create index if not exists cleaning_completions_agency_id_idx on public.cleaning_completions (agency_id);

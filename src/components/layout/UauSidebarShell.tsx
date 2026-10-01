@@ -133,10 +133,8 @@ export function UauSidebarShell({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [notifTaskId, setNotifTaskId] = useState<string | null>(null);
   const appSettingsQ = useAppSettings();
-  const workspaceName = appSettingsQ.data?.workspace_name ?? "Uau Digital";
-  // Sidebar is always brand-purple regardless of app theme, so the dark-theme (white) logo variant reads best on it.
-  const sidebarFullLogoUrl = appSettingsQ.data?.sidebar_logo_dark_url || appSettingsQ.data?.sidebar_logo_url || null;
-  const sidebarSymbolUrl = appSettingsQ.data?.sidebar_symbol_url || null;
+  const workspaceName = appSettingsQ.data?.workspace_name?.trim() || "Uau Digital";
+  const magicLabel = appSettingsQ.data?.magic_number_label ?? "Magic Number";
 
   useRealtimeSyncAll();
   useNotificationSound();
@@ -174,12 +172,12 @@ export function UauSidebarShell({
         if (e.key === "financeiro_group") return canSeeFinanceiro ?? isAdmin;
         if (e.key === "comercial") return canSeeComercial ?? isAdmin;
         return !e.adminOnly || isAdmin;
-      }),
-    [isAdmin, canSeeFinanceiro, canSeeComercial]
+      }).map((e) => (e.key === "magic2" ? { ...e, label: magicLabel } : e)),
+    [isAdmin, canSeeFinanceiro, canSeeComercial, magicLabel]
   );
 
   const currentTabLabel = useMemo(() => {
-    for (const e of NAV) {
+    for (const e of filteredNav) {
       if (!isGroup(e) && e.key === tab) return e.label;
       if (isGroup(e)) {
         if (e.landingTab === tab) return e.label;
@@ -188,7 +186,7 @@ export function UauSidebarShell({
       }
     }
     return "Painel";
-  }, [tab]);
+  }, [tab, filteredNav]);
 
   const isActive = (key: MainTab) => tab === key;
 
@@ -202,7 +200,7 @@ export function UauSidebarShell({
           <Sidebar
             collapsible="none"
             className={cn(
-              "fixed left-4 top-4 z-40 h-[calc(100svh-2rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
+              "fixed left-4 top-[4.5rem] z-40 h-[calc(100svh-5.5rem)] rounded-[28px] bg-sidebar shadow-xl shadow-black/25 overflow-hidden",
               collapsed ? "w-16" : "w-56 xl:w-64"
             )}>
             
@@ -210,11 +208,9 @@ export function UauSidebarShell({
             <div className={cn("px-3 pb-2 pt-4", collapsed && "px-2")}>
               <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "gap-2")}>
                 {collapsed ? (
-                  sidebarSymbolUrl && (
-                    <img src={sidebarSymbolUrl} alt={workspaceName} className="h-8 w-8 object-contain" />
-                  )
-                ) : sidebarFullLogoUrl ? (
-                  <img src={sidebarFullLogoUrl} alt={workspaceName} className="h-11 max-w-[188px] object-contain object-left" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-foreground/10 text-sm font-bold text-sidebar-foreground">
+                    {workspaceName.trim().charAt(0).toUpperCase() || "?"}
+                  </span>
                 ) : (
                   <span className="text-sm font-bold text-sidebar-foreground truncate">{workspaceName}</span>
                 )}

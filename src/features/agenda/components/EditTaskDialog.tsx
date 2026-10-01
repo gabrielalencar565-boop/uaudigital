@@ -41,7 +41,7 @@ import { STAGES, type StageKey } from "@/lib/uau";
 import { MemberMultiSelect } from "./MemberMultiSelect";
 import { useTaskAssignees, useSetTaskAssignees } from "@/features/data/task-assignees-queries";
 import { useSession } from "@/hooks/use-session";
-import { useFreelancerClient } from "@/features/data/queries";
+import { useFreelancerClient, useMagicNumberConfig } from "@/features/data/queries";
 import type { TaskRow, TaskStatus, ClientRow, TeamMemberRow } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -103,6 +103,7 @@ export function EditTaskDialog({
 }: EditTaskDialogProps) {
   const { user } = useSession();
   const qc = useQueryClient();
+  const { label: magicLabel } = useMagicNumberConfig();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
@@ -438,7 +439,7 @@ export function EditTaskDialog({
                   Demanda Extra
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Não marca no Magic Number, apenas no desempenho
+                  Não marca no {magicLabel}, apenas no desempenho
                 </p>
               </div>
             </div>

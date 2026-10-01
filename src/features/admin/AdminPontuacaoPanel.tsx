@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { TAG_COLORS, tagColor, isHexColor } from "@/features/gestao/pm-constants";
 import { usePmTags, useDeletePmTag } from "@/features/gestao/hooks/use-pm-tags";
 import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 const sb = supabase as any;
 
@@ -34,6 +35,7 @@ type EditState = Record<string, Partial<ScoringRow>>;
 
 export function AdminPontuacaoPanel() {
   const qc = useQueryClient();
+  const { label: magicLabel } = useMagicNumberConfig();
   const [edits, setEdits] = useState<EditState>({});
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("blue");
@@ -352,7 +354,7 @@ export function AdminPontuacaoPanel() {
                 </Button>
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Etapas periódicas são avulsas — não entram no fluxo do Kanban, Agenda ou Magic Number. Servem como referência de pontuação.
+                Etapas periódicas são avulsas — não entram no fluxo do Kanban, Agenda ou {magicLabel}. Servem como referência de pontuação.
               </p>
 
               <div className="mt-4 rounded-lg border border-border/60 overflow-x-auto">

@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { getPendingCalendarioFocus, subscribePendingCalendarioFocus, type CalendarioFocusRequest } from "@/lib/pending-calendario-focus-store";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
-import { useDeleteTask, useTasks, useTeamMembers } from "@/features/data/queries";
+import { useDeleteTask, useTasks, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { PmClientView } from "./components/PmClientView";
 import { PmTeamWeekView } from "./components/PmTeamWeekView";
@@ -99,6 +99,7 @@ export function GestaoPanel({
 } = {}) {
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
+  const { label: magicLabel } = useMagicNumberConfig();
 
   const [view, setView] = useState<"agenda" | "clientes" | "equipe" | "calendario" | "pauta" | "cronograma" | "fluxo" | "responsaveis">(
     forcedView as any ?? "agenda"
@@ -1415,7 +1416,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             <AlertDialogDescription className="space-y-2">
               <span className="block">Tem certeza que deseja excluir esta tarefa?</span>
               <span className="block text-destructive font-medium">
-                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no {magicLabel}.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -1,0 +1,12 @@
+alter table public.personal_notes add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.push_subscriptions add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.problem_reports add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.help_changelog_entries add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.help_faq_items add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.internal_dates add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.notification_reads add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.notification_dismissals add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.task_appeals add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.health_scores add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.health_score_tokens add column agency_id uuid references public.agencies(id) default public.current_agency_id();
+alter table public.access_requests add column agency_id uuid references public.agencies(id) default public.current_agency_id();

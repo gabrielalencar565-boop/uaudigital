@@ -4,6 +4,7 @@ import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-sta
 import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
 import { useNow } from "@/hooks/use-now";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMagicNumberConfig } from "@/features/data/queries";
 import { cn } from "@/lib/utils";
 
 type Dashboard = {
@@ -110,8 +111,9 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
 export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean }) {
   const isMobile = useIsMobile();
   const now = useNow();
-  const dueDate = new Date(year, month - 1, 27);
-  const deadlineLabel = `27/${String(month).padStart(2, "0")}`;
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const dueDate = new Date(year, month - 1, magicDay);
+  const deadlineLabel = `${String(magicDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
   const clients100Pct = dashboard.totalClients
     ? Math.round((dashboard.clients100 / dashboard.totalClients) * 100)
     : 0;
@@ -157,7 +159,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
 
         {/* Metric row */}
         <div className="grid grid-cols-2 gap-2">
-          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
+          <MetricCard value={deadlineLabel} label={magicLabel.toUpperCase()} highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
           <MetricCard value={String(dashboard.pendingStages)} label="PENDENTES" />
@@ -230,7 +232,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
       <div className="flex flex-col gap-3 min-h-0">
         {/* Top metrics row */}
         <div className="grid grid-cols-4 gap-2 shrink-0">
-          <MetricCard value={deadlineLabel} label="MAGIC NUMBER" highlight />
+          <MetricCard value={deadlineLabel} label={magicLabel.toUpperCase()} highlight />
           <MetricCard value={String(dashboard.totalStages)} label="TOTAL" />
           <MetricCard value={String(dashboard.doneStages)} label="FEITOS" />
           <MetricCard value={String(dashboard.pendingStages)} label="PENDENTES" />

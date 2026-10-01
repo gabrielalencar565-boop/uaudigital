@@ -86,11 +86,18 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   };
 
   return (
-    // z-30 (below the sidebar's z-40) so the sidebar's rounded top corner — which now
-    // reaches nearly to the top of the screen — renders on top of this bar instead of the
-    // other way around; both stay below dialogs/sheets (z-50) so those still cover everything.
+    // z-30 (below the sidebar's z-40); the sidebar now starts below this bar instead of
+    // overlapping it, since this bar's left side carries the Fluxo mark. Both stay below
+    // dialogs/sheets (z-50) so those still cover everything.
     <header className="fixed top-0 left-0 right-0 z-30 h-16 border-b border-border/40 bg-background/80 backdrop-blur-md">
-      <div className="flex h-full items-center justify-end px-4">
+      <div className="flex h-full items-center justify-between px-4">
+        {/* Left: Fluxo brand mark — outside/above the sidebar panel */}
+        <img
+          src={theme === "dark" ? "/branding/fluxo-mark-white.png" : "/branding/fluxo-mark-dark.png"}
+          alt="Fluxo"
+          className="h-7 w-auto select-none"
+        />
+
         {/* Right: Notifications + Profile */}
         <div className="flex items-center gap-1.5">
           <button

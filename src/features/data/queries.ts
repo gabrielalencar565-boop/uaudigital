@@ -6,8 +6,8 @@ import { optimizeAvatarUrl } from "@/lib/avatar-url";
 import { preloadAvatars } from "@/lib/avatar-preloader";
 import { useSession } from "@/hooks/use-session";
 
-function dueDate27(year: number, month: number) {
-  return `${year}-${String(month).padStart(2, "0")}-27`;
+function dueDate27(year: number, month: number, day: number = 27) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 export type ClientRow = {
@@ -207,6 +207,8 @@ export type AppSettingsRow = {
   whats_new_target_action: string | null;
   whats_new_target_selector: string | null;
   whats_new_published_at: string | null;
+  magic_number_day: number;
+  magic_number_label: string;
   updated_at: string;
   updated_by: string | null;
 };
@@ -217,7 +219,7 @@ export function useAppSettings() {
     queryFn: async (): Promise<AppSettingsRow | null> => {
       const { data, error } = await supabase
         .from("app_settings")
-        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, magic_number_day, magic_number_label, updated_at, updated_by")
         .eq("id", 1)
         .maybeSingle();
       if (error) throw error;
@@ -237,6 +239,8 @@ export function useAppSettings() {
         whats_new_target_action: d?.whats_new_target_action ?? null,
         whats_new_target_selector: d?.whats_new_target_selector ?? null,
         whats_new_published_at: d?.whats_new_published_at ?? null,
+        magic_number_day: d?.magic_number_day ?? 27,
+        magic_number_label: d?.magic_number_label ?? "Magic Number",
       } as AppSettingsRow | null;
     },
   });
@@ -260,6 +264,8 @@ export function useUpdateAppSettings() {
       whats_new_target_action?: string | null;
       whats_new_target_selector?: string | null;
       whats_new_published_at?: string | null;
+      magic_number_day?: number;
+      magic_number_label?: string;
     }) => {
       const { data, error } = await supabase
         .from("app_settings")
@@ -274,6 +280,17 @@ export function useUpdateAppSettings() {
       qc.invalidateQueries({ queryKey: ["app_settings"] });
     },
   });
+}
+
+// Shared hook for reading the agency's configured "D-day" (day of month + display label),
+// used to keep the Magic Number deadline configurable per agency instead of hardcoded to 27.
+export function useMagicNumberConfig() {
+  const q = useAppSettings();
+  return {
+    day: q.data?.magic_number_day ?? 27,
+    label: q.data?.magic_number_label ?? "Magic Number",
+    isLoading: q.isLoading,
+  };
 }
 
 export function useClients() {
@@ -422,6 +439,7 @@ export type CreateClientInput = {
 
 export function useCreateClient() {
   const qc = useQueryClient();
+  const magicDay = useMagicNumberConfig().day;
   return useMutation({
     mutationFn: async (input: CreateClientInput) => {
       // Verificar se cliente já existe com nome similar
@@ -482,7 +500,7 @@ export function useCreateClient() {
           client_id: clientId,
           year,
           month,
-          due_date: dueDate27(year, month),
+          due_date: dueDate27(year, month, magicDay),
           is_active: true,
         };
       });
@@ -794,6 +812,7 @@ export function useDeleteClient() {
 
 export function useSetTaskStatus() {
   const qc = useQueryClient();
+  const magicDay = useMagicNumberConfig().day;
   return useMutation({
     // Optimistic update: atualiza a UI instantaneamente antes da resposta do servidor
     onMutate: async (input) => {
@@ -919,7 +938,7 @@ export function useSetTaskStatus() {
           if (stErr) throw stErr;
 
           // Magic Number mensal: upsert do ciclo + etapa (marca)
-          const due_date = `${year}-${String(month).padStart(2, "0")}-27`;
+          const due_date = dueDate27(year, month, magicDay);
           const { data: existingCycle, error: cErr } = await supabase
             .from("client_cycles")
             .select("id")

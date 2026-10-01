@@ -25,6 +25,7 @@ import {
   parseTag, tagColor, tagDisplay, isHexColor, TAG_COLORS
 } from "../pm-constants";
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
+import { useMagicNumberConfig } from "@/features/data/queries";
 import {
   useUpdatePmTask, useCreatePmTask, useDeletePmTask, usePmTaskById, usePmPdfTasksForClient, usePmChildTasks,
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
@@ -99,6 +100,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   // this dialog's own confirmation text promises ("pontos... Magic Number...") ran —
   // reported as tasks "not really" being deleted.
   const deleteTask = useDeletePmTask();
+  const { label: magicLabel } = useMagicNumberConfig();
   const mergePdfTasks = useMergePdfTasks();
   const queryClientPrefetch = useQueryClient();
 
@@ -327,7 +329,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           <AlertDialogDescription asChild>
             <div>
               <p>Tem certeza que deseja excluir esta tarefa?</p>
-              <p className="mt-2 text-destructive font-medium">⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.</p>
+              <p className="mt-2 text-destructive font-medium">⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no {magicLabel}.</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

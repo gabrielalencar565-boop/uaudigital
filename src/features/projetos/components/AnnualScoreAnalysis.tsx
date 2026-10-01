@@ -12,6 +12,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { getClassification, toneColor, barColor, computeAnnualScores } from "@/features/projetos/utils/score-utils";
+import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 interface AnnualScoreAnalysisProps {
   open: boolean;
@@ -21,10 +23,12 @@ interface AnnualScoreAnalysisProps {
 
 export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAnalysisProps) {
   const { data: yearData } = useMagic2Year(year);
+  const { day: magicDay } = useMagicNumberConfig();
   const now = new Date();
-  const currentMonth = now.getFullYear() === year ? now.getMonth() + 1 : 12;
+  const cycleMY = getCycleMonthYear(now, magicDay);
+  const currentMonth = cycleMY.year === year ? cycleMY.month : 12;
 
-  const monthlyScores = useMemo(() => computeAnnualScores(yearData, year, currentMonth), [yearData, year, currentMonth]);
+  const monthlyScores = useMemo(() => computeAnnualScores(yearData, year, currentMonth, magicDay), [yearData, year, currentMonth, magicDay]);
   const activeMonths = monthlyScores.filter(m => m.hasData && m.score > 0);
 
   const stats = useMemo(() => {

@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useClients, useTeamMembers } from "@/features/data/queries";
+import { useClients, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -62,15 +62,15 @@ function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-function anchorForDate(d: Date) {
-  return d.getDate() >= 28 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+function anchorForDate(d: Date, day: number) {
+  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
-function cycleEnd(anchor: Date) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), 27);
+function cycleEnd(anchor: Date, day: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
 }
-function cycleStart(anchor: Date) {
-  const end = cycleEnd(anchor);
-  return new Date(end.getFullYear(), end.getMonth() - 1, 28);
+function cycleStart(anchor: Date, day: number) {
+  const end = cycleEnd(anchor, day);
+  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
@@ -253,8 +253,9 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
 }
 
 export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled }: Props) {
+  const { day: magicDay } = useMagicNumberConfig();
   const [clientId, setClientId] = useState<string | null>(null);
-  const [cursor, setCursor] = useState(() => anchorForDate(new Date()));
+  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -315,7 +316,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return map;
   }, [sortedClients, stageAssignees, teamMemberById]);
   const calendarsQ = useCalendarsForClient(clientId);
-  const cycleStartKey = format(cycleStart(cursor), "yyyy-MM-dd");
+  const cycleStartKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
 
   // Which clients have a calendar in the current ciclo, for the sidebar dots.
@@ -548,8 +549,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   }, [publications]);
 
   const weeks = useMemo(() => {
-    const start = cycleStart(cursor);
-    const end = cycleEnd(cursor);
+    const start = cycleStart(cursor, magicDay);
+    const end = cycleEnd(cursor, magicDay);
     const out: Date[][] = [];
     let weekStart = startOfWeek(start, { weekStartsOn: 0 });
     while (weekStart <= end) {
@@ -690,9 +691,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   };
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
-  const cycleMonthRaw = format(cycleEnd(cursor), "MMMM", { locale: ptBR });
+  const cycleMonthRaw = format(cycleEnd(cursor, magicDay), "MMMM", { locale: ptBR });
   const cycleMonthLabel = cycleMonthRaw.charAt(0).toUpperCase() + cycleMonthRaw.slice(1);
-  const cycleRangeLabel = `${format(cycleStart(cursor), "dd/MM")} a ${format(cycleEnd(cursor), "dd/MM")}`;
+  const cycleRangeLabel = `${format(cycleStart(cursor, magicDay), "dd/MM")} a ${format(cycleEnd(cursor, magicDay), "dd/MM")}`;
 
   return (
     <div className="space-y-4">
@@ -740,7 +741,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   type="button"
                   onClick={() => {
                     setClientId(r.clientId);
-                    if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate)));
+                    if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate), magicDay));
                     if (r.firstProblemPublicationId) setSelectedId(r.firstProblemPublicationId);
                   }}
                   className="block text-left text-xs text-destructive/90 underline-offset-2 hover:underline"
@@ -902,7 +903,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             const id = currentClientRisk.firstProblemPublicationId;
             if (!id) return;
             if (currentClientRisk.firstProblemPublishDate) {
-              setCursor(anchorForDate(parseISO(currentClientRisk.firstProblemPublishDate)));
+              setCursor(anchorForDate(parseISO(currentClientRisk.firstProblemPublishDate), magicDay));
             }
             setSelectedId(id);
           }}
@@ -1110,7 +1111,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     {weeks.flat().map((d) => {
                       const key = format(d, "yyyy-MM-dd");
                       const isToday = key === todayKey;
-                      const inCycle = d >= cycleStart(cursor) && d <= cycleEnd(cursor);
+                      const inCycle = d >= cycleStart(cursor, magicDay) && d <= cycleEnd(cursor, magicDay);
                       const dayPubs = byDay.get(key) ?? [];
                       return (
                         <DropZone

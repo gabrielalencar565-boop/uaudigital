@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useTasks, useTeamMembers } from "@/features/data/queries";
+import { useTasks, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { getStageCircleColor, stageLabel, isHexColor, TAG_COLORS } from "../pm-constants";
@@ -47,20 +47,20 @@ function savePrefs(p: { selectedDays: number[]; minimal: boolean }) {
   localStorage.setItem(PREFS_KEY, JSON.stringify(p));
 }
 
-// A "ciclo" runs from the 28th of one month through the 27th of the next.
+// A "ciclo" runs from the day after the configured D-day of one month through the D-day of the next.
 // `anchor` is the 1st-of-month Date representing the cycle's END month.
-function cycleEnd(anchor: Date) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), 27);
+function cycleEnd(anchor: Date, day: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
 }
-function cycleStart(anchor: Date) {
-  const end = cycleEnd(anchor);
-  return new Date(end.getFullYear(), end.getMonth() - 1, 28);
+function cycleStart(anchor: Date, day: number) {
+  const end = cycleEnd(anchor, day);
+  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
 }
 function cycleNumber(anchor: Date) {
   return anchor.getMonth() + 1;
 }
-function anchorForDate(d: Date) {
-  return d.getDate() >= 28 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+function anchorForDate(d: Date, day: number) {
+  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
 function anchorKey(anchor: Date) {
   return format(anchor, "yyyy-MM");
@@ -257,7 +257,8 @@ function BarIconButton({ label, active, badge, onClick, children }: {
 }
 
 export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, currentUserId, onTaskClick, onAddClick }: Props) {
-  const [cursor, setCursor] = useState(() => anchorForDate(new Date()));
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
   const updateTask = useUpdatePmTask();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -298,8 +299,8 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
     return list;
   }, [allTeamMembers, myTasksOnly, currentUserId, filterCollaborators, filterRoles]);
 
-  const cycleStartDate = cycleStart(cursor);
-  const cycleEndDateVal = cycleEnd(cursor);
+  const cycleStartDate = cycleStart(cursor, magicDay);
+  const cycleEndDateVal = cycleEnd(cursor, magicDay);
   const startKey = format(cycleStartDate, "yyyy-MM-dd");
   const endKey = format(cycleEndDateVal, "yyyy-MM-dd");
 
@@ -449,14 +450,14 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
   }, [myTaskWeekValues]);
 
   const cycleOptions = useMemo(() => {
-    const base = anchorForDate(new Date());
+    const base = anchorForDate(new Date(), magicDay);
     const out: { key: string; anchor: Date }[] = [];
     for (let i = -18; i <= 12; i++) {
       const anchor = new Date(base.getFullYear(), base.getMonth() + i, 1);
       out.push({ key: anchorKey(anchor), anchor });
     }
     return out;
-  }, []);
+  }, [magicDay]);
 
   const activeFilterCount = filterCollaborators.size + filterClients.size + filterRoles.size;
 
@@ -490,13 +491,13 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards" }}>
-        {/* Barra única — Magic Number, ciclo, busca e ações */}
+        {/* Barra única — Dia D, ciclo, busca e ações */}
         <div
           className="flex items-center gap-3 rounded-2xl px-4 py-2.5 shadow-lg overflow-x-auto"
           style={{ background: BAR_GRADIENT, boxShadow: "0 12px 30px -12px rgba(76,29,149,0.5)" }}
         >
           <div className="flex w-fit shrink-0 flex-col items-start">
-            <p className="w-fit text-[10px] font-semibold uppercase text-white/70 leading-tight">Magic Number</p>
+            <p className="w-fit text-[10px] font-semibold uppercase text-white/70 leading-tight">{magicLabel}</p>
             <p className="w-fit text-2xl font-bold text-white leading-tight">{format(cycleEndDateVal, "dd/MM")}</p>
           </div>
 
@@ -525,7 +526,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                   )}
                 >
                   <span>Ciclo {cycleNumber(opt.anchor)} de {opt.anchor.getFullYear()}</span>
-                  <span className="text-xs text-muted-foreground">{format(cycleStart(opt.anchor), "dd/MM")} – {format(cycleEnd(opt.anchor), "dd/MM")}</span>
+                  <span className="text-xs text-muted-foreground">{format(cycleStart(opt.anchor, magicDay), "dd/MM")} – {format(cycleEnd(opt.anchor, magicDay), "dd/MM")}</span>
                 </button>
               ))}
             </PopoverContent>

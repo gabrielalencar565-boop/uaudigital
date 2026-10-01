@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check, X } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Trash2, Settings2, Move, ZoomIn, RotateCcw, Check, X, Target } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorPickerPopover } from "@/components/ui/color-picker-popover";
 import { Slider } from "@/components/ui/slider";
@@ -115,6 +116,40 @@ export function AdminAparenciaPanel() {
   }, [appSettingsQ.data?.brand_color]);
 
   const brandColorChanged = brandColorDraft.toLowerCase() !== (appSettingsQ.data?.brand_color ?? DEFAULT_BRAND_COLOR).toLowerCase();
+
+  /* ── Dia D (Magic Number) ── */
+  const [magicDayDraft, setMagicDayDraft] = useState("27");
+  const [magicLabelDraft, setMagicLabelDraft] = useState("Magic Number");
+  const [magicDirty, setMagicDirty] = useState(false);
+  const [savingMagic, setSavingMagic] = useState(false);
+
+  useEffect(() => {
+    if (magicDirty || !appSettingsQ.data) return;
+    setMagicDayDraft(String(appSettingsQ.data.magic_number_day));
+    setMagicLabelDraft(appSettingsQ.data.magic_number_label);
+  }, [appSettingsQ.data, magicDirty]);
+
+  const handleSaveMagicNumber = async () => {
+    const dayNum = Number(magicDayDraft);
+    if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > 28) {
+      toast.error("O dia deve ser um número entre 1 e 28");
+      return;
+    }
+    if (!magicLabelDraft.trim()) {
+      toast.error("Informe um nome");
+      return;
+    }
+    setSavingMagic(true);
+    try {
+      await updateAppSettings.mutateAsync({ magic_number_day: dayNum, magic_number_label: magicLabelDraft.trim() } as any);
+      setMagicDirty(false);
+      toast.success("Configurações salvas");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    } finally {
+      setSavingMagic(false);
+    }
+  };
 
   const handleSaveBrandColor = async () => {
     if (!/^#[0-9a-fA-F]{6}$/.test(brandColorDraft)) {
@@ -311,39 +346,6 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  /* ── Símbolo da Sidebar (usado quando ela está recolhida, só ícone) ── */
-  const sidebarSymbolUrl = appSettingsQ.data?.sidebar_symbol_url ?? null;
-  const [uploadingSidebarSymbol, setUploadingSidebarSymbol] = useState(false);
-
-  const handleSidebarSymbolUpload = async (file: File) => {
-    if (!user) return;
-    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
-    setUploadingSidebarSymbol(true);
-    try {
-      const ext = (file.name.split(".").pop() || "png").toLowerCase();
-      const path = `sidebar-symbol/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
-      if (up.error) throw up.error;
-      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-      await updateAppSettings.mutateAsync({ sidebar_symbol_url: pub.data.publicUrl } as any);
-      toast.success("Símbolo atualizado!");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao enviar símbolo");
-    } finally {
-      setUploadingSidebarSymbol(false);
-    }
-  };
-
-  const handleRemoveSidebarSymbol = async () => {
-    try {
-      await updateAppSettings.mutateAsync({ sidebar_symbol_url: null } as any);
-      toast.success("Símbolo removido");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao remover símbolo");
-    }
-  };
-
   /* ── Miniatura de link compartilhado (WhatsApp e redes) ── */
   const linkPreviewImageUrl = appSettingsQ.data?.link_preview_image_url ?? null;
   const [uploadingLinkPreview, setUploadingLinkPreview] = useState(false);
@@ -418,13 +420,60 @@ export function AdminAparenciaPanel() {
         </CardContent>
       </Card>
 
+      {/* Dia D */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Dia D
+          </CardTitle>
+          <CardDescription>
+            Define o dia de fechamento mensal da operação (hoje chamado de "{appSettingsQ.data?.magic_number_label ?? "Magic Number"}").
+            Depois desse dia, os painéis passam a mostrar o próximo ciclo. O nome escolhido aqui substitui "Magic Number" em toda a interface.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 max-w-md">
+            <div className="space-y-2">
+              <Label htmlFor="magic_number_day">Dia do mês</Label>
+              <Input
+                id="magic_number_day"
+                type="number"
+                min={1}
+                max={28}
+                value={magicDayDraft}
+                onChange={(e) => { setMagicDayDraft(e.target.value); setMagicDirty(true); }}
+              />
+              <p className="text-xs text-muted-foreground">Entre 1 e 28.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="magic_number_label">Nome</Label>
+              <Input
+                id="magic_number_label"
+                value={magicLabelDraft}
+                onChange={(e) => { setMagicLabelDraft(e.target.value); setMagicDirty(true); }}
+                maxLength={60}
+              />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="button" variant="brand" className="gap-2" disabled={!magicDirty || savingMagic} onClick={handleSaveMagicNumber}>
+            {savingMagic ? "Salvando..." : "Salvar"}
+          </Button>
+        </CardFooter>
+      </Card>
+
       {/* Logos */}
       <Card>
         <CardHeader>
           <CardTitle>Logos</CardTitle>
+          <CardDescription>
+            Usadas na tela de login. O menu lateral já mostra o nome da agência automaticamente — não precisa de logo aqui.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2">
             {/* Tema Claro */}
             <div className="space-y-3">
               <Label>Tema Claro</Label>
@@ -502,47 +551,6 @@ export function AdminAparenciaPanel() {
                 ) : (
                   <span className="text-xs text-muted-foreground text-center px-2">
                     {uploadingSidebarLogoDark ? "Enviando..." : "Sem logo (usa a do tema claro) — clique para enviar"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Símbolo (sidebar recolhida) */}
-            <div className="space-y-3">
-              <Label>Símbolo (recolhido)</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#6932c9] transition hover:opacity-90"
-                onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.onchange = async () => {
-                    const f = input.files?.[0];
-                    if (f) await handleSidebarSymbolUpload(f);
-                  };
-                  input.click();
-                }}
-              >
-                {sidebarSymbolUrl ? (
-                  <>
-                    <img src={sidebarSymbolUrl} alt="Símbolo do menu lateral" className="h-16 w-16 object-contain" />
-                    <button
-                      type="button"
-                      aria-label="Remover símbolo"
-                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveSidebarSymbol();
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground text-center px-2">
-                    {uploadingSidebarSymbol ? "Enviando..." : "Sem símbolo — clique para enviar"}
                   </span>
                 )}
               </div>

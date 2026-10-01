@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { STAGES, STAGE_COLOR, type StageKey } from "@/lib/uau";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useClients, useCreateTask, useDeleteTask, useFreelancerClient, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, type TaskRow } from "@/features/data/queries";
+import { useClients, useCreateTask, useDeleteTask, useFreelancerClient, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, useMagicNumberConfig, type TaskRow } from "@/features/data/queries";
 import { AgendaTaskCard } from "@/features/agenda/components/AgendaTaskCard";
 import { AgendaWeekTaskItem } from "@/features/agenda/components/AgendaWeekTaskItem";
 import { EditTaskDialog } from "@/features/agenda/components/EditTaskDialog";
@@ -101,6 +101,7 @@ export function AgendaPanel() {
     isAdmin
   } = useRole(user?.id);
   const canManageTasks = usePermission("action_manage_tasks");
+  const { label: magicLabel } = useMagicNumberConfig();
   const isMobile = useIsMobile();
   const normalizeName = useMemo(() => (v: string) => v.trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{Diacritic}+/gu, "").replace(/\s+/g, " "), []);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
@@ -726,7 +727,7 @@ export function AgendaPanel() {
                     Demanda Extra
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Não marca no Magic Number, apenas no desempenho
+                    Não marca no {magicLabel}, apenas no desempenho
                   </p>
                 </div>
               </div>
