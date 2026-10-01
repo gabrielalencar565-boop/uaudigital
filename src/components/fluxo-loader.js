@@ -72,14 +72,16 @@
     var reduce = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var uid = Math.random().toString(36).slice(2, 8);
 
+    var bgRgb = hexToRgb(th.bg);
+    var bgTranslucent = 'rgba(' + bgRgb.join(',') + ',0.8)';
     var overlay = document.createElement('div');
     overlay.setAttribute('role', 'status');
     overlay.setAttribute('aria-label', opts.label || 'Carregando');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:' + (opts.zIndex || 9999) + ';display:flex;align-items:center;justify-content:center;background:' + th.bg + ';transition:opacity .5s ease;opacity:1';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:' + (opts.zIndex || 9999) + ';display:flex;align-items:center;justify-content:center;background:' + bgTranslucent + ';backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity .6s ease;opacity:1';
     var halo = document.createElement('div');
     halo.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(45% 40% at 50% 50%,' + th.halo + ',transparent 70%)';
     var box = document.createElement('div');
-    box.style.cssText = 'position:relative;width:min(' + size + 'px,72vw)';
+    box.style.cssText = 'position:relative;width:min(' + size + 'px,72vw);transition:transform .6s ease-in-out';
     var svg = buildSVG(uid, th);
     box.appendChild(svg); overlay.appendChild(halo); overlay.appendChild(box);
     (document.body || document.documentElement).appendChild(overlay);
@@ -150,11 +152,12 @@
     function finish() {
       if (finishing) return; finishing = true;
       overlay.style.opacity = '0';
+      box.style.transform = 'scale(.6)';
       later(function () {
         done = true; cancelAnimationFrame(raf); timers.forEach(clearTimeout);
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         if (resolveHide) resolveHide();
-      }, 520);
+      }, 600);
     }
 
     if (reduce) {
