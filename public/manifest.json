@@ -1,6 +1,6 @@
 {
-  "name": "Uau Digital",
-  "short_name": "Uau",
+  "name": "Fluxo App",
+  "short_name": "Fluxo",
   "description": "A plataforma da Uau Digital é onde estratégia e execução se encontram.",
   "start_url": "/",
   "display": "standalone",
