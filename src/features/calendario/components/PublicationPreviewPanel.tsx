@@ -18,7 +18,7 @@ import { toStorageRenderUrl } from "@/lib/storage-image-url";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, FEED_ASPECT_CONTENT_TYPES, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
-import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication } from "../hooks/use-calendar-data";
+import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication, useSetPublicationDate } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/features/gestao/hooks/use-pm-data";
 import { downscaleVideoWithFallback, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
 import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
@@ -57,6 +57,7 @@ function nearestTimeSlot() {
 export function PublicationPreviewPanel({ publication, media, clientId, clientName, clientLogoUrl, cycleStart, onClose, onOpenTask, onNavigate, hasPrev, hasNext }: Props) {
   const qc = useQueryClient();
   const updatePublication = useUpdateCalendarPublication();
+  const setPublicationDate = useSetPublicationDate();
   const removePublication = useRemoveCalendarPublication();
   const uploadCover = useUploadPmAttachment();
   const uploadVideoResumable = useUploadPmAttachmentResumable();
@@ -117,8 +118,16 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   };
 
   const pickDate = (d: Date | undefined) => {
-    if (!d) return;
-    save({ publish_date: format(d, "yyyy-MM-dd") });
+    if (!d || !clientId) return;
+    // Goes through setPublicationDate (not save/updatePublication) — a date here may belong
+    // to a different cycle than the one this publication's calendar_id currently points at
+    // (e.g. picking a date for a "sem data" item), so it needs the same cycle re-filing.
+    setPublicationDate.mutate({
+      id: publication.id,
+      clientId,
+      date: format(d, "yyyy-MM-dd"),
+      extraUpdates: publication.instagram_scheduled ? { instagram_scheduled: false } : undefined,
+    });
     setDateOpen(false);
   };
 
@@ -742,7 +751,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                             variant="ghost"
                             size="sm"
                             className="w-full"
-                            onClick={() => { save({ publish_date: null }); setDateOpen(false); }}
+                            onClick={() => { if (clientId) setPublicationDate.mutate({ id: publication.id, clientId, date: null }); setDateOpen(false); }}
                           >
                             Limpar
                           </Button>

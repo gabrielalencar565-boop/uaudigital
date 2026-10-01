@@ -35,20 +35,24 @@ interface Props {
   tone?: Tone;
   description?: string;
   onClick?: () => void;
+  /** When this card doubles as a toggle filter — shows it as currently selected. */
+  active?: boolean;
 }
 
-export function MetricSparkCard({ label, value, icon, tone = "violet", description, onClick }: Props) {
+export function MetricSparkCard({ label, value, icon, tone = "violet", description, onClick, active }: Props) {
   const t = TONE_STYLES[tone];
 
   return (
     <div
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? active ?? false : undefined}
       onClick={onClick}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated",
-        onClick && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active && "border-primary/60 ring-2 ring-primary/40"
       )}
     >
       {/* Soft diagonal color wash — pastel in light mode, a dimmer corner glow in dark mode */}
@@ -79,7 +83,7 @@ export function MetricSparkCard({ label, value, icon, tone = "violet", descripti
           <span className={t.icon}>{icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn("text-[11px] text-muted-foreground font-medium uppercase tracking-wider truncate", description && "pr-5")}>{label}</p>
+          <p className={cn("text-[11px] text-muted-foreground font-medium uppercase tracking-wider leading-tight line-clamp-2", description && "pr-5")}>{label}</p>
           <AnimatedNumber value={value} className="text-2xl font-bold tabular-nums tracking-tight text-foreground mt-0.5" />
         </div>
       </div>

@@ -52,6 +52,71 @@ export function useCalendarPublications(calendarId: string | null) {
   });
 }
 
+// Cross-cycle "sem data" — every publication for this client with no publish_date yet,
+// regardless of which cycle its calendar_id happens to be filed under (a task reaching the
+// PDF stage always gets a row immediately now, see pm_task_pdf_stage_to_calendar; which
+// cycle it lands in while undated is just a holding spot, not meaningful to the person).
+// Shown as one list in the Cronograma panel no matter which month is currently open.
+export function useUnscheduledPublicationsForClient(clientId: string | null) {
+  return useQuery({
+    enabled: !!clientId,
+    queryKey: ["calendar_publications_unscheduled", clientId],
+    queryFn: async (): Promise<CalendarPublication[]> => {
+      const { data: calendars, error: calErr } = await sb
+        .from("publication_calendars")
+        .select("id")
+        .eq("client_id", clientId);
+      if (calErr) throw calErr;
+      const calendarIds = (calendars ?? []).map((c: { id: string }) => c.id);
+      if (calendarIds.length === 0) return [];
+
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("*")
+        .in("calendar_id", calendarIds)
+        .is("publish_date", null)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+// Assigns (or clears) a publication's date. Setting a real date re-files it into whichever
+// cycle actually contains that date (via ensure_publication_calendar, which mirrors the
+// pm_task_pdf_stage_to_calendar trigger's own cycle math) — necessary because a "sem data"
+// publication's calendar_id may currently point at an unrelated holding cycle. Clearing the
+// date (back to "sem data") leaves calendar_id untouched; it stops being meaningful once
+// nothing depends on it for date-based display.
+export function useSetPublicationDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      { id, clientId, date, extraUpdates }: { id: string; clientId: string; date: string | null; extraUpdates?: Partial<CalendarPublication> },
+    ) => {
+      const updates: Record<string, unknown> = { publish_date: date, ...extraUpdates };
+      if (date) {
+        const { data: calendarId, error: rpcErr } = await sb.rpc("ensure_publication_calendar", {
+          p_client_id: clientId,
+          p_date: date,
+        });
+        if (rpcErr) throw rpcErr;
+        updates.calendar_id = calendarId;
+      }
+      const { data, error } = await sb.from("calendar_publications").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return data as CalendarPublication;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["calendar_publications", data.calendar_id] });
+      qc.invalidateQueries({ queryKey: ["calendar_publication", data.id] });
+      qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
+      qc.invalidateQueries({ queryKey: ["publication_calendars"] });
+    },
+  });
+}
+
 export interface TodayScheduledPublication {
   id: string;
   taskId: string;

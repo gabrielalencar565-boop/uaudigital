@@ -141,9 +141,10 @@ const MONTH_NAMES_PT = [
 ];
 
 // Resolves the Drive folder a new attachment should land in: Cliente / Ano / Mês / Vídeos|Posts.
-// The date is the publication's scheduled date (calendar_publications.publish_date) when the
-// task has one; most tasks predate the Cronograma feature and won't, so this falls back to
-// today's date.
+// The date is the publication's scheduled date (calendar_publications.publish_date), which is
+// only ever set once a human explicitly picks a date (see pm_task_pdf_stage_to_calendar — it
+// no longer guesses from due_date/today). When there isn't one yet, the file goes into a
+// "Sem data" folder instead of a guessed month.
 async function resolveTargetFolder(accessToken: string, admin: ReturnType<typeof createClient>, taskId: string, mimeType: string): Promise<string> {
   const { data: task } = await admin.from("pm_tasks").select("client_id").eq("id", taskId).maybeSingle();
   if (!task?.client_id) return ROOT_FOLDER_ID;
@@ -155,12 +156,19 @@ async function resolveTargetFolder(accessToken: string, admin: ReturnType<typeof
     .select("publish_date")
     .eq("task_id", taskId)
     .maybeSingle();
-  const date = pub?.publish_date ? new Date(`${pub.publish_date}T00:00:00Z`) : new Date();
+
+  const typeName = mimeType.startsWith("video/") ? "Vídeos" : "Posts";
+
+  if (!pub?.publish_date) {
+    const noDateFolderId = await findOrCreateFolder(accessToken, admin, clientFolderId, "Sem data");
+    return findOrCreateFolder(accessToken, admin, noDateFolderId, typeName);
+  }
+
+  const date = new Date(`${pub.publish_date}T00:00:00Z`);
   const yearFolderId = await findOrCreateFolder(accessToken, admin, clientFolderId, String(date.getUTCFullYear()));
   const monthName = `${String(date.getUTCMonth() + 1).padStart(2, "0")} ${MONTH_NAMES_PT[date.getUTCMonth()]}`;
   const monthFolderId = await findOrCreateFolder(accessToken, admin, yearFolderId, monthName);
 
-  const typeName = mimeType.startsWith("video/") ? "Vídeos" : "Posts";
   return findOrCreateFolder(accessToken, admin, monthFolderId, typeName);
 }
 
