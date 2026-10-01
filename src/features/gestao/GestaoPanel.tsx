@@ -523,6 +523,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   filterStage: string;
 }) {
   const isMobile = useIsMobile();
+  const { label: magicLabel } = useMagicNumberConfig();
   const deleteTask = useDeletePmTask();
   const deleteLegacyTask = useDeleteTask();
   const updateTask = useUpdatePmTask();
