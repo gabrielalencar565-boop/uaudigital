@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { getBrazilDay } from "@/features/projetos/utils/score-utils";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 type Magic2YearCycleRow = {
   id: string;
@@ -23,8 +24,9 @@ type Magic2YearStageRow = {
 };
 
 export function useMagic2Year(year: number) {
+  const { day: magicDay } = useMagicNumberConfig();
   return useQuery({
-    queryKey: ["magic2", "year", { year }],
+    queryKey: ["magic2", "year", { year, magicDay }],
     queryFn: async () => {
       const cyclesRes = await supabase
         .from("magic2_cycles")
@@ -73,9 +75,8 @@ export function useMagic2Year(year: number) {
           );
           const completed = maxDate > 0 ? new Date(maxDate) : null;
           const completedDay = completed ? getBrazilDay(completed.toISOString()) : null;
-          const due = 27;
 
-          if (completedDay !== null && completedDay <= 27) doneOnTime += 1;
+          if (completedDay !== null && completedDay <= magicDay) doneOnTime += 1;
           else doneLate += 1;
         }
 

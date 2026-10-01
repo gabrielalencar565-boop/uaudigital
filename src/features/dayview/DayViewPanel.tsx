@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useClients, useFreelancerClient, useTasks, useTeamMembers } from "@/features/data/queries";
+import { useClients, useFreelancerClient, useTasks, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
@@ -80,6 +80,7 @@ export function DayViewPanel() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -848,8 +849,8 @@ export function DayViewPanel() {
   const handleManualTabChange = () => {
     setActive((v) => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
   };
-  // Calcular dias restantes até o prazo final (dia 27 do mês selecionado)
-  const deadlineDate = new Date(selectedYear, selectedMonth - 1, 27);
+  // Calcular dias restantes até o prazo final (dia D do mês selecionado)
+  const deadlineDate = new Date(selectedYear, selectedMonth - 1, magicDay);
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
   // Helper: render tasks grouped by person in columns (used for pendentes / concluídas / atrasadas)
@@ -1220,11 +1221,11 @@ export function DayViewPanel() {
                 <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-muted/50 grid place-items-center">
                   <Target className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <CardTitle className="text-lg">Magic Number não configurado</CardTitle>
+                <CardTitle className="text-lg">{magicLabel} não configurado</CardTitle>
                 <CardDescription>
                   Não há ciclos ativos para {String(selectedMonth).padStart(2, "0")}/{selectedYear}.
                   <br />
-                  Vá até o <strong>Magic Number</strong> para adicionar clientes ao ciclo.
+                  Vá até o <strong>{magicLabel}</strong> para adicionar clientes ao ciclo.
                 </CardDescription>
               </CardHeader>
             </Card>}

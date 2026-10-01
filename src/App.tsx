@@ -25,7 +25,7 @@ import { createQueryClient } from "@/lib/query-client";
 import { AvatarBootstrap } from "@/components/avatar/AvatarBootstrap";
 import { BrandColorProvider } from "@/components/theme/BrandColorProvider";
 import { AutoPushPrompt } from "@/components/notifications/AutoPushPrompt";
-import { SplashScreen } from "@/components/SplashScreen";
+import { useSession } from "@/hooks/use-session";
 
 
 
@@ -71,13 +71,13 @@ function AppRoutes() {
 
 const App = () => {
   const [queryClient] = useState(() => createQueryClient());
-  const [showSplash, setShowSplash] = useState(() => {
-    try {
-      return sessionStorage.getItem("uau-splash-shown") !== "1";
-    } catch {
-      return true;
-    }
-  });
+  const { loading: sessionLoading } = useSession();
+
+  // Fluxo loader foi aberto em index.html antes do React montar — fecha assim que a
+  // autenticação terminar de resolver (sabemos se há usuário ou não).
+  useEffect(() => {
+    if (!sessionLoading) window.__fluxoLoader?.hide();
+  }, [sessionLoading]);
 
 
   // Safety-net: evita "tela branca" por erros assíncronos não tratados em alguns aparelhos.
@@ -116,20 +116,6 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-          {showSplash && (
-            <SplashScreen
-              onFinish={() => {
-                try {
-                  sessionStorage.setItem("uau-splash-shown", "1");
-                } catch {
-                  /* noop */
-                }
-                setShowSplash(false);
-              }}
-            />
-          )}
-
-          
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

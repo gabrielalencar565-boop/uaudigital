@@ -13,6 +13,7 @@ import { useUpdatePmTask, useDeletePmTask, useCreatePmTask } from "../hooks/use-
 import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 interface Props {
   task: PmTask;
@@ -27,6 +28,7 @@ interface Props {
 export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], onClick, isAdmin, avatarsPrimed = true }: Props) {
   const prio = priorityMeta(task.priority);
   const total = childTasks.length;
+  const { label: magicLabel } = useMagicNumberConfig();
   const updateTask = useUpdatePmTask();
   const deleteTask = useDeletePmTask();
   const createTask = useCreatePmTask();
@@ -266,7 +268,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
             <AlertDialogDescription className="space-y-2">
               <span className="block">Tem certeza que deseja excluir <strong>"{task.title}"</strong>?</span>
               <span className="block text-destructive font-medium">
-                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no Magic Number.
+                ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no {magicLabel}.
               </span>
               {total > 0 && (
                 <span className="block text-muted-foreground">

@@ -45,7 +45,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, type ClientRow } from "@/features/data/queries";
+import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, useMagicNumberConfig, type ClientRow } from "@/features/data/queries";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
 
@@ -165,6 +165,9 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
     .rpc("magic2_ensure_client_link", { _agenda_client_id: agendaClientId });
   if (linkErr) throw linkErr;
   if (!magic2ClientId) return;
+  // magic2_cycles.due_date is RLS-constrained to make_date(year, month, current_magic_number_day()) — must match exactly.
+  const { data: settings } = await supabase.from("app_settings").select("magic_number_day").eq("id", 1).maybeSingle();
+  const magicDay = (settings as any)?.magic_number_day ?? 27;
   const [y, m] = startISO.split("-").map(Number);
   const rows: any[] = [];
   for (let i = 0; i < months; i++) {
@@ -175,7 +178,7 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
       client_id: magic2ClientId,
       year: yy,
       month: mm,
-      due_date: `${yy}-${String(mm).padStart(2, "0")}-27`,
+      due_date: `${yy}-${String(mm).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`,
       is_active: true,
     });
   }
@@ -222,7 +225,8 @@ export function AdminClientesPanel({
 } = {}) {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
-  
+  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+
   const deleteClient = useDeleteClient();
   const squadsQ = useSquads();
   const clientSquadsQ = useClientSquads();
@@ -334,7 +338,7 @@ export function AdminClientesPanel({
   const handleCreate = async (values: ClientFormValues) => {
     try {
       const now = new Date();
-      const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-27`;
+      const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`;
       const created: any = await createClient.mutateAsync({
         name: values.name,
         magic_due_date: dueDate,
@@ -787,7 +791,7 @@ export function AdminClientesPanel({
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Encerrar o contrato de <strong>{endContract?.name}</strong>. Meses anteriores ao encerramento permanecem intactos no Financeiro, Metas e Magic Number.
+              Encerrar o contrato de <strong>{endContract?.name}</strong>. Meses anteriores ao encerramento permanecem intactos no Financeiro, Metas e {magicLabel}.
             </p>
             <div className="space-y-1.5">
               <Label>Data de encerramento</Label>
@@ -921,6 +925,7 @@ function ClientFormDialog({
   const isEnded = !!endedAt;
   const logoUrl = form.watch("logo_url");
   const clientName = form.watch("name");
+  const { label: magicLabel } = useMagicNumberConfig();
   const { user } = useSession();
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -1145,7 +1150,7 @@ function ClientFormDialog({
                       checked={!form.watch("participates_magic")}
                       onCheckedChange={(checked) => form.setValue("participates_magic", !checked)}
                     />
-                    <span className="text-sm">Não aparecer no Magic Number</span>
+                    <span className="text-sm">Não aparecer no {magicLabel}</span>
                   </label>
                   <label className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
                     <Checkbox

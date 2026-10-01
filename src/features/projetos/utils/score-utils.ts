@@ -32,7 +32,7 @@ export function barColor(score: number) {
 
 export const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function computeMonthScore(monthStages: any[], totalClients: number, monthNum: number, year: number) {
+export function computeMonthScore(monthStages: any[], totalClients: number, monthNum: number, year: number, magicDay: number = 27) {
   const totalStages = totalClients * MAGIC2_STAGES.length;
   const doneStages = monthStages.filter(s => s.completed).length;
   const daysInMonth = getDaysInMonth(new Date(year, monthNum - 1, 1));
@@ -44,8 +44,8 @@ export function computeMonthScore(monthStages: any[], totalClients: number, mont
 
   let prazo: number;
   if (doneStages === totalStages && totalStages > 0) {
-    if (lastDay <= 25) prazo = 100;
-    else if (lastDay <= 27) prazo = 85;
+    if (lastDay <= magicDay - 2) prazo = 100;
+    else if (lastDay <= magicDay) prazo = 85;
     else if (lastDay <= 30) prazo = 60;
     else prazo = 40;
   } else {
@@ -70,13 +70,13 @@ export function computeMonthScore(monthStages: any[], totalClients: number, mont
     } else if (counts.length === 1) {
       consistencia = doneStages <= 3 ? 70 : 30;
     }
-    const maxDay = Math.min(daysInMonth, 27);
+    const maxDay = Math.min(daysInMonth, magicDay);
     const spreadRatio = counts.length / maxDay;
     consistencia = Math.round(consistencia * 0.7 + spreadRatio * 100 * 0.3);
     consistencia = Math.max(0, Math.min(100, consistencia));
   }
 
-  const magicDiff = totalStages > 0 && doneStages === totalStages ? 27 - lastDay : null;
+  const magicDiff = totalStages > 0 && doneStages === totalStages ? magicDay - lastDay : null;
 
   return {
     score: Math.round((prazo + eficiencia + consistencia) / 3),
@@ -95,7 +95,7 @@ export type MonthScoreData = {
   tone?: "success" | "primary" | "warning" | "danger";
 };
 
-export function computeAnnualScores(yearData: any, year: number, currentMonth: number): MonthScoreData[] {
+export function computeAnnualScores(yearData: any, year: number, currentMonth: number, magicDay: number = 27): MonthScoreData[] {
   if (!yearData) return [];
   return Array.from({ length: 12 }, (_, i) => {
     const m = i + 1;
@@ -109,7 +109,7 @@ export function computeAnnualScores(yearData: any, year: number, currentMonth: n
       return { mes: MONTH_SHORT[i], monthNum: m, score: 0, magicDiff: null, hasData: false };
     }
 
-    const { score, magicDiff } = computeMonthScore(monthStages, totalClients, m, year);
+    const { score, magicDiff } = computeMonthScore(monthStages, totalClients, m, year, magicDay);
     const cls = getClassification(score);
     return { mes: MONTH_SHORT[i], monthNum: m, score, magicDiff, hasData: true, ...cls };
   });

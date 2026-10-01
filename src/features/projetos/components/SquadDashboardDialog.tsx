@@ -14,6 +14,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts";
 import { getStagesForRoles } from "@/lib/role-stage-mapping";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
 const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -86,6 +87,7 @@ export function SquadDashboardDialog({
   const [clientsCollapsed, setClientsCollapsed] = useState(false);
   const [stagesCollapsed, setStagesCollapsed] = useState(false);
   const [productivityCollapsed, setProductivityCollapsed] = useState(false);
+  const { label: magicLabel } = useMagicNumberConfig();
   const now = new Date();
 
   // ── Bottleneck detection ──
@@ -414,7 +416,7 @@ export function SquadDashboardDialog({
         </div>
         <div className="text-left flex-1">
           <p className="text-sm font-bold text-foreground">Desempenho por Cliente</p>
-          <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do Magic Number</p>
+          <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do {magicLabel}</p>
         </div>
         <button
           onClick={() => setClientsCollapsed(!clientsCollapsed)}

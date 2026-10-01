@@ -259,9 +259,7 @@ export default function Auth() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-                <span className="text-lg font-bold text-primary-foreground">U</span>
-              </div>
+              <img src="/branding/fluxo-mark-white.png" alt="Fluxo" className="h-12 w-auto object-contain" />
             )}
           </div>
 

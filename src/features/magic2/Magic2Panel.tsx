@@ -11,9 +11,10 @@ import { Magic2Checklist } from "@/features/magic2/components/Magic2Checklist";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
 import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
 import type { Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { useMagicNumberConfig } from "@/features/data/queries";
 
-function getCycleMonthYear(now: Date) {
-  if (now.getDate() <= 27) return { year: now.getFullYear(), month: now.getMonth() + 1 };
+export function getCycleMonthYear(now: Date, day: number) {
+  if (now.getDate() <= day) return { year: now.getFullYear(), month: now.getMonth() + 1 };
   const y = now.getFullYear();
   const m = now.getMonth() + 2;
   return m <= 12 ? { year: y, month: m } : { year: y + 1, month: 1 };
@@ -22,7 +23,8 @@ function getCycleMonthYear(now: Date) {
 export function Magic2Panel() {
   const { user } = useSession();
   const now = new Date();
-  const initial = getCycleMonthYear(now);
+  const { day: magicDay } = useMagicNumberConfig();
+  const initial = getCycleMonthYear(now, magicDay);
   const [year, setYear] = useState<number>(initial.year);
   const [month, setMonth] = useState<number>(initial.month);
   const [tab, setTab] = useState<"checklist" | "dashboard">("checklist");
@@ -49,7 +51,7 @@ export function Magic2Panel() {
   };
 
   const hasAny = cycles.length > 0;
-  const due = useMemo(() => new Date(year, month - 1, 27), [month, year]);
+  const due = useMemo(() => new Date(year, month - 1, magicDay), [month, year, magicDay]);
   return <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div>

@@ -1,0 +1,12 @@
+update public.personal_notes set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.push_subscriptions set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.problem_reports set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.help_changelog_entries set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.help_faq_items set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.internal_dates set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.notification_reads set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.notification_dismissals set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.task_appeals set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.health_scores set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.health_score_tokens set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;
+update public.access_requests set agency_id = (select id from public.agencies where slug = 'uau-digital') where agency_id is null;

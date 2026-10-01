@@ -213,7 +213,9 @@ export function ChangelogSection({ isDeveloper }: { isDeveloper: boolean }) {
                   <SelectContent>
                     <SelectItem value="__none__">Nenhuma aba</SelectItem>
                     {TARGET_TABS.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.value === "magic2" ? (appSettingsQ.data?.magic_number_label ?? t.label) : t.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

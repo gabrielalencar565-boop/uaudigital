@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCargos } from "@/hooks/use-cargos";
 
 type XPSettings = {
+  agency_id: string;
   rank_1_xp: number;
   rank_2_xp: number;
   squad_destaque_xp: number;
@@ -47,7 +48,7 @@ function SettingsPanel() {
   const q = useQuery({
     queryKey: ["xp_settings"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("xp_settings").select("*").eq("id", true).maybeSingle();
+      const { data, error } = await supabase.from("xp_settings").select("*").maybeSingle();
       if (error) throw error;
       return data as XPSettings;
     },
@@ -68,7 +69,7 @@ function SettingsPanel() {
         video_destaque_roles: s.video_destaque_roles,
         late_penalize_all_assignees: s.late_penalize_all_assignees,
         updated_at: new Date().toISOString(),
-      }).eq("id", true);
+      }).eq("agency_id", s.agency_id);
       if (error) throw error;
     },
     onSuccess: () => {

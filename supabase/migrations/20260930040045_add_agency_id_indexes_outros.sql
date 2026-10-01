@@ -1,0 +1,12 @@
+create index if not exists personal_notes_agency_id_idx on public.personal_notes (agency_id);
+create index if not exists push_subscriptions_agency_id_idx on public.push_subscriptions (agency_id);
+create index if not exists problem_reports_agency_id_idx on public.problem_reports (agency_id);
+create index if not exists help_changelog_entries_agency_id_idx on public.help_changelog_entries (agency_id);
+create index if not exists help_faq_items_agency_id_idx on public.help_faq_items (agency_id);
+create index if not exists internal_dates_agency_id_idx on public.internal_dates (agency_id);
+create index if not exists notification_reads_agency_id_idx on public.notification_reads (agency_id);
+create index if not exists notification_dismissals_agency_id_idx on public.notification_dismissals (agency_id);
+create index if not exists task_appeals_agency_id_idx on public.task_appeals (agency_id);
+create index if not exists health_scores_agency_id_idx on public.health_scores (agency_id);
+create index if not exists health_score_tokens_agency_id_idx on public.health_score_tokens (agency_id);
+create index if not exists access_requests_agency_id_idx on public.access_requests (agency_id);
