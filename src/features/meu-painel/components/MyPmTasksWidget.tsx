@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare } from "lucide-react";
-import { differenceInCalendarDays, format } from "date-fns";
+import { differenceInCalendarDays, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -61,6 +62,8 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
   const currentMonthKey = format(today, "yyyy-MM");
+  const weekEndKey = useMemo(() => format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd"), [todayKey]);
+  const [rangeMode, setRangeMode] = useState<"hoje" | "semana">("hoje");
 
   const pmTasksQ = usePmTasks();
 
@@ -173,7 +176,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       const diff = differenceInCalendarDays(new Date(t.due_date + "T00:00:00"), todayDate);
       if (diff < 0) overdue.push(t);
       else if (diff === 0) todayGroup.push(t);
-      else upcoming.push(t);
+      else if (rangeMode === "semana" && t.due_date <= weekEndKey) upcoming.push(t);
     });
 
     const sortByDue = (a: PmTask, b: PmTask) => {
@@ -191,7 +194,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     completed.sort(sortByDue);
 
     return { overdue, today: todayGroup, upcoming, noDue, completed };
-  }, [myTasks, todayKey, currentMonthKey]);
+  }, [myTasks, todayKey, currentMonthKey, rangeMode, weekEndKey]);
 
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
@@ -389,7 +392,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <ListChecks className="h-4 w-4" />
             </div>
-            <CardTitle className="text-base font-semibold">Atribuídas a mim</CardTitle>
+            <CardTitle className="text-base font-semibold">Minhas tarefas</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="px-5 pb-5">
@@ -492,7 +495,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <ListChecks className="h-4 w-4" />
             </div>
-            <CardTitle className="text-base">Atribuídas a mim</CardTitle>
+            <CardTitle className="text-base">Minhas tarefas</CardTitle>
+            <Tabs value={rangeMode} onValueChange={(v) => setRangeMode(v as any)} className="ml-auto">
+              <TabsList className="bg-muted/40 h-8 p-1 rounded-full gap-1 border border-border/30">
+                <TabsTrigger value="hoje" className="h-6 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-3 transition-all">Hoje</TabsTrigger>
+                <TabsTrigger value="semana" className="h-6 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-3 transition-all">Semana</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent className="p-0">

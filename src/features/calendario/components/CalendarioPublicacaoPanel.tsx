@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send } from "lucide-react";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -24,7 +24,7 @@ import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/com
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarPublication, useUpdateCalendarShare, useUpdateCalendarStatus,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate,
   type ClientInstagramRisk,
 } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
@@ -32,6 +32,7 @@ import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./Publi
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 import { QuickAddPublicationDialog } from "./QuickAddPublicationDialog";
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "../hooks/use-instagram";
+import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
 
 interface Props {
   onOpenTask: (taskId: string) => void;
@@ -101,11 +102,11 @@ const CLIENT_CARD_STATUS: Record<string, { key: string; label: string; className
   aprovado: { key: "aprovado", label: "Aprovado", className: "bg-success/15 text-success" },
 };
 
-const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed }[] = [
-  { key: "em_montagem", label: "Em montagem", icon: CircleDashed },
-  { key: "enviado_ao_cliente", label: "Enviado ao cliente", icon: Clock },
-  { key: "alteracoes_solicitadas", label: "Alterações solicitadas", icon: AlertTriangle },
-  { key: "aprovado", label: "Aprovado", icon: CheckCircle2 },
+const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed; tone: "violet" | "emerald" | "amber" | "red" }[] = [
+  { key: "em_montagem", label: "Em montagem", icon: CircleDashed, tone: "violet" },
+  { key: "enviado_ao_cliente", label: "Enviado ao cliente", icon: Clock, tone: "amber" },
+  { key: "alteracoes_solicitadas", label: "Alterações solicitadas", icon: AlertTriangle, tone: "red" },
+  { key: "aprovado", label: "Aprovado", icon: CheckCircle2, tone: "emerald" },
 ];
 
 function DraggablePublication({ publication, images, onClick, isCapa }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean }) {
@@ -319,6 +320,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const cycleStartKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
 
+  // "Publicações sem data" — cross-cycle (see useUnscheduledPublicationsForClient).
+  const unscheduledPubsQ = useUnscheduledPublicationsForClient(clientId);
+  const setPublicationDate = useSetPublicationDate();
+
   // Which clients have a calendar in the current ciclo, for the sidebar dots.
   const cycleCalendarsQ = useCalendarsForCycle(cycleStartKey);
   const calendarByClientId = useMemo(() => {
@@ -345,6 +350,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       return next;
     });
   };
+  // Per-client Cronograma stat cards double as a filter for the day-grid/lista below —
+  // empty set = "Publicações" (show everything), same toggle pattern as activeStatusFilters above.
+  const [activePubStatusFilters, setActivePubStatusFilters] = useState<Set<string>>(new Set());
+  const togglePubStatusFilter = (key: string) => {
+    setActivePubStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  useEffect(() => setActivePubStatusFilters(new Set()), [clientId]);
   const filteredClients = useMemo(() => {
     return sortedClients.filter((c) => {
       if (onlyMine) {
@@ -360,9 +377,48 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     });
   }, [sortedClients, onlyMine, user?.id, stageAssignees, activeStatusFilters, calendarByClientId]);
 
+  // Counts for the filter cards below — "Meus" counts every client assigned to you,
+  // regardless of the status filters; the 4 status counts respect "Meus" (if active) but not
+  // each other, so each card answers "how many clients are in this status, among the ones
+  // you're currently looking at by owner" instead of chasing every other active filter too.
+  const clientCountsByOwner = useMemo(
+    () => sortedClients.filter((c) => {
+      const responsibleId = getFixedAssignee(stageAssignees, "planejamento", c.id);
+      return responsibleId === user?.id;
+    }).length,
+    [sortedClients, stageAssignees, user?.id],
+  );
+  const clientStatusCounts = useMemo(() => {
+    const base = onlyMine
+      ? sortedClients.filter((c) => getFixedAssignee(stageAssignees, "planejamento", c.id) === user?.id)
+      : sortedClients;
+    const counts: Record<string, number> = {};
+    for (const f of STATUS_FILTERS) counts[f.key] = 0;
+    for (const c of base) {
+      const cal = calendarByClientId.get(c.id);
+      const bucketKey = cal ? CLIENT_CARD_STATUS[cal.status]?.key : null;
+      if (bucketKey && bucketKey in counts) counts[bucketKey]++;
+    }
+    return counts;
+  }, [sortedClients, onlyMine, stageAssignees, user?.id, calendarByClientId]);
+
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
-  const taskIds = useMemo(() => publications.map((p) => p.task_id), [publications]);
+  // Current cycle's publications plus the cross-cycle "sem data" ones (which may be parked
+  // under a different cycle's calendar_id) — media/thumbnail/capa lookups below need both so
+  // "Publicações sem data" cards render fully, not just the day grid's. Deduped since a "sem
+  // data" item parked under *this* cycle would otherwise show up in both source lists.
+  const allRelevantPublications = useMemo(() => {
+    const seen = new Set<string>();
+    const combined: CalendarPublication[] = [];
+    for (const p of [...publications, ...(unscheduledPubsQ.data ?? [])]) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      combined.push(p);
+    }
+    return combined;
+  }, [publications, unscheduledPubsQ.data]);
+  const taskIds = useMemo(() => allRelevantPublications.map((p) => p.task_id), [allRelevantPublications]);
   const capaTaskIdsQ = useCapaTaskIds(taskIds);
   const isCapaTask = (taskId: string) => capaTaskIdsQ.data?.has(taskId) ?? false;
   // Only approved publications are eligible to be concluded — a post still awaiting
@@ -443,12 +499,11 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const unpublishCycle = useUnpublishCycle();
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const coverAttachmentIds = useMemo(
-    () => [...new Set(publications.map((p) => p.cover_attachment_id).filter((id): id is string => !!id))],
-    [publications],
+    () => [...new Set(allRelevantPublications.map((p) => p.cover_attachment_id).filter((id): id is string => !!id))],
+    [allRelevantPublications],
   );
   const coverAttachmentsQ = useCoverAttachmentsById(coverAttachmentIds);
 
-  const updatePublication = useUpdateCalendarPublication();
   const updateCalendarStatus = useUpdateCalendarStatus();
   const updateCalendarShare = useUpdateCalendarShare();
   const publishCycle = usePublishCycle();
@@ -474,7 +529,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // the exact same call signatures — this only changes recompute-per-call into a lookup.
   const mediaByTask = useMemo(() => {
     const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }[]>();
-    for (const p of publications) {
+    for (const p of allRelevantPublications) {
       const list = attachmentsQ.data?.get(p.task_id) ?? [];
       const coverId = p.cover_attachment_id;
       let result = list;
@@ -497,17 +552,17 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       map.set(p.task_id, result);
     }
     return map;
-  }, [publications, attachmentsQ.data, coverAttachmentsQ.data]);
+  }, [allRelevantPublications, attachmentsQ.data, coverAttachmentsQ.data]);
   const mediaFor = (taskId: string) => mediaByTask.get(taskId) ?? [];
 
   const thumbnailByTask = useMemo(() => {
     const map = new Map<string, string | null>();
-    for (const p of publications) {
+    for (const p of allRelevantPublications) {
       const url = (mediaByTask.get(p.task_id) ?? []).find((m) => m.type?.startsWith("image/"))?.thumbUrl;
       map.set(p.task_id, url ? toGridThumbUrl(url) : null);
     }
     return map;
-  }, [publications, mediaByTask]);
+  }, [allRelevantPublications, mediaByTask]);
   const thumbnailFor = (taskId: string) => thumbnailByTask.get(taskId) ?? null;
 
   // A "Capa" holding-task (see useCoverCandidates) whose image is currently pinned as
@@ -516,37 +571,43 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // moment it's unpinned (cover_attachment_id no longer points at one of its attachments).
   const hiddenFromUnscheduled = useMemo(() => {
     const hidden = new Set<string>();
-    for (const p of publications) {
+    for (const p of allRelevantPublications) {
       const ownAttachmentIds = new Set((attachmentsQ.data?.get(p.task_id) ?? []).map((a) => a.id));
-      const usedByOther = publications.some(
+      const usedByOther = allRelevantPublications.some(
         (other) => other.id !== p.id && other.cover_attachment_id && ownAttachmentIds.has(other.cover_attachment_id),
       );
       if (usedByOther) hidden.add(p.task_id);
     }
     return hidden;
-  }, [publications, attachmentsQ.data]);
+  }, [allRelevantPublications, attachmentsQ.data]);
   // Only "carrossel" posts are meant to page through every image — for every other
   // content type (reel, vídeo, imagem...) the card should show just the one cover
   // image as a static thumbnail, even if the task has other image attachments
   // (e.g. an auto-generated video poster alongside a manually chosen cover).
   const imagesByPub = useMemo(() => {
     const map = new Map<string, string[]>();
-    for (const p of publications) {
+    for (const p of allRelevantPublications) {
       const imgs = (mediaByTask.get(p.task_id) ?? []).filter((m) => m.type?.startsWith("image/")).map((m) => toGridThumbUrl(m.thumbUrl));
       map.set(p.id, p.content_type === "carrossel" ? imgs : imgs.slice(0, 1));
     }
     return map;
-  }, [publications, mediaByTask]);
+  }, [allRelevantPublications, mediaByTask]);
   const imagesFor = (p: CalendarPublication) => imagesByPub.get(p.id) ?? [];
+
+  // Applies the per-client stat-card filter (empty set = no filter, matches everything).
+  const statusFilteredPublications = useMemo(() => {
+    if (activePubStatusFilters.size === 0) return publications;
+    return publications.filter((p) => activePubStatusFilters.has(p.status));
+  }, [publications, activePubStatusFilters]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarPublication[]>();
-    for (const p of publications) {
+    for (const p of statusFilteredPublications) {
       const key = p.publish_date ?? UNSCHEDULED_ID;
       map.set(key, [...(map.get(key) ?? []), p]);
     }
     return map;
-  }, [publications]);
+  }, [statusFilteredPublications]);
 
   const weeks = useMemo(() => {
     const start = cycleStart(cursor, magicDay);
@@ -595,9 +656,14 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return { feedItems: feed, outsideFeed: outside };
   }, [publications, attachmentsQ.data]);
 
+  // Includes the cross-cycle "sem data" publications too (not just this cycle's own) — this
+  // feeds navList/selected below, which is what lets clicking one of those cards in
+  // "Publicações sem data" actually resolve to a publication and open the preview panel.
+  // The "Lista" view itself still only ever renders the publish_date-having subset (see its
+  // own .filter((p) => p.publish_date) below), so this doesn't add visible rows there.
   const listOrder = useMemo(
-    () => [...publications].sort((a, b) => (a.publish_date ?? "9999") > (b.publish_date ?? "9999") ? 1 : -1),
-    [publications],
+    () => [...allRelevantPublications].sort((a, b) => (a.publish_date ?? "9999") > (b.publish_date ?? "9999") ? 1 : -1),
+    [allRelevantPublications],
   );
 
   const navList = view === "feed" ? feedItems : listOrder;
@@ -683,11 +749,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     const { active, over } = e;
     if (!over) return;
     const publication = (active.data.current as { publication?: CalendarPublication } | undefined)?.publication;
-    if (!publication) return;
+    if (!publication || !clientId) return;
     const targetDayKey = String(over.id);
     const newDate = targetDayKey === UNSCHEDULED_ID ? null : targetDayKey;
     if (publication.publish_date === newDate) return;
-    updatePublication.mutate({ id: publication.id, publish_date: newDate });
+    // A "sem data" publication's calendar_id may point at an unrelated holding cycle —
+    // setPublicationDate re-files it into whichever cycle actually contains the dropped day.
+    setPublicationDate.mutate({ id: publication.id, clientId, date: newDate });
   };
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
@@ -755,28 +823,27 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       )}
 
       {!clientId && (
-        <div className="flex items-center gap-1 rounded-full border border-border/30 bg-muted/20 p-1 w-fit">
-          {[
-            { key: "mine", label: "Meus", icon: UserRound, active: onlyMine, onClick: () => setOnlyMine((v) => !v) },
-            ...STATUS_FILTERS.map((f) => ({ ...f, active: activeStatusFilters.has(f.key), onClick: () => toggleStatusFilter(f.key) })),
-          ].map(({ key, label, icon: Icon, active, onClick }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={onClick}
-              title={label}
-              aria-label={label}
-              aria-pressed={active}
-              className={cn(
-                "flex h-6 shrink-0 items-center gap-1.5 rounded-full text-xs font-medium transition-all",
-                active
-                  ? "bg-primary px-2.5 text-primary-foreground shadow-glow"
-                  : "w-6 justify-center text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              {active && <span className="whitespace-nowrap">{label}</span>}
-            </button>
+        <div className="grid grid-cols-5 gap-2 sm:gap-3">
+          <MetricSparkCard
+            label="Meus"
+            value={clientCountsByOwner}
+            icon={<UserRound className="h-5 w-5" />}
+            tone="violet"
+            active={onlyMine}
+            onClick={() => setOnlyMine((v) => !v)}
+            description="Clientes em que você é o responsável pelo planejamento."
+          />
+          {STATUS_FILTERS.map((f) => (
+            <MetricSparkCard
+              key={f.key}
+              label={f.label}
+              value={clientStatusCounts[f.key] ?? 0}
+              icon={<f.icon className="h-5 w-5" />}
+              tone={f.tone}
+              active={activeStatusFilters.has(f.key)}
+              onClick={() => toggleStatusFilter(f.key)}
+              description={`Clientes cujo ciclo atual está "${f.label}".`}
+            />
           ))}
         </div>
       )}
@@ -920,20 +987,23 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           </p>
         </button>
       )}
+
       {calendar && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 p-3">
-          <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>
-            <SelectTrigger className="h-9 w-auto rounded-full text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(CALENDAR_STATUS_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/30 bg-muted/20 p-2.5">
+          {/* Status do ciclo + compartilhamento: metadados, peso visual discreto (ghost) pra não competir com as ações abaixo */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>
+              <SelectTrigger className="h-9 w-auto gap-1.5 rounded-full border-0 bg-transparent text-sm font-medium shadow-none hover:bg-accent/50"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(CALENDAR_STATUS_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
           <Popover open={shareOpen} onOpenChange={setShareOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
+              <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full text-muted-foreground hover:text-foreground">
                 <Link2 className="h-3.5 w-3.5" /> Compartilhar
               </Button>
             </PopoverTrigger>
@@ -974,7 +1044,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               )}
             </PopoverContent>
           </Popover>
+          </div>
 
+          {/* Ações do ciclo + alternância de view: agrupadas à direita, separadas por um divisor;
+              os dois botões de workflow usam a variante sólida (default) quando ainda há algo a
+              fazer, pra se destacarem de verdade do resto em vez de se misturarem em pills outline
+              idênticas — o estado "concluído" volta a ficar discreto (outline suave). */}
+          <div className="flex flex-wrap items-center gap-2">
           {cycleConcluded ? (
             <Button
               variant="outline"
@@ -986,7 +1062,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </Button>
           ) : (
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               className="h-9 gap-1.5 rounded-full"
               onClick={() => {
@@ -1012,7 +1088,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </Button>
           ) : (
             <Button
-              variant="outline"
+              variant={cycleConcluded ? "default" : "secondary"}
               size="sm"
               className="h-9 gap-1.5 rounded-full"
               disabled={scheduleCycle.isPending}
@@ -1045,61 +1121,84 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </Button>
           )}
 
-          <Tabs value={view} onValueChange={(v) => setView(v as any)} className="ml-auto">
+          <div className="mx-1 hidden h-6 w-px bg-border/60 sm:block" />
+
+          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
             <TabsList className="h-9 rounded-full">
               <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
               <TabsTrigger value="lista" className="gap-1.5 rounded-full text-xs"><List className="h-3.5 w-3.5" /> Lista</TabsTrigger>
               <TabsTrigger value="feed" className="gap-1.5 rounded-full text-xs"><Grid3x3 className="h-3.5 w-3.5" /> Feed</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
-      )}
-
-      {!calendar && (
-        <div className="space-y-3 rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF".</p>
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 rounded-full"
-            onClick={() => {
-              setQuickAddDate(null);
-              setQuickAddOpen(true);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" /> Nova publicação
-          </Button>
-        </div>
-      )}
-
-      {calendar && (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="rounded-full">{counts.total} publicações</Badge>
-            <Badge variant="secondary" className="gap-1 rounded-full bg-amber-500/15 text-amber-600 hover:bg-amber-500/15">{counts.aguardando} aguardando</Badge>
-            <Badge variant="secondary" className="gap-1 rounded-full bg-success/15 text-success hover:bg-success/15">{counts.aprovada} aprovadas</Badge>
-            <Badge variant="secondary" className="gap-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/15">{counts.alteracao} com alteração</Badge>
           </div>
+        </div>
+      )}
 
-          {view !== "feed" && (
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
-                <div className="flex flex-wrap gap-2">
-                  {(() => {
-                    const unscheduled = (byDay.get(UNSCHEDULED_ID) ?? []).filter((p) => !hiddenFromUnscheduled.has(p.task_id));
-                    return unscheduled.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data.</p>
-                    ) : (
-                      unscheduled.map((p) => (
-                        <div key={p.id} className="w-28">
-                          <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
-                        </div>
-                      ))
-                    );
-                  })()}
-                </div>
-              </DropZone>
+      {/* "Publicações sem data" é cross-ciclo (useUnscheduledPublicationsForClient) e por isso
+          renderiza fora do "{calendar && ...}" abaixo — senão ela some assim que você navega
+          pra um mês que ainda não tem calendário próprio (ex.: outubro antes de qualquer post
+          ser mandado pra lá), que é exatamente onde você quer poder escolher uma data. */}
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <MetricSparkCard
+          label="Publicações"
+          value={counts.total}
+          icon={<LayoutGrid className="h-5 w-5" />}
+          tone="violet"
+          description="Total de publicações neste ciclo. Clique para limpar o filtro."
+          onClick={() => setActivePubStatusFilters(new Set())}
+          active={activePubStatusFilters.size === 0}
+        />
+        <MetricSparkCard
+          label="Enviado ao cliente"
+          value={counts.aguardando}
+          icon={<Send className="h-5 w-5" />}
+          tone="amber"
+          description="Publicações já enviadas ao cliente, aguardando aprovação dele. Clique para filtrar."
+          onClick={() => togglePubStatusFilter("aguardando_aprovacao")}
+          active={activePubStatusFilters.has("aguardando_aprovacao")}
+        />
+        <MetricSparkCard
+          label="Alteração"
+          value={counts.alteracao}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          tone="red"
+          description="Publicações com alteração solicitada pelo cliente. Clique para filtrar."
+          onClick={() => togglePubStatusFilter("alteracao_solicitada")}
+          active={activePubStatusFilters.has("alteracao_solicitada")}
+        />
+        <MetricSparkCard
+          label="Aprovado"
+          value={counts.aprovada}
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          tone="emerald"
+          description="Publicações já aprovadas pelo cliente. Clique para filtrar."
+          onClick={() => togglePubStatusFilter("aprovada")}
+          active={activePubStatusFilters.has("aprovada")}
+        />
+      </div>
 
+      {view !== "feed" && (
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const unscheduled = (unscheduledPubsQ.data ?? []).filter((p) => !hiddenFromUnscheduled.has(p.task_id));
+                return unscheduled.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">Nenhuma — arraste uma publicação aqui para tirar a data, ou abra uma publicação acima e escolha a data nela.</p>
+                ) : (
+                  unscheduled.map((p) => (
+                    <div key={p.id} className="w-28">
+                      <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                    </div>
+                  ))
+                );
+              })()}
+            </div>
+          </DropZone>
+
+          {calendar && (
+            <>
               {view === "calendario" ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-muted-foreground">
@@ -1157,7 +1256,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               ) : (
                 <div className="space-y-3">
                   {(() => {
-                    const scheduled = listOrder.filter((p) => p.publish_date);
+                    const scheduled = listOrder.filter((p) => p.publish_date && (activePubStatusFilters.size === 0 || activePubStatusFilters.has(p.status)));
                     if (scheduled.length === 0) {
                       return (
                         <p className="text-sm text-muted-foreground">
@@ -1179,10 +1278,28 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   })()}
                 </div>
               )}
-            </DndContext>
+            </>
           )}
+        </DndContext>
+      )}
 
-          {view === "feed" && (
+      {!calendar && (
+        <div className="space-y-3 rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF". Dá pra escolher uma data pra uma publicação sem data (acima) que ele é criado na hora.</p>
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 rounded-full"
+            onClick={() => {
+              setQuickAddDate(null);
+              setQuickAddOpen(true);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Nova publicação
+          </Button>
+        </div>
+      )}
+
+      {calendar && view === "feed" && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-1.5">
                 {feedItems.length === 0 && (
@@ -1241,8 +1358,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               )}
             </div>
           )}
-        </>
-      )}
+
       </div>
       )}
 
