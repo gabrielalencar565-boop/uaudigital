@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { getClassification, toneColor, barColor, computeAnnualScores } from "@/features/projetos/utils/score-utils";
+import { getClassification, toneColor, computeAnnualScores } from "@/features/projetos/utils/score-utils";
 import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
 import { useMagicNumberConfig } from "@/features/data/queries";
+import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 
 interface AnnualScoreAnalysisProps {
   open: boolean;
@@ -23,6 +24,8 @@ interface AnnualScoreAnalysisProps {
 
 export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAnalysisProps) {
   const { data: yearData } = useMagic2Year(year);
+  const barIds = useBrandGradientIds();
+  const lineIds = useBrandGradientIds();
   const { day: magicDay } = useMagicNumberConfig();
   const now = new Date();
   const cycleMY = getCycleMonthYear(now, magicDay);
@@ -64,6 +67,7 @@ export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAna
             <div className="h-[240px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyScores} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  {brandChartDefs(barIds)}
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
                   <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -90,7 +94,7 @@ export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAna
                   />
                   <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={36}>
                     {monthlyScores.map((entry, index) => (
-                      <Cell key={index} fill={entry.hasData ? barColor(entry.score) : "hsl(var(--muted))"} fillOpacity={entry.hasData ? 1 : 0.3} />
+                      <Cell key={index} fill={entry.hasData ? `url(#${barIds.v})` : "hsl(var(--muted))"} fillOpacity={entry.hasData ? 1 : 0.3} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -106,6 +110,7 @@ export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAna
               <div className="h-[180px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    {brandChartDefs(lineIds)}
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                     <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -125,10 +130,10 @@ export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAna
                     <Line
                       type="monotone"
                       dataKey="score"
-                      stroke="hsl(var(--sidebar))"
+                      stroke={`url(#${lineIds.h})`}
                       strokeWidth={2.5}
-                      dot={{ r: 4, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: "hsl(var(--sidebar))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      dot={{ r: 4, fill: "#c86be6", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                      activeDot={{ r: 6, fill: "#c86be6", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>

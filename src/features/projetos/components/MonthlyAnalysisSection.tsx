@@ -17,11 +17,13 @@ import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
 import { useMagicNumberConfig } from "@/features/data/queries";
+import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
+import { brandGradientCss } from "@/lib/brand-gradient";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { getClassification, toneColor, barColor, MONTH_SHORT, computeAnnualScores, getBrazilDay } from "@/features/projetos/utils/score-utils";
+import { getClassification, toneColor, MONTH_SHORT, computeAnnualScores, getBrazilDay } from "@/features/projetos/utils/score-utils";
 
 
 const INDICATOR_TOOLTIPS: Record<string, string> = {
@@ -39,6 +41,9 @@ const SCORE_RANGES = [
 
 export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const now = new Date();
+  const areaIds = useBrandGradientIds();
+  const barIds = useBrandGradientIds();
+  const lineIds = useBrandGradientIds();
   const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
   // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
   const cycleMY = getCycleMonthYear(now, magicDay);
@@ -425,7 +430,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
           <p className="font-semibold text-foreground">Dia {label}</p>
           {payload.map((p: any) => (
-            <p key={p.dataKey} style={{ color: p.color }}>
+            <p key={p.dataKey} style={{ color: p.dataKey === "percentual" ? "#c86be6" : p.color }}>
               {p.dataKey === "percentual" ? currentMonthLabel : prevMonthLabel}: {p.value ?? "—"}%
             </p>
           ))}
@@ -484,11 +489,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                   <div className="h-[260px] w-full flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        {brandChartDefs(areaIds)}
                         <defs>
-                          <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.02} />
-                          </linearGradient>
                           <linearGradient id="prevGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.15} />
                             <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.01} />
@@ -523,11 +525,11 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                         <Area
                           type="monotone"
                           dataKey="percentual"
-                          stroke="hsl(253, 90%, 68%)"
+                          stroke={`url(#${areaIds.h})`}
                           strokeWidth={2.5}
-                          fill="url(#progressGradient)"
+                          fill={`url(#${areaIds.area})`}
                           dot={false}
-                          activeDot={{ r: 4, fill: "hsl(253, 90%, 68%)", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                          activeDot={{ r: 4, fill: "#c86be6", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                           connectNulls
                         />
                       </AreaChart>
@@ -537,7 +539,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                   <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: "hsl(253, 90%, 68%)" }} />
+                        <span className="inline-block w-4 h-0.5 rounded-full" style={{ background: brandGradientCss(90) }} />
                         {currentMonthLabel} (atual)
                       </span>
                       <span className="flex items-center gap-1.5">
@@ -627,16 +629,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                     <div className="h-[200px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={proactivityData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="proactBarGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.85} />
-                              <stop offset="100%" stopColor="hsl(253, 90%, 68%)" stopOpacity={0.35} />
-                            </linearGradient>
-                            <linearGradient id="proactBarBestGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={1} />
-                              <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.45} />
-                            </linearGradient>
-                          </defs>
+                          {brandChartDefs(barIds)}
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
                           <XAxis
                             dataKey="mes"
@@ -677,13 +670,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                             {proactivityData.map((entry, index) => (
                               <Cell
                                 key={index}
-                                fill={
-                                  !entry.hasData
-                                    ? "hsl(var(--muted))"
-                                    : bestProactivityMonth && entry.monthNum === bestProactivityMonth.monthNum
-                                      ? "url(#proactBarBestGrad)"
-                                      : "url(#proactBarGrad)"
-                                }
+                                fill={entry.hasData ? `url(#${barIds.v})` : "hsl(var(--muted))"}
                                 fillOpacity={entry.hasData ? 1 : 0.3}
                               />
                             ))}
@@ -727,6 +714,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                     <div className="h-[180px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={idoData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                          {brandChartDefs(lineIds)}
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                           <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                           <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -750,7 +738,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                           <Line
                             type="monotone"
                             dataKey="ido"
-                            stroke="hsl(253, 90%, 68%)"
+                            stroke={`url(#${lineIds.h})`}
                             strokeWidth={2.5}
                             dot={(props: any) => {
                               const { cx, cy, payload } = props;
@@ -761,13 +749,13 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                                   cx={cx}
                                   cy={cy}
                                   r={4}
-                                  fill={barColor(payload.ido)}
+                                  fill="#c86be6"
                                   stroke="hsl(var(--background))"
                                   strokeWidth={2}
                                 />
                               );
                             }}
-                            activeDot={{ r: 6, fill: "hsl(253, 90%, 68%)", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+                            activeDot={{ r: 6, fill: "#c86be6", stroke: "hsl(var(--background))", strokeWidth: 2 }}
                             connectNulls={false}
                           />
                         </LineChart>

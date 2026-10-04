@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { brandSeriesColor } from "@/lib/brand-gradient";
 type TeamMemberLite = {
   user_id: string;
   display_name: string;
@@ -42,11 +43,11 @@ export function CategoryComparisonChart({
     <ChartContainer
       className="h-[320px] w-full"
       config={{
-        aprendizado: { label: "Aprendizado", color: "hsl(var(--primary))" },
-        qualidade: { label: "Qualidade", color: "hsl(var(--brand))" },
-        metas: { label: "Metas/Prazos", color: "hsl(var(--accent))" },
-        organizacao: { label: "Organização", color: "hsl(var(--secondary))" },
-        responsabilidade: { label: "Responsabilidade", color: "hsl(var(--muted-foreground))" },
+        aprendizado: { label: "Aprendizado", color: brandSeriesColor(0) },
+        qualidade: { label: "Qualidade", color: brandSeriesColor(1) },
+        metas: { label: "Metas/Prazos", color: brandSeriesColor(2) },
+        organizacao: { label: "Organização", color: brandSeriesColor(3) },
+        responsabilidade: { label: "Responsabilidade", color: brandSeriesColor(4) },
       }}
     >
       <BarChart data={data} barCategoryGap={10} barGap={4} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>

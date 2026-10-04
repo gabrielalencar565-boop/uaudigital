@@ -182,7 +182,7 @@ export function FinMetasMensalTab() {
         <Card>
           <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
             <p className="text-sm font-medium text-muted-foreground mb-3">Meta do Mês</p>
-            <ProgressRing value={progressoMes} size={130} stroke={14} tone="auto" label={
+            <ProgressRing value={progressoMes} size={130} stroke={14} label={
               <div className="text-center">
                 <p className="text-lg font-bold">{progressoMes.toFixed(0)}%</p>
               </div>
@@ -196,7 +196,7 @@ export function FinMetasMensalTab() {
         <Card>
           <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
             <p className="text-sm font-medium text-muted-foreground mb-3">Falta p/ Meta Final</p>
-            <ProgressRing value={progressoMetaFinal} size={130} stroke={14} tone="auto" label={
+            <ProgressRing value={progressoMetaFinal} size={130} stroke={14} label={
               <div className="text-center">
                 <p className="text-lg font-bold">{progressoMetaFinal.toFixed(0)}%</p>
               </div>

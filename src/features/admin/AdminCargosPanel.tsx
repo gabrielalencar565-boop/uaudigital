@@ -27,6 +27,7 @@ const FEATURE_DESCRIPTIONS: Record<string, string> = {
   tab_comercial: "Libera a aba Comercial no menu lateral (funil de leads, propostas).",
   tab_financeiro: "Libera a aba Financeiro no menu lateral (receitas, despesas, lançamentos e metas).",
   action_instagram_connect: "Conectar ou desconectar a conta do Instagram de um cliente no Cronograma.",
+  action_client_credentials: "Ver, criar e apagar logins e senhas dos clientes (bloco Acessos em Clientes → Documentos).",
   action_manage_publications: "Criar publicações e calendários de aprovação no Cronograma.",
   action_manage_tags: "Editar ou apagar as tags usadas para classificar tarefas.",
   action_manage_faq: "Criar, editar e apagar perguntas frequentes da Central de Ajuda.",

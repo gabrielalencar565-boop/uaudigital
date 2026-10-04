@@ -7,6 +7,8 @@ import { ptBR } from "date-fns/locale";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { useTasks } from "@/features/data/queries";
+import { brandGradientCss } from "@/lib/brand-gradient";
+import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 
 interface TaskData {
   id: string;
@@ -33,6 +35,7 @@ function isCompletedInRange(t: TaskData, start: Date, end: Date) {
 
 export function ProductivityWidget({ tasks, allMonthTasks, todayKey, userId }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const gradIds = useBrandGradientIds();
   const today = new Date(todayKey + "T12:00:00");
 
   // ── Semanas do mês atual (S1, S2, ... sempre numeradas, sem rótulo "Atual") ──
@@ -105,12 +108,7 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey, userId }: P
         <div className="h-[140px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={weeklyData} margin={{ top: 10, right: 8, bottom: 0, left: 8 }}>
-              <defs>
-                <linearGradient id="prodGradPremium" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(263 70% 50%)" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="hsl(263 70% 50%)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
+              {brandChartDefs(gradIds)}
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
@@ -128,11 +126,11 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey, userId }: P
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="hsl(263 70% 55%)"
+                stroke={`url(#${gradIds.h})`}
                 strokeWidth={2.5}
-                fill="url(#prodGradPremium)"
-                dot={{ r: 3, fill: "hsl(263 70% 55%)", stroke: "hsl(263 70% 65%)", strokeWidth: 1 }}
-                activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(263 70% 65%)", fill: "hsl(263 70% 50%)" }}
+                fill={`url(#${gradIds.area})`}
+                dot={{ r: 3, fill: "#c86be6", stroke: "hsl(263 70% 65%)", strokeWidth: 1 }}
+                activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(263 70% 65%)", fill: "#c86be6" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -162,8 +160,8 @@ export function ProductivityWidget({ tasks, allMonthTasks, todayKey, userId }: P
                 <span className="text-sm font-semibold tabular-nums text-foreground">{m.count}</span>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-primary/60"
-                    style={{ width: `${Math.max(6, (m.count / maxHistoryCount) * 100)}%` }}
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.max(6, (m.count / maxHistoryCount) * 100)}%`, background: brandGradientCss(90) }}
                   />
                 </div>
                 <span className="text-[10px] text-muted-foreground">{m.label}</span>

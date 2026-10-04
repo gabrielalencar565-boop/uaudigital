@@ -17,6 +17,7 @@ import { SubtaskTrashDialog } from "./SubtaskTrashDialog";
 import { toast } from "sonner";
 import type { PmTask } from "../pm-types";
 import { supabase } from "@/integrations/supabase/client";
+import { brandGradientCss } from "@/lib/brand-gradient";
 
 function initials(n: string) { return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join(""); }
 
@@ -228,7 +229,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
         {total > 0 && (
           <div className="w-20">
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${progress}%` }} />
+              <div className={cn("h-full rounded-full transition-all", progress === 100 && "bg-emerald-500")} style={{ width: `${progress}%`, ...(progress === 100 ? {} : { background: brandGradientCss(90) }) }} />
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import {
   ChevronRight, AlertTriangle, CheckCircle2, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { brandGradientCss } from "@/lib/brand-gradient";
 
 /* ── Types ── */
 
@@ -124,10 +125,10 @@ function getDiagnosis(rank: number | null, rankTotal: number | null): { label: s
   return { label: "Alerta", color: "text-red-500", bg: "bg-red-500/10" };
 }
 
-const LEVEL_STYLES: Record<Level, { bg: string; border: string; text: string; bar: string }> = {
-  alto: { bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-500", bar: "bg-emerald-500" },
-  medio: { bg: "bg-amber-500/5", border: "border-amber-500/20", text: "text-amber-500", bar: "bg-amber-500" },
-  baixo: { bg: "bg-red-500/5", border: "border-red-500/20", text: "text-red-500", bar: "bg-red-500" },
+const LEVEL_STYLES: Record<Level, { bg: string; border: string; text: string }> = {
+  alto: { bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-500" },
+  medio: { bg: "bg-amber-500/5", border: "border-amber-500/20", text: "text-amber-500" },
+  baixo: { bg: "bg-red-500/5", border: "border-red-500/20", text: "text-red-500" },
 };
 
 type ViewMode = "mes" | "anual";
@@ -289,8 +290,8 @@ export function SmartFeedbackWidget({
                   <p className="text-[11px] font-medium text-foreground/80 mb-1.5 leading-tight">{c.label}</p>
                   <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
                     <div
-                      className={cn("h-full rounded-full transition-all duration-700 ease-out", styles.bar)}
-                      style={{ width: `${pct}%` }}
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${pct}%`, background: brandGradientCss(90) }}
                     />
                   </div>
                 </div>

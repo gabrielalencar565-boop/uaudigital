@@ -13,6 +13,7 @@ import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 
 const WEIGHTS: Record<string, number> = {
   resultado_percebido: 3,
@@ -47,17 +48,7 @@ function barColor(score: number) {
   return "hsl(0, 84%, 60%)";
 }
 
-function barBg(score: number) {
-  if (score >= 8) return "bg-emerald-500/15";
-  if (score >= 6) return "bg-amber-500/15";
-  return "bg-destructive/15";
-}
-
-const DONUT_COLORS = [
-  "hsl(142, 71%, 45%)",
-  "hsl(45, 93%, 47%)",
-  "hsl(0, 84%, 60%)",
-];
+const DONUT_COLORS = [brandSeriesColor(0), brandSeriesColor(1), brandSeriesColor(2)];
 
 export function ChurnRiskModule() {
   const now = new Date();
@@ -440,7 +431,7 @@ export function ChurnRiskModule() {
                     <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${value * 10}%`, backgroundColor: barColor(value) }}
+                        style={{ width: `${value * 10}%`, background: brandGradientCss(90) }}
                       />
                     </div>
                   </div>

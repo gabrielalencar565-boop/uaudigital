@@ -76,18 +76,22 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   };
 
   const N = publications.length;
+  // With a single post there's nothing to loop (no rotation, no drag), and padding clones would
+  // just render that same post again in the second visible slot.
+  const clones = N > 1 ? CLONES : 0;
   // Infinite loop: pad a clone of the tail before the real items and a clone of the head
   // after them, so the visible window always has enough cards to fill it — without this,
   // sliding to the actual last post left the second slot empty (nothing left to show).
-  // Real items live at extended indices [CLONES, CLONES + N - 1]; index starts there.
+  // Real items live at extended indices [clones, clones + N - 1]; index starts there.
   const extended = useMemo(() => {
     if (N === 0) return [];
-    const head = publications.slice(0, CLONES);
-    const tail = publications.slice(Math.max(0, N - CLONES));
+    if (clones === 0) return publications;
+    const head = publications.slice(0, clones);
+    const tail = publications.slice(Math.max(0, N - clones));
     return [...tail, ...publications, ...head];
-  }, [publications, N]);
+  }, [publications, N, clones]);
 
-  const [index, setIndex] = useState(CLONES);
+  const [index, setIndex] = useState(clones);
   const [paused, setPaused] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [instant, setInstant] = useState(false);
@@ -95,8 +99,8 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   const dragState = useRef<{ startX: number; width: number } | null>(null);
 
   useEffect(() => {
-    setIndex(CLONES);
-  }, [N, dateKey]);
+    setIndex(clones);
+  }, [N, dateKey, clones]);
 
   useEffect(() => {
     if (N <= 1 || paused) return;
@@ -111,10 +115,10 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
     // Card buttons have their own hover-brightness transition, which bubbles up here too
     // — only react to the track's own transform transition finishing, not a child's.
     if (e.target !== e.currentTarget || e.propertyName !== "transform") return;
-    if (index >= CLONES + N) {
+    if (index >= clones + N) {
       setInstant(true);
       setIndex(index - N);
-    } else if (index < CLONES) {
+    } else if (index < clones) {
       setInstant(true);
       setIndex(index + N);
     }

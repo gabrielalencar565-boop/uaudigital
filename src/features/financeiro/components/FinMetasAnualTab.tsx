@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { useFinGoals, useUpsertFinGoal, useMrrMovements, useUpsertMrrMovement, useDeleteMrrMovement, type FinGoal } from "../hooks/use-financial-data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -26,6 +27,7 @@ export function FinMetasAnualTab() {
   const [year, setYear] = useState(now.getFullYear());
   const currentMonth = now.getMonth() + 1;
 
+  const ids = useBrandGradientIds();
   const goalsQ = useFinGoals(year);
   const upsertGoal = useUpsertFinGoal();
   const movQ = useMrrMovements(year);
@@ -153,7 +155,7 @@ export function FinMetasAnualTab() {
         <Card>
           <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
             <p className="text-sm font-medium text-muted-foreground mb-3">Falta p/ Meta Final</p>
-            <ProgressRing value={progresso} size={130} stroke={14} tone="auto" label={
+            <ProgressRing value={progresso} size={130} stroke={14} label={
               <div className="text-center">
                 <p className="text-lg font-bold">{progresso.toFixed(0)}%</p>
               </div>
@@ -165,7 +167,7 @@ export function FinMetasAnualTab() {
         <Card>
           <CardContent className="pt-5 pb-4 px-4 flex flex-col items-center">
             <p className="text-sm font-medium text-muted-foreground mb-3">Crescer/mês</p>
-            <ProgressRing value={metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0} size={130} stroke={14} tone="auto" label={
+            <ProgressRing value={metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0} size={130} stroke={14} label={
               <div className="text-center">
                 <p className="text-lg font-bold">{(metaFinal > 0 ? Math.min(((mrrAtual - mrrInicial) / (metaFinal - mrrInicial)) * 100, 100) : 0).toFixed(0)}%</p>
               </div>
@@ -239,16 +241,13 @@ export function FinMetasAnualTab() {
           <h4 className="text-sm font-semibold mb-3">MRR Real vs Meta Ideal</h4>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={timelineData}>
+              {brandChartDefs(ids)}
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Bar dataKey="metaIdeal" name="Meta Ideal" fill="hsl(var(--muted-foreground))" opacity={0.3} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="mrrReal" name="MRR Real" radius={[4, 4, 0, 0]}>
-                {timelineData.map((entry, i) => (
-                  <Cell key={i} fill={entry.isAbove === false ? "hsl(var(--destructive))" : "hsl(var(--primary))"} />
-                ))}
-              </Bar>
+              <Bar dataKey="mrrReal" name="MRR Real" fill={`url(#${ids.v})`} radius={[4, 4, 0, 0]} />
               {metaFinal > 0 && <ReferenceLine y={metaFinal} stroke="hsl(var(--destructive))" strokeDasharray="4 4" label={{ value: "Meta Final", position: "insideTopRight", fontSize: 11 }} />}
             </BarChart>
           </ResponsiveContainer>

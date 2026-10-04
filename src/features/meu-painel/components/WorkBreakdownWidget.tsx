@@ -6,6 +6,7 @@ import { stageLabel, tagDisplay } from "@/features/gestao/pm-constants";
 import { usePeriodicStages, isPeriodicStageKey } from "@/features/gestao/hooks/use-periodic-stages";
 import { useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
 import type { PmTask } from "@/features/gestao/pm-types";
+import { brandGradientCss } from "@/lib/brand-gradient";
 
 interface Props {
   allTasks: PmTask[];
@@ -149,8 +150,8 @@ export function WorkBreakdownWidget({ allTasks, month, userId }: Props) {
                   <span className="w-24 shrink-0 truncate text-sm text-foreground" title={b.label}>{b.label}</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-[hsl(263_70%_55%)]"
-                      style={{ width: `${Math.max(6, (b.count / maxCount) * 100)}%` }}
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.max(6, (b.count / maxCount) * 100)}%`, background: brandGradientCss(90) }}
                     />
                   </div>
                   <span className="w-5 shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">{b.count}</span>
@@ -163,8 +164,8 @@ export function WorkBreakdownWidget({ allTasks, month, userId }: Props) {
                         <span className="w-20 shrink-0 truncate text-xs text-muted-foreground" title={s.label}>{s.label}</span>
                         <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted/60">
                           <div
-                            className="h-full rounded-full bg-[hsl(263_70%_55%)]/60"
-                            style={{ width: `${Math.max(6, (s.count / b.count) * 100)}%` }}
+                            className="h-full rounded-full opacity-60"
+                            style={{ width: `${Math.max(6, (s.count / b.count) * 100)}%`, background: brandGradientCss(90) }}
                           />
                         </div>
                         <span className="w-4 shrink-0 text-right text-xs font-medium tabular-nums text-muted-foreground">{s.count}</span>

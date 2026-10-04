@@ -1,5 +1,5 @@
 import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -39,6 +39,7 @@ const ProjetosPanel = lazy(() => import("@/features/projetos/ProjetosPanel").the
 const RecompensasPanel = lazy(() => import("@/features/recompensas/RecompensasPanel").then((m) => ({ default: m.RecompensasPanel })));
 const ConversasPanel = lazy(() => import("@/features/conversas/ConversasPanel").then((m) => ({ default: m.ConversasPanel })));
 const ComercialPanel = lazy(() => import("@/features/admin/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
+const ClientesPanel = lazy(() => import("@/features/clientes/ClientesPanel").then((m) => ({ default: m.ClientesPanel })));
 const AjudaPanel = lazy(() => import("@/features/ajuda/AjudaPanel").then((m) => ({ default: m.AjudaPanel })));
 
 function PanelLoadingFallback() {
@@ -99,7 +100,10 @@ const Index = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const handler = () => navigate(tabPath("calendario_publicacao"));
+    const handler = (e: Event) => {
+      const clientId = (e as CustomEvent<{ clientId?: string }>).detail?.clientId;
+      navigate(clientId ? `${tabPath("clientes", { clienteId: clientId })}?secao=cronograma` : tabPath("clientes"));
+    };
     window.addEventListener("open-calendario-publicacao", handler);
     return () => window.removeEventListener("open-calendario-publicacao", handler);
   }, [navigate]);
@@ -313,7 +317,7 @@ const Index = () => {
         </Card>
       );
     }
-    if (isGestaoTab)
+    if (isGestaoTab && tab !== "calendario_publicacao")
       return (
         <GestaoPanel
           forcedView={gestaoView}
@@ -335,6 +339,11 @@ const Index = () => {
       );
     if (tab === "conversas" && isAdmin) return <ConversasPanel />;
     if (tab === "comercial" && canSeeComercial) return <ComercialPanel />;
+    // Cronograma e Resultados viraram seções dentro de Clientes — links antigos caem lá.
+    if (tab === "resultados" || tab === "calendario_publicacao") return <Navigate to="/clientes" replace />;
+    if (tab === "clientes") {
+      return <ClientesPanel clienteId={clienteId ?? null} onClienteChange={(id) => navigate(tabPath("clientes", { clienteId: id }))} />;
+    }
     if (tab === "financeiro" && canSeeFinanceiro) return <FinanceiroPanel />;
     if (tab === "fin_clientes" && canSeeFinanceiro) return <AdminContainer onNavigate={(t) => navigate(tabPath(t as MainTab))} />;
     if (tab === "fin_receitas_despesas" && canSeeFinanceiro) return <FinReceitasDespesasTab />;

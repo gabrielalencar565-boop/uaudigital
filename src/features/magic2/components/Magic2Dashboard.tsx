@@ -85,7 +85,7 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
       <div className={cn("flex items-center justify-center w-full", fullscreen ? "flex-1 min-h-0" : "")}>
         <ProgressRing
           value={pct}
-          tone={pct === 100 ? "success" : "warning"}
+
           size={ringSize}
           stroke={strokeWidth}
           className={cn("animate-fade-in", fullscreen ? "max-w-full max-h-full" : "max-w-full")}
@@ -143,7 +143,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <CardContent className="relative z-10 grid place-items-center p-4 pb-6">
             <ProgressRing
               value={dashboard.overallPct}
-              tone={dashboard.overallPct === 100 ? "success" : "warning"}
+
               size={200}
               stroke={16}
               trackColor="hsl(var(--brand-glow-4) / 0.45)"
@@ -207,7 +207,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         <CardContent className="relative z-10 flex-1 flex items-center justify-center p-6">
           <ProgressRing
             value={dashboard.overallPct}
-            tone={dashboard.overallPct === 100 ? "success" : "warning"}
+
             size={fullscreen ? 400 : 340}
             stroke={fullscreen ? 30 : 28}
             trackColor="hsl(var(--brand-glow-4) / 0.45)"

@@ -1,6 +1,7 @@
 import { AlertOctagon, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STAGES } from "@/lib/uau";
+import { brandGradientCss } from "@/lib/brand-gradient";
 
 interface Props {
   pendingByStage: Record<string, number>;
@@ -73,10 +74,8 @@ export function BottleneckWidget({ pendingByStage }: Props) {
                   className="h-full rounded-full transition-all duration-700 ease-out"
                   style={{
                     width: `${pct}%`,
-                    background: isTop
-                      ? "linear-gradient(90deg, hsl(35 92% 50%), hsl(0 84% 60%))"
-                      : "linear-gradient(90deg, hsl(var(--sidebar) / 0.5), hsl(var(--sidebar) / 0.3))",
-                    boxShadow: isTop ? "0 0 8px rgba(245,158,11,0.3)" : "none",
+                    background: brandGradientCss(90),
+                    boxShadow: isTop ? "0 0 8px rgba(109,60,240,0.3)" : "none",
                   }}
                 />
               </div>

@@ -16,7 +16,7 @@ export function MeuPainelMagicNumberCard() {
         value={dashboard.overallPct}
         size={108}
         stroke={9}
-        tone={dashboard.overallPct === 100 ? "success" : "warning"}
+
         trackColor="rgba(255,255,255,0.2)"
         label={
           <div className="text-center">

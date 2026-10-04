@@ -15,16 +15,16 @@ import {
 } from "recharts";
 import { getStagesForRoles } from "@/lib/role-stage-mapping";
 import { useMagicNumberConfig } from "@/features/data/queries";
+import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 
 const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
 const STAGE_LABELS: Record<string, string> = {
   planejamento: "Planejamento", captacao: "Captação", edicao_videos: "Vídeo",
   design: "Design", pdf: "PDF", alteracoes: "Alterações", agendamento: "Agendamento",
 };
-const STAGE_COLORS: Record<string, string> = {
-  planejamento: "#8B5CF6", captacao: "#3B82F6", edicao_videos: "#06B6D4",
-  design: "#EC4899", pdf: "#F59E0B", alteracoes: "#EF4444", agendamento: "#10B981",
-};
+const STAGE_COLORS: Record<string, string> = Object.fromEntries(
+  STAGE_ORDER.map((k, i) => [k, brandSeriesColor(i)]),
+);
 
 // Cargo → etapas agora vem de uma única fonte (src/lib/role-stage-mapping.ts) — esta
 // cópia local tinha nomes e regras divergentes (ex.: "videomaker" em vez de "Editor de
@@ -43,12 +43,6 @@ function getRoleLabel(roleTitle: string | undefined | null): string {
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
-}
-
-function progressColor(percent: number): string {
-  if (percent >= 100) return "#10B981"; // green
-  if (percent >= 50) return "#F59E0B"; // yellow
-  return "#EF4444"; // red
 }
 
 interface SquadDashboardDialogProps {
@@ -326,7 +320,6 @@ export function SquadDashboardDialog({
             const medal = idx < 3 ? medals[idx] : null;
             const barWidth = maxCompleted > 0 ? Math.round((m.completed / maxCompleted) * 100) : 0;
             const isTop = idx === 0 && m.completed > 0;
-            const barColor = progressColor(m.percent);
 
             return (
               <div
@@ -365,7 +358,7 @@ export function SquadDashboardDialog({
                       <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${barWidth}%`, backgroundColor: barColor }}
+                          style={{ width: `${barWidth}%`, background: brandGradientCss(90) }}
                         />
                       </div>
                     </div>
@@ -429,7 +422,6 @@ export function SquadDashboardDialog({
       {!clientsCollapsed && (
         <div className={cn("space-y-2", "pl-12")}>
           {clientPerformance.map(c => {
-            const color = progressColor(c.percent);
             return (
               <div key={c.clientId} className="flex items-center gap-3 rounded-xl border border-border/20 px-4 py-3 hover:border-border/40 transition-all">
                 <div className="flex-1 min-w-0">
@@ -453,10 +445,10 @@ export function SquadDashboardDialog({
                     <div className="flex-1 h-1.5 rounded-full bg-border/20 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${c.percent}%`, backgroundColor: color }}
+                        style={{ width: `${c.percent}%`, background: brandGradientCss(90) }}
                       />
                     </div>
-                    <span className="text-xs font-bold shrink-0" style={{ color }}>{c.percent}%</span>
+                    <span className="text-xs font-bold shrink-0 text-foreground">{c.percent}%</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -540,7 +532,7 @@ export function SquadDashboardDialog({
                       <div className="flex-1 h-2 rounded-full bg-border/20 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${bottleneck.percent}%`, backgroundColor: STAGE_COLORS[bottleneck.key] }}
+                          style={{ width: `${bottleneck.percent}%`, background: brandGradientCss(90) }}
                         />
                       </div>
                       <span className="text-xs font-bold" style={{ color: STAGE_COLORS[bottleneck.key] }}>{bottleneck.percent}%</span>

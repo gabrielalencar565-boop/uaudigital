@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-
-const DONUT_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9", "#5b21b6", "#ddd6fe", "#ede9fe"];
+import { brandSeriesColor } from "@/lib/brand-gradient";
 
 const CATEGORY_LABELS: Record<string, string> = {
   receita_recorrente: "Receita Recorrente", receita_variavel: "Receita Variável", receita_outros: "Receita Outros",
@@ -48,7 +47,7 @@ export function FinAnnualCharts({ transactions }: Props) {
                       cornerRadius={8}
                     >
                       {categoryData.map((_, idx) => (
-                        <Cell key={idx} fill={DONUT_COLORS[idx % DONUT_COLORS.length]} />
+                        <Cell key={idx} fill={brandSeriesColor(idx)} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
@@ -62,7 +61,7 @@ export function FinAnnualCharts({ transactions }: Props) {
               <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-4">
                 {categoryData.map((d, idx) => (
                   <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandSeriesColor(idx) }} />
                     <span className="text-muted-foreground">{d.name}</span>
                     <span className="font-bold">{totalExpDonut > 0 ? ((d.value / totalExpDonut) * 100).toFixed(0) : 0}%</span>
                   </div>

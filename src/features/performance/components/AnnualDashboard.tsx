@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
+import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -40,15 +41,6 @@ const CRITERIA = [
   { key: "comprometimento" as const, label: "Responsabilidade", max: 4 },
   { key: "ambiente_organizado" as const, label: "Organização", max: 3 },
   { key: "aprendizado_continuo" as const, label: "Aprendizado", max: 3 },
-];
-
-const PURPLE_COLORS = [
-  "#8B5CF6",
-  "#A78BFA",
-  "#7C3AED",
-  "#C4B5FD",
-  "#6D28D9",
-  "#DDD6FE",
 ];
 
 function totalPoints(s: ScoreRow) {
@@ -189,7 +181,7 @@ export function AnnualDashboard({
                 value={Math.min(kpis.consistencyPct, 100)}
                 size={70}
                 stroke={8}
-                tone={kpis.consistencyPct >= 70 ? "success" : kpis.consistencyPct >= 40 ? "warning" : "danger"}
+
                 label={<span className="text-lg font-bold">{Math.round(kpis.consistencyPct)}%</span>}
               />
             </CardContent>
@@ -208,8 +200,8 @@ export function AnnualDashboard({
               <defs>
                 {topUsersForChart.map((u, idx) => (
                   <linearGradient key={u.user_id} id={`grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PURPLE_COLORS[idx % PURPLE_COLORS.length]} stopOpacity={0.45} />
-                    <stop offset="100%" stopColor={PURPLE_COLORS[idx % PURPLE_COLORS.length]} stopOpacity={0.03} />
+                    <stop offset="0%" stopColor={brandSeriesColor(idx)} stopOpacity={0.45} />
+                    <stop offset="100%" stopColor={brandSeriesColor(idx)} stopOpacity={0.03} />
                   </linearGradient>
                 ))}
               </defs>
@@ -258,7 +250,7 @@ export function AnnualDashboard({
                   type="monotone"
                   dataKey={u.user_id}
                   name={u.display_name?.split(" ")[0] ?? "?"}
-                  stroke={PURPLE_COLORS[idx % PURPLE_COLORS.length]}
+                  stroke={brandSeriesColor(idx)}
                   strokeWidth={2}
                   fill={`url(#grad-${idx})`}
                   dot={(props: any) => {
@@ -276,7 +268,7 @@ export function AnnualDashboard({
                             <circle cx={cx} cy={cy} r={r} />
                           </clipPath>
                         </defs>
-                        <circle cx={cx} cy={cy} r={r + 1} fill={PURPLE_COLORS[idx % PURPLE_COLORS.length]} />
+                        <circle cx={cx} cy={cy} r={r + 1} fill={brandSeriesColor(idx)} />
                         {avatarHref ? (
                           <image
                             href={avatarHref}
@@ -298,7 +290,7 @@ export function AnnualDashboard({
                       </g>
                     );
                   }}
-                  activeDot={{ r: 14, strokeWidth: 2, stroke: PURPLE_COLORS[idx % PURPLE_COLORS.length] }}
+                  activeDot={{ r: 14, strokeWidth: 2, stroke: brandSeriesColor(idx) }}
                   connectNulls
                 />
               ))}
@@ -329,7 +321,7 @@ export function AnnualDashboard({
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, background: "linear-gradient(90deg, #7C3AED, #A78BFA)" }}
+                        style={{ width: `${pct}%`, background: brandGradientCss(90) }}
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{member?.display_name?.split(" ")[0] ?? "—"}</p>

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Trophy, ListChecks, Award, Check, Lock, Medal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { brandGradientCss } from "@/lib/brand-gradient";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -140,8 +141,8 @@ export function RewardsTimeline({ userId }: { userId: string }) {
                 {/* Track */}
                 <div className="relative mx-0 h-2 rounded-full bg-white/15">
                   <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[hsl(160_70%_55%)] to-[hsl(150_75%_50%)] shadow-[0_0_12px_hsl(160_70%_55%/0.6)] transition-all duration-700 ease-out"
-                    style={{ width: `${fillPct}%` }}
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${fillPct}%`, background: brandGradientCss(90), boxShadow: "0 0 12px rgba(109,60,240,0.5)" }}
                   />
                 </div>
 
@@ -165,7 +166,7 @@ export function RewardsTimeline({ userId }: { userId: string }) {
                                     className={cn(
                                       "relative grid h-11 w-11 place-items-center rounded-full border-2 transition-all duration-300",
                                       achieved
-                                        ? "border-white bg-white text-[hsl(263_70%_45%)] shadow-[0_0_14px_hsl(160_70%_55%/0.7)]"
+                                        ? "border-white bg-white text-[hsl(263_70%_45%)] shadow-[0_0_14px_rgba(109,60,240,0.5)]"
                                         : isNext
                                           ? "border-white bg-white/95 text-[hsl(263_70%_45%)] ring-2 ring-white/60 ring-offset-2 ring-offset-[hsl(263_70%_50%)]"
                                           : "border-white/45 bg-white/10 text-white/60 backdrop-blur-sm group-hover:border-white/80",

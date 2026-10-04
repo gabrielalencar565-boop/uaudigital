@@ -144,7 +144,7 @@ export function FinReceitasDespesasTab() {
             value={revTotal > 0 ? revProgress : 0}
             size={90}
             stroke={8}
-            tone={revProgress >= 100 ? "success" : revProgress >= 50 ? "primary" : "warning"}
+
             label={<AnimatedNumber value={revPaid} className="text-2xl font-bold" glow={false} />}
           />
         </Card>
@@ -154,7 +154,7 @@ export function FinReceitasDespesasTab() {
             value={Math.min(Math.abs(margemLucro), 100)}
             size={90}
             stroke={8}
-            tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
+
             label={<AnimatedNumber value={Math.round(margemLucro)} suffix="%" className={`text-xl font-bold ${margemLucro >= 0 ? "text-success" : "text-destructive"}`} glow={false} />}
           />
         </Card>

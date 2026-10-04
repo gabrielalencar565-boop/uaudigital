@@ -8,6 +8,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { brandSeriesColor } from "@/lib/brand-gradient";
 type TeamMemberLite = {
   user_id: string;
   display_name: string;
@@ -80,9 +81,9 @@ export function Top3CompetencyRadar({
 
   const config = useMemo(
     () => ({
-      u1: { label: series[0]?.name ?? "Top 1", color: "hsl(var(--primary))" },
-      u2: { label: series[1]?.name ?? "Top 2", color: "hsl(var(--brand))" },
-      u3: { label: series[2]?.name ?? "Top 3", color: "hsl(var(--accent))" },
+      u1: { label: series[0]?.name ?? "Top 1", color: brandSeriesColor(0) },
+      u2: { label: series[1]?.name ?? "Top 2", color: brandSeriesColor(1) },
+      u3: { label: series[2]?.name ?? "Top 3", color: brandSeriesColor(2) },
     }),
     [series],
   );

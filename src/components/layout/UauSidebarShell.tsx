@@ -3,7 +3,7 @@ import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, CircleHelp, ClipboardList, DollarSign,
   Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
-  UserRound, Users, Workflow, CalendarRange, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
+  UserRound, Users, Workflow, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
   "lucide-react";
 import { toast } from "sonner";
 import { useAppSettings } from "@/features/data/queries";
@@ -57,6 +57,8 @@ export type MainTab =
 "fin_lancamentos" |
 "conversas" |
 "comercial" |
+"resultados" |
+"clientes" |
 "ajuda" |
 "configuracoes";
 
@@ -84,7 +86,7 @@ const NAV: NavEntry[] = [
 
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
 { key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
-{ key: "calendario_publicacao", label: "Cronograma", icon: CalendarRange },
+{ key: "clientes", label: "Clientes", icon: Users },
 { key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
 { key: "magic2", label: "Magic Number", icon: Target },
 { key: "desempenho", label: "The Best", icon: Trophy },
@@ -113,7 +115,7 @@ export function UauSidebarShell({
   onTabChange,
   isAdmin,
   canSeeFinanceiro,
-  canSeeComercial
+  canSeeComercial,
 
 
 
