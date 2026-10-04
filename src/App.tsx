@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CronogramaPublic from "./pages/CronogramaPublic";
 import AprovacaoPublic from "./pages/AprovacaoPublic";
+import RelatorioPublic from "./pages/RelatorioPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import InstagramCallback from "./pages/InstagramCallback";
@@ -40,6 +41,7 @@ function AppRoutes() {
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
+        <Route path="/relatorio/:token" element={<RelatorioPublic />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />
         <Route path="/exclusao-de-dados" element={<DataDeletion />} />
         <Route

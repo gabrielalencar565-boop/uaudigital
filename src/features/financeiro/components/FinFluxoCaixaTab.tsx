@@ -8,25 +8,11 @@ import {
 } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
+import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
+import { brandSeriesColor } from "@/lib/brand-gradient";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Users } from "lucide-react";
 
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-const EXPENSE_COLORS: Record<string, string> = {
-  "Receita Recorrente": "#22c55e",
-  "Receita Variável": "#4ade80",
-  "Receita Outros": "#86efac",
-  "Impostos": "#64748b",
-  "Despesas Operacional": "#ef4444",
-  "Despesas Administrativas": "#f97316",
-  "Despesas Financeiras": "#6b7280",
-  "Despesas Comerciais": "#eab308",
-  "Despesas Outros": "#94a3b8",
-  "Despesas Variáveis": "#8b5cf6",
-  "Investimentos": "#3b82f6",
-};
-
-const DONUT_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9", "#5b21b6", "#ddd6fe", "#ede9fe"];
 
 interface FinFluxoCaixaProps {
   externalMonth?: number;
@@ -41,6 +27,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
   const month = externalMonth ?? internalMonth;
   const hasExternal = externalMonth !== undefined;
 
+  const ids = useBrandGradientIds();
   const clientsQ = useFinClients();
   const transactionsQ = useFinAllTransactions(year);
   const revenuesQ = useFinAllRevenues(year);
@@ -154,7 +141,6 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions, month]);
   const totalRevDonut = revenueData.reduce((s, d) => s + d.value, 0);
-  const REVENUE_DONUT_COLORS = ["#22c55e", "#4ade80", "#86efac", "#16a34a", "#15803d", "#166534", "#bbf7d0", "#dcfce7"];
 
   // Category breakdown (donut) - expense only
   const categoryData = useMemo(() => {
@@ -187,39 +173,6 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
 
   const fmt = (v: number) => `R$ ${Math.abs(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
-  // Custom bar shape with gradient
-  const GradientBar = (props: any) => {
-    const { x, y, width, height, index } = props;
-    const id = `barGrad-${index}`;
-    return (
-      <g>
-        <defs>
-          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={1} />
-            <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
-          </linearGradient>
-        </defs>
-        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
-      </g>
-    );
-  };
-
-  const GradientBarRed = (props: any) => {
-    const { x, y, width, height, index } = props;
-    const id = `barGradR-${index}`;
-    return (
-      <g>
-        <defs>
-          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.9} />
-            <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
-          </linearGradient>
-        </defs>
-        <rect x={x} y={y} width={width} height={height} rx={6} ry={6} fill={`url(#${id})`} />
-      </g>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {!hasExternal && (
@@ -250,7 +203,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
             value={Math.min(Math.abs(margemLucro), 100)}
             size={90}
             stroke={8}
-            tone={margemLucro >= 20 ? "success" : margemLucro >= 0 ? "warning" : "danger"}
+
             label={<span className={`text-xl font-bold ${margemLucro >= 0 ? "" : "text-destructive"}`}>{margemLucro.toFixed(0)}%</span>}
           />
         </Card>
@@ -265,6 +218,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={barData} barGap={4}>
+                {brandChartDefs(ids)}
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                 <XAxis dataKey="month" className="text-xs" axisLine={false} tickLine={false} />
                 <YAxis className="text-xs" axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
@@ -273,8 +227,8 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                   contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }}
                 />
-                <Bar dataKey="receita" name="Receita" shape={<GradientBar />} barSize={18} />
-                <Bar dataKey="despesa" name="Despesa" shape={<GradientBarRed />} barSize={18} />
+                <Bar dataKey="receita" name="Receita" fill={`url(#${ids.v})`} radius={[6, 6, 6, 6]} barSize={18} />
+                <Bar dataKey="despesa" name="Despesa" fill={brandSeriesColor(2)} radius={[6, 6, 6, 6]} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -296,7 +250,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                         cornerRadius={8}
                       >
                         {categoryData.map((_, idx) => (
-                          <Cell key={idx} fill={DONUT_COLORS[idx % DONUT_COLORS.length]} />
+                          <Cell key={idx} fill={brandSeriesColor(idx)} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
@@ -311,7 +265,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-4">
                   {categoryData.map((d, idx) => (
                     <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandSeriesColor(idx) }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="font-bold">{totalExpDonut > 0 ? ((d.value / totalExpDonut) * 100).toFixed(0) : 0}%</span>
                     </div>
@@ -340,7 +294,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                         cornerRadius={8}
                       >
                         {revenueData.map((_, idx) => (
-                          <Cell key={idx} fill={REVENUE_DONUT_COLORS[idx % REVENUE_DONUT_COLORS.length]} />
+                          <Cell key={idx} fill={brandSeriesColor(idx)} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
@@ -354,7 +308,7 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-4">
                   {revenueData.map((d, idx) => (
                     <div key={d.name} className="flex items-center gap-1.5 text-[11px]">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REVENUE_DONUT_COLORS[idx % REVENUE_DONUT_COLORS.length] }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandSeriesColor(idx) }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="font-bold">{totalRevDonut > 0 ? ((d.value / totalRevDonut) * 100).toFixed(0) : 0}%</span>
                     </div>

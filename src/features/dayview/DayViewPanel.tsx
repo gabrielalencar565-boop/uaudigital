@@ -17,6 +17,7 @@ import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { STAGES } from "@/lib/uau";
 import { cn } from "@/lib/utils";
+import { brandGradientCss } from "@/lib/brand-gradient";
 import { RefreshCw, Calendar, Target, RotateCcw, Trophy, ArrowUp, ArrowDown, SprayCan, CheckCircle2, Zap, Maximize, Minimize } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1298,7 +1299,7 @@ export function DayViewPanel() {
                         <span className="w-14 text-center shrink-0 text-sm font-semibold text-warning">{pending}</span>
                         <div className="flex-1 min-w-0">
                           <div className="relative w-full rounded-full bg-muted/50 overflow-hidden h-6">
-                            <div className="absolute inset-y-0 left-0 rounded-full bg-success transition-all duration-500" style={{ width: `${row.completionPct}%` }} />
+                            <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${row.completionPct}%`, background: brandGradientCss(90) }} />
                             <div className="absolute inset-0 flex items-center justify-end pr-3">
                               <span className="font-bold tabular-nums text-foreground text-xs">{row.completionPct}%</span>
                             </div>
@@ -1326,7 +1327,14 @@ export function DayViewPanel() {
                         <div className="relative w-10 h-10 shrink-0">
                           <svg viewBox="0 0 36 36" className="h-10 w-10 -rotate-90">
                             <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-                            <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--success))" strokeWidth="3" strokeDasharray={`${row.completionPct * 0.9425} 94.25`} strokeLinecap="round" />
+                            <defs>
+                              <linearGradient id={`dv-ring-${row.user_id}`} x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor="#6d3cf0" />
+                                <stop offset="55%" stopColor="#c86be6" />
+                                <stop offset="100%" stopColor="#f5b27a" />
+                              </linearGradient>
+                            </defs>
+                            <circle cx="18" cy="18" r="15" fill="none" stroke={`url(#dv-ring-${row.user_id})`} strokeWidth="3" strokeDasharray={`${row.completionPct * 0.9425} 94.25`} strokeLinecap="round" />
                           </svg>
                           <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{row.completionPct}%</span>
                         </div>

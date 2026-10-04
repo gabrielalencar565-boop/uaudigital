@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Loader2, X, FileVideo } from "lucide-react";
 import { useGlobalUploads, removeGlobalUpload } from "@/lib/upload-tray-store";
+import { brandGradientCss } from "@/lib/brand-gradient";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -55,8 +56,8 @@ export function GlobalUploadTray() {
                 {item.status === "uploading" && (
                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${item.progress}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${item.progress}%`, background: brandGradientCss(90) }}
                     />
                   </div>
                 )}

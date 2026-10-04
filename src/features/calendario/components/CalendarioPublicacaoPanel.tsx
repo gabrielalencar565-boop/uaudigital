@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,6 +38,8 @@ interface Props {
   onOpenTask: (taskId: string) => void;
   focusRequest?: { clientId: string; cycleStart: string; publicationId: string } | null;
   onFocusHandled?: () => void;
+  // Embedded mode (Clientes tab): the client is chosen outside, so there's no client grid / "Voltar" button.
+  fixedClientId?: string;
 }
 
 // Grid/list/feed cards only ever show a post's cover at a few hundred px — the originals
@@ -48,7 +50,7 @@ interface Props {
 // full-resolution PublicationPreviewPanel reads attachments separately and is never touched
 // by this, since it's applied only at the point each grid helper reads out a `.url`.
 const STORAGE_OBJECT_PATH = "/storage/v1/object/public/";
-function toGridThumbUrl(url: string): string {
+export function toGridThumbUrl(url: string): string {
   // Drive-hosted images (drive-file-proxy) are intentionally NOT resized here — an earlier
   // attempt to add server-side resizing to that function crashed on large real photos
   // (WORKER_RESOURCE_LIMIT decoding a 6.5MB JPEG in the edge runtime), so it was reverted.
@@ -63,39 +65,54 @@ function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-function anchorForDate(d: Date, day: number) {
+export function anchorForDate(d: Date, day: number) {
   return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
-function cycleEnd(anchor: Date, day: number) {
+export function cycleEnd(anchor: Date, day: number) {
   return new Date(anchor.getFullYear(), anchor.getMonth(), day);
 }
-function cycleStart(anchor: Date, day: number) {
+export function cycleStart(anchor: Date, day: number) {
   const end = cycleEnd(anchor, day);
   return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
-function describeInstagramRisk(r: ClientInstagramRisk): string {
-  const parts: string[] = [];
+type RiskPart = { text: string; severity: "error" | "warn" };
+
+function instagramRiskParts(r: ClientInstagramRisk): RiskPart[] {
+  const parts: RiskPart[] = [];
   if (r.notConnectedCount > 0) {
-    parts.push(`${r.notConnectedCount} publicaç${r.notConnectedCount > 1 ? "ões" : "ão"} agendada${r.notConnectedCount > 1 ? "s" : ""} sem Instagram conectado`);
+    parts.push({ text: `${r.notConnectedCount} publicaç${r.notConnectedCount > 1 ? "ões" : "ão"} agendada${r.notConnectedCount > 1 ? "s" : ""} sem Instagram conectado`, severity: "warn" });
   }
   if (r.failedCount > 0) {
-    parts.push(`${r.failedCount} falha${r.failedCount > 1 ? "s" : ""} ao publicar`);
+    parts.push({ text: `${r.failedCount} falha${r.failedCount > 1 ? "s" : ""} ao publicar`, severity: "error" });
   }
   if (r.unsupportedCount > 0) {
-    parts.push(`${r.unsupportedCount} agendada${r.unsupportedCount > 1 ? "s" : ""} num tipo que não sai sozinho (Outro)`);
+    parts.push({ text: `${r.unsupportedCount} agendada${r.unsupportedCount > 1 ? "s" : ""} num tipo que não sai sozinho (Outro)`, severity: "warn" });
   }
   if (r.tokenExpiresInDays !== null) {
-    parts.push(r.tokenExpiresInDays === 0 ? "acesso ao Instagram expira hoje" : `acesso ao Instagram expira em ${r.tokenExpiresInDays} dia${r.tokenExpiresInDays > 1 ? "s" : ""}`);
+    parts.push({ text: r.tokenExpiresInDays === 0 ? "acesso ao Instagram expira hoje" : `acesso ao Instagram expira em ${r.tokenExpiresInDays} dia${r.tokenExpiresInDays > 1 ? "s" : ""}`, severity: "warn" });
   }
-  return parts.join(" · ");
+  return parts;
+}
+
+function RiskPills({ risk }: { risk: ClientInstagramRisk }) {
+  return (
+    <>
+      {instagramRiskParts(risk).map((part) => (
+        <span key={part.text} className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground">
+          <span className={cn("h-1.5 w-1.5 rounded-full", part.severity === "error" ? "bg-destructive" : "bg-amber-400")} />
+          {part.text}
+        </span>
+      ))}
+    </>
+  );
 }
 
 // Maps the 4 calendar_status values to the badge shown on the client card in the
 // sidebar — label matches CALENDAR_STATUS_LABELS exactly, key is just the status
 // itself, used to match against STATUS_FILTERS below.
-const CLIENT_CARD_STATUS: Record<string, { key: string; label: string; className: string }> = {
+export const CLIENT_CARD_STATUS: Record<string, { key: string; label: string; className: string }> = {
   em_montagem: { key: "em_montagem", label: "Em montagem", className: "bg-muted text-muted-foreground" },
   enviado_ao_cliente: { key: "enviado_ao_cliente", label: "Enviado ao cliente", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
   alteracoes_solicitadas: { key: "alteracoes_solicitadas", label: "Alterações solicitadas", className: "bg-destructive/15 text-destructive" },
@@ -253,9 +270,33 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
   );
 }
 
-export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled }: Props) {
+export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled, fixedClientId }: Props) {
   const { day: magicDay } = useMagicNumberConfig();
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(fixedClientId ?? null);
+  useEffect(() => {
+    if (fixedClientId) setClientId(fixedClientId);
+  }, [fixedClientId]);
+
+  // O dock flutuante (modo embutido) centraliza na área de conteúdo, não na janela inteira:
+  // mede o painel e acompanha mudanças de largura (ex.: recolher a sidebar).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [dockX, setDockX] = useState<number | null>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!fixedClientId || !el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      setDockX(r.left + r.width / 2);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [fixedClientId]);
   const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -763,9 +804,24 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const cycleMonthLabel = cycleMonthRaw.charAt(0).toUpperCase() + cycleMonthRaw.slice(1);
   const cycleRangeLabel = `${format(cycleStart(cursor, magicDay), "dd/MM")} a ${format(cycleEnd(cursor, magicDay), "dd/MM")}`;
 
+  const cycleNav = (
+    <div className={cn("flex w-fit items-center gap-1 p-1", !fixedClientId && "rounded-2xl border border-border/30 bg-muted/20 p-2")}>
+      <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+      <span className="min-w-[10.5rem] truncate text-center text-xs font-medium">
+        {cycleMonthLabel} ({cycleRangeLabel})
+      </span>
+      <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    <div ref={rootRef} className="space-y-4">
       {/* Top: back/title + filters + cycle nav */}
+      {!fixedClientId && (
       <div className="flex flex-wrap items-center justify-between gap-2">
         {clientId ? (
           <button
@@ -782,43 +838,44 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           </div>
         )}
 
-        <div className="flex w-fit items-center gap-1 rounded-2xl border border-border/30 bg-muted/20 p-2">
-          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <span className="flex-1 truncate text-center text-xs font-medium">
-            {cycleMonthLabel} ({cycleRangeLabel})
-          </span>
-          <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        {cycleNav}
       </div>
+      )}
 
       {!clientId && instagramRisks.length > 0 && (
-        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="text-sm font-semibold text-destructive">
-              {instagramRisks.length === 1 ? "1 cliente" : `${instagramRisks.length} clientes`} com risco de publicação agendada não sair sozinha no Instagram
-            </p>
-            <div className="space-y-1">
-              {instagramRisks.map((r) => (
+        <div className="rounded-2xl border border-border/40 bg-card p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {instagramRisks.length === 1 ? "1 cliente precisa" : `${instagramRisks.length} clientes precisam`} de atenção
+              </p>
+              <p className="text-xs text-muted-foreground">Publicações agendadas podem não sair sozinhas no Instagram.</p>
+            </div>
+          </div>
+          <ul className="mt-3 divide-y divide-border/40">
+            {instagramRisks.map((r) => (
+              <li key={r.clientId}>
                 <button
-                  key={r.clientId}
                   type="button"
                   onClick={() => {
                     setClientId(r.clientId);
                     if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate), magicDay));
                     if (r.firstProblemPublicationId) setSelectedId(r.firstProblemPublicationId);
                   }}
-                  className="block text-left text-xs text-destructive/90 underline-offset-2 hover:underline"
+                  className="group flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left"
                 >
-                  <span className="font-medium">{r.clientName}</span> — {describeInstagramRisk(r)}
+                  <span className="min-w-[9rem] truncate text-sm font-medium">{r.clientName}</span>
+                  <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                    <RiskPills risk={r} />
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
                 </button>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -975,25 +1032,54 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             setSelectedId(id);
           }}
           className={cn(
-            "flex w-full items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-left",
-            currentClientRisk.firstProblemPublicationId && "cursor-pointer transition-colors hover:bg-destructive/10",
+            "group flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3 text-left",
+            currentClientRisk.firstProblemPublicationId ? "cursor-pointer transition-colors hover:bg-muted/30" : "cursor-default",
           )}
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-          <p className="text-xs text-destructive/90">
-            <span className="font-semibold">Atenção:</span> {describeInstagramRisk(currentClientRisk)}.
-            {currentClientRisk.notConnectedCount > 0 && " Conecte o Instagram do cliente pra essas publicações saírem."}
-            {currentClientRisk.firstProblemPublicationId && " Clique para abrir a publicação."}
-          </p>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="text-sm font-semibold">Atenção no Instagram</p>
+            <div className="flex flex-wrap gap-1.5">
+              <RiskPills risk={currentClientRisk} />
+            </div>
+            {currentClientRisk.notConnectedCount > 0 && (
+              <p className="text-xs text-muted-foreground">Conecte o Instagram do cliente para essas publicações saírem.</p>
+            )}
+          </div>
+          {currentClientRisk.firstProblemPublicationId && (
+            <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+              Abrir <ArrowUpRight className="h-3.5 w-3.5" />
+            </span>
+          )}
         </button>
       )}
 
-      {calendar && (
+      {(calendar || fixedClientId) && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/30 bg-muted/20 p-2.5">
+          {fixedClientId && cycleNav}
+          {calendar && (
+          <>
           {/* Status do ciclo + compartilhamento: metadados, peso visual discreto (ghost) pra não competir com as ações abaixo */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div
+            className={cn(
+              "flex items-center gap-1.5",
+              fixedClientId
+                ? "fixed bottom-6 z-40 -translate-x-1/2 gap-1 rounded-full border border-border/50 bg-background/80 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl"
+                : "flex-wrap",
+            )}
+            style={fixedClientId ? { left: dockX ?? "50%" } : undefined}
+          >
             <Select value={calendar.status} onValueChange={(v: CalendarStatus) => updateCalendarStatus.mutate({ id: calendar.id, status: v, clientId: clientId! })}>
-              <SelectTrigger className="h-9 w-auto gap-1.5 rounded-full border-0 bg-transparent text-sm font-medium shadow-none hover:bg-accent/50"><SelectValue /></SelectTrigger>
+              <SelectTrigger
+                className={cn(
+                  "h-9 w-auto gap-1.5 rounded-full border-0 bg-transparent text-sm font-medium shadow-none hover:bg-accent/50",
+                  fixedClientId && (CLIENT_CARD_STATUS[calendar.status]?.className ?? CLIENT_CARD_STATUS.em_montagem.className),
+                )}
+              >
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {Object.entries(CALENDAR_STATUS_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -1004,10 +1090,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <Popover open={shareOpen} onOpenChange={setShareOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full text-muted-foreground hover:text-foreground">
-                <Link2 className="h-3.5 w-3.5" /> Compartilhar
+                <Link2 className="h-3.5 w-3.5" /> {fixedClientId ? "Link do cliente" : "Compartilhar"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 space-y-3">
+            <PopoverContent align={fixedClientId ? "center" : "start"} side={fixedClientId ? "top" : undefined} className="w-80 space-y-3">
               <div className="flex items-center justify-between">
                 <Label htmlFor="share-toggle">Link ativo pro cliente</Label>
                 <Switch
@@ -1131,6 +1217,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </TabsList>
           </Tabs>
           </div>
+          </>
+          )}
         </div>
       )}
 

@@ -37,9 +37,13 @@ interface Props {
   onClick?: () => void;
   /** When this card doubles as a toggle filter — shows it as currently selected. */
   active?: boolean;
+  suffix?: string;
+  decimals?: number;
+  /** Small line under the number, e.g. a period-over-period delta. */
+  footer?: React.ReactNode;
 }
 
-export function MetricSparkCard({ label, value, icon, tone = "violet", description, onClick, active }: Props) {
+export function MetricSparkCard({ label, value, icon, tone = "violet", description, onClick, active, suffix, decimals, footer }: Props) {
   const t = TONE_STYLES[tone];
 
   return (
@@ -84,7 +88,8 @@ export function MetricSparkCard({ label, value, icon, tone = "violet", descripti
         </div>
         <div className="flex-1 min-w-0">
           <p className={cn("text-[11px] text-muted-foreground font-medium uppercase tracking-wider leading-tight line-clamp-2", description && "pr-5")}>{label}</p>
-          <AnimatedNumber value={value} className="text-2xl font-bold tabular-nums tracking-tight text-foreground mt-0.5" />
+          <AnimatedNumber value={value} suffix={suffix} decimals={decimals} className="text-2xl font-bold tabular-nums tracking-tight text-foreground mt-0.5" />
+          {footer && <div className="mt-0.5 text-xs">{footer}</div>}
         </div>
       </div>
     </div>

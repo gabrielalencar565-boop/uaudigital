@@ -4,7 +4,7 @@ import { setPendingCalendarioFocus } from "@/lib/pending-calendario-focus-store"
 
 // Shared by every place a task detail dialog can be opened (global search, Agenda,
 // Meu Painel, Visão do Dia, Relatório de prazos...): jumps straight to that task's
-// publication in the Cronograma, switching tabs first if needed. Mirrors the
+// publication in the client's Cronograma (Clientes tab), switching tabs first if needed. Mirrors the
 // "open-appeal-review" event used for the deadline report.
 export async function openTaskInCalendario(taskId: string) {
   const sb = supabase as any;
@@ -20,5 +20,5 @@ export async function openTaskInCalendario(taskId: string) {
     return;
   }
   setPendingCalendarioFocus({ clientId: cal.client_id, cycleStart: cal.cycle_start, publicationId: pub.id });
-  window.dispatchEvent(new Event("open-calendario-publicacao"));
+  window.dispatchEvent(new CustomEvent("open-calendario-publicacao", { detail: { clientId: cal.client_id } }));
 }

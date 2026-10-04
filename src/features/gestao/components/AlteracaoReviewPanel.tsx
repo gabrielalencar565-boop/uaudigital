@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
+import { brandSeriesColor } from "@/lib/brand-gradient";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -129,12 +130,12 @@ export function AlteracaoReviewPanel({ parentTask, childTasks, membersMap, readO
         </div>
         <div className="flex items-center gap-2">
           {approvedCount > 0 && (
-            <Badge className="bg-emerald-500/15 text-emerald-500 border-0 text-[10px] gap-1">
+            <Badge className="border-0 text-[10px] gap-1" style={{ backgroundColor: `${brandSeriesColor(0)}26`, color: brandSeriesColor(0) }}>
               <Check className="h-3 w-3" /> {approvedCount}
             </Badge>
           )}
           {alteracaoCount > 0 && (
-            <Badge className="bg-amber-500/15 text-amber-500 border-0 text-[10px] gap-1">
+            <Badge className="border-0 text-[10px] gap-1" style={{ backgroundColor: `${brandSeriesColor(1)}26`, color: brandSeriesColor(1) }}>
               <RotateCcw className="h-3 w-3" /> {alteracaoCount}
             </Badge>
           )}
@@ -150,10 +151,10 @@ export function AlteracaoReviewPanel({ parentTask, childTasks, membersMap, readO
       {isRevisao && (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted flex">
           {approvedCount > 0 && (
-            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(approvedCount / total) * 100}%` }} />
+            <div className="h-full transition-all" style={{ width: `${(approvedCount / total) * 100}%`, backgroundColor: brandSeriesColor(0) }} />
           )}
           {alteracaoCount > 0 && (
-            <div className="h-full bg-amber-500 transition-all" style={{ width: `${(alteracaoCount / total) * 100}%` }} />
+            <div className="h-full transition-all" style={{ width: `${(alteracaoCount / total) * 100}%`, backgroundColor: brandSeriesColor(1) }} />
           )}
         </div>
       )}

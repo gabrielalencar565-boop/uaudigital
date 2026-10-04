@@ -36,6 +36,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Toolti
 import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
 import { ChurnRiskModule } from "./ChurnRiskModule";
+import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 
 
 function initials(name: string) {
@@ -239,6 +240,7 @@ export function VisaoGeralTab() {
   const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
 
   const squads = squadsQ.data ?? [];
+  const squadBrandColor = (squadId: string) => brandSeriesColor(Math.max(0, squads.findIndex((s: any) => s.id === squadId)));
   const allSquadMembers = membersQ.data ?? [];
   const allClientSquads = clientSquadsQ.data ?? [];
   const allTeam = teamQ.data ?? [];
@@ -725,8 +727,8 @@ export function VisaoGeralTab() {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-white/90 transition-all duration-500"
-                          style={{ width: `${progress}%` }}
+                          className="h-full rounded-full ring-1 ring-white/40 transition-all duration-500"
+                          style={{ width: `${progress}%`, background: brandGradientCss(90) }}
                         />
                       </div>
                       <span className="text-xs font-medium text-white">{progress}%</span>
@@ -799,7 +801,7 @@ export function VisaoGeralTab() {
               <div className="flex flex-wrap gap-3">
                 {heatmapData.map((sq) => (
                   <div key={sq.id} className="flex items-center gap-1.5 text-xs">
-                    <div className="h-3 w-3 rounded-sm" style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}99)` }} />
+                    <div className="h-3 w-3 rounded-sm" style={{ background: `linear-gradient(135deg, ${squadBrandColor(sq.id)}, ${squadBrandColor(sq.id)}99)` }} />
                     <span className="font-medium text-foreground">{sq.name}</span>
                   </div>
                 ))}
@@ -826,8 +828,8 @@ export function VisaoGeralTab() {
                         <defs>
                           {heatmapData.map((sq) => (
                             <linearGradient key={sq.id} id={`grad-${sq.id}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={sq.color} stopOpacity={1} />
-                              <stop offset="100%" stopColor={sq.color} stopOpacity={0.45} />
+                              <stop offset="0%" stopColor={squadBrandColor(sq.id)} stopOpacity={1} />
+                              <stop offset="100%" stopColor={squadBrandColor(sq.id)} stopOpacity={0.45} />
                             </linearGradient>
                           ))}
                         </defs>
@@ -847,7 +849,7 @@ export function VisaoGeralTab() {
                                   const total = entry.payload[sq.id + "_total"] ?? 0;
                                   return (
                                     <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-                                      <div className="h-2.5 w-2.5 rounded-sm" style={{ background: `linear-gradient(135deg, ${sq.color}, ${sq.color}99)` }} />
+                                      <div className="h-2.5 w-2.5 rounded-sm" style={{ background: `linear-gradient(135deg, ${squadBrandColor(sq.id)}, ${squadBrandColor(sq.id)}99)` }} />
                                       <span className="text-muted-foreground">{sq.name}:</span>
                                       <span className="font-bold text-foreground">{entry.value}/{total} clientes</span>
                                     </div>
@@ -959,7 +961,7 @@ export function VisaoGeralTab() {
                           </div>
                         </div>
                         <div className="mt-3 h-2 rounded-full bg-border/20 overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sq.speed}%`, background: `linear-gradient(90deg, ${sq.color}, ${sq.color}88)` }} />
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sq.speed}%`, background: brandGradientCss(90) }} />
                         </div>
                         <div className="mt-2 flex items-center gap-4 text-[11px] text-muted-foreground">
                           <span>{sq.completedEtapas}/{sq.totalEtapas} etapas concluídas</span>
@@ -985,8 +987,8 @@ export function VisaoGeralTab() {
                         <defs>
                           {heatmapData.map((sq) => (
                             <linearGradient key={`area-${sq.id}`} id={`area-grad-${sq.id}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={sq.color} stopOpacity={0.3} />
-                              <stop offset="100%" stopColor={sq.color} stopOpacity={0.02} />
+                              <stop offset="0%" stopColor={squadBrandColor(sq.id)} stopOpacity={0.3} />
+                              <stop offset="100%" stopColor={squadBrandColor(sq.id)} stopOpacity={0.02} />
                             </linearGradient>
                           ))}
                         </defs>
@@ -1020,7 +1022,7 @@ export function VisaoGeralTab() {
                                     if (!sq) return null;
                                     return (
                                       <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-                                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: sq.color }} />
+                                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: squadBrandColor(sq.id) }} />
                                         <span className="text-muted-foreground">{sq.name}:</span>
                                         <span className="font-bold text-foreground">{entry.value}%</span>
                                       </div>
@@ -1036,7 +1038,7 @@ export function VisaoGeralTab() {
                             key={sq.id}
                             type="monotone"
                             dataKey={sq.id}
-                            stroke={sq.color}
+                            stroke={squadBrandColor(sq.id)}
                             strokeWidth={2.5}
                             fill={`url(#area-grad-${sq.id})`}
                             dot={false}
@@ -1051,7 +1053,7 @@ export function VisaoGeralTab() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {squadSpeedData.filter(s => s.hasData).map((sq) => (
                       <div key={sq.id} className="flex items-center gap-2 rounded-lg border border-border/30 px-3 py-2">
-                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: sq.color }} />
+                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: squadBrandColor(sq.id) }} />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-foreground truncate">{sq.name}</p>
                           <p className="text-[11px] text-muted-foreground">{sq.percentComplete}% concluído</p>

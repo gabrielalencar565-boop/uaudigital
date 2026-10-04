@@ -13,6 +13,8 @@ const SIMPLE_TAB_SLUGS: Partial<Record<MainTab, string>> = {
   desempenho: "the-best",
   recompensas: "uau-xp",
   comercial: "comercial",
+  resultados: "resultados",
+  clientes: "clientes",
   conversas: "conversas",
   ajuda: "ajuda",
   financeiro: "financeiro",
@@ -81,6 +83,8 @@ export function parseAppPath(pathname: string): ParsedAppPath {
     return { tab: "configuracoes" };
   }
 
+  if (first === "clientes") return { tab: "clientes", clienteId: second };
+
   if (first && first in GESTAO_SLUG_TO_TAB) {
     return { tab: GESTAO_SLUG_TO_TAB[first], taskId: second };
   }
@@ -104,6 +108,7 @@ export function tabPath(
     return "/configuracoes";
   }
   if (tab === "fin_clientes") return "/financeiro/clientes";
+  if (tab === "clientes") return opts?.clienteId ? `/clientes/${opts.clienteId}` : "/clientes";
 
   const gestaoSlug = GESTAO_TAB_SLUGS[tab];
   if (gestaoSlug) return opts?.taskId ? `/${gestaoSlug}/${opts.taskId}` : `/${gestaoSlug}`;
@@ -126,6 +131,9 @@ export const APP_TAB_ROUTES: string[] = [
   "the-best",
   "uau-xp",
   "comercial",
+  "resultados",
+  "clientes",
+  "clientes/:clienteId",
   "conversas",
   "ajuda",
   "financeiro",
