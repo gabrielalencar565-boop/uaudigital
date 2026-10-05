@@ -73,3 +73,52 @@ export function brandGlowPalette(hex: string): {
     glow7: stop(52),
   };
 }
+
+// ── Helpers used by the agency theme (BrandColorProvider / Agência settings) ──
+
+export function hslToHex(h: number, s: number, l: number): string {
+  const sat = s / 100;
+  const lig = l / 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = sat * Math.min(lig, 1 - lig);
+  const f = (n: number) => lig - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const to = (x: number) => Math.round(x * 255).toString(16).padStart(2, "0");
+  return `#${to(f(0))}${to(f(8))}${to(f(4))}`;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = hex.replace("#", "");
+  return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
+}
+
+// Linear mix of two hex colors (t = 0 → a, t = 1 → b).
+export function mixHex(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * t).toString(16).padStart(2, "0");
+  return `#${mix(ar, br)}${mix(ag, bg)}${mix(ab, bb)}`;
+}
+
+export function rotateHue(hex: string, deg: number, lightnessShift = 0): string {
+  const { h, s, l } = hexToHsl(hex);
+  return hslToHex((h + deg + 360) % 360, s, clampLightness(l + lightnessShift));
+}
+
+// Same 7 stops as brandGlowPalette, but spread between two colors so the animated header
+// gradients (Meu Painel, Clientes, Magic Number) can blend two hues instead of one.
+export function twoColorGlowPalette(fromHex: string, toHex: string) {
+  const tone = (hex: string, l: number) => {
+    const { h, s } = hexToHsl(hex);
+    return `${h} ${Math.max(s, 55)}% ${l}%`;
+  };
+  const mid = mixHex(fromHex, toHex, 0.5);
+  return {
+    glow1: tone(fromHex, 26),
+    glow2: tone(fromHex, 38),
+    glow3: tone(mid, 56),
+    glow4: tone(toHex, 42),
+    glow5: tone(toHex, 66),
+    glow6: tone(toHex, 76),
+    glow7: tone(mid, 52),
+  };
+}

@@ -5,6 +5,7 @@ import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
 import { AdminPontuacaoPanel } from "./AdminPontuacaoPanel";
+import { AdminAgenciaPanel } from "./AdminAgenciaPanel";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 import { AdminWhatsAppPanel } from "./AdminWhatsAppPanel";
@@ -27,7 +28,7 @@ const CARDS: CardDef[] = [
   { key: "datas", title: "Datas internas", description: "Configure feriados, datas comemorativas e eventos internos do calendário.", icon: CalendarPlus },
   { key: "limpeza", title: "Limpeza", description: "Defina as tarefas recorrentes de limpeza, horários e responsáveis.", icon: SprayCan },
   { key: "pontuacao", title: "Pontuação", description: "Ajuste regras de pontos, pesos por etapa e penalidades de desempenho.", icon: Trophy },
-  { key: "aparencia", title: "Aparência", description: "Personalize a identidade visual do sistema, tema, cores e logotipo.", icon: Palette },
+  { key: "aparencia", title: "Agência", description: "Marca, cores, logos, ícone do app e integrações (Google Drive) — o jeito da sua agência no Fluxo.", icon: Palette },
   { key: "fluxos", title: "Fluxos", description: "Configure os fluxos operacionais, etapas e responsáveis por papel.", icon: Workflow, external: true },
 ];
 
@@ -129,7 +130,7 @@ export function AdminContainer({
           {subTab === "datas" && <AdminDatasInternasPanel />}
           {subTab === "limpeza" && <AdminLimpezaPanel />}
           {subTab === "pontuacao" && <AdminPontuacaoPanel />}
-          {subTab === "aparencia" && <AdminAparenciaPanel />}
+          {subTab === "aparencia" && <AdminAgenciaPanel />}
           {subTab === "whatsapp" && <AdminWhatsAppPanel />}
         </div>
       )}

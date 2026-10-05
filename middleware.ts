@@ -4,7 +4,7 @@
 //
 // This intercepts *only* requests from known link-preview crawlers hitting the public
 // client-approval link, and serves a tiny standalone HTML page with fresh og:image tags
-// pointing at whatever image is configured in Aparência > Miniatura de Link — editable
+// pointing at the image, title and description configured in Configurações → Agência → Link de aprovação — editable
 // from Supabase without a redeploy. Everything else (real visitors, every other route)
 // falls straight through untouched.
 export const config = {
@@ -16,6 +16,14 @@ const BOT_UA_RE =
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONTHS_PT_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+// Same defaults/variables as src/lib/approval-link-preview.ts (editable in Configurações → Agência).
+const DEFAULT_TITLE_TEMPLATE = "Conteúdos - {cliente} | {mes}/{ano}";
+const DEFAULT_DESCRIPTION_TEMPLATE = "Confira e aprove as publicações programadas para {cliente} — ciclo {mes}/{ano}.";
+
+function renderTemplate(template: string, vars: { cliente: string; mes: string; ano: string }) {
+  return template.replace(/\{cliente\}/g, vars.cliente).replace(/\{mes\}/g, vars.mes).replace(/\{ano\}/g, vars.ano);
+}
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -30,12 +38,17 @@ export default async function middleware(request: Request) {
   if (!supabaseUrl || !supabaseKey) return;
 
   let imageUrl = "";
+  let titleTemplate = DEFAULT_TITLE_TEMPLATE;
+  let descriptionTemplate = DEFAULT_DESCRIPTION_TEMPLATE;
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/app_settings?select=link_preview_image_url&id=eq.1`, {
-      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
-    });
-    const rows = (await res.json()) as { link_preview_image_url: string | null }[];
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/app_settings?select=link_preview_image_url,link_preview_title,link_preview_description&id=eq.1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
+    );
+    const rows = (await res.json()) as { link_preview_image_url: string | null; link_preview_title: string | null; link_preview_description: string | null }[];
     imageUrl = rows?.[0]?.link_preview_image_url || "";
+    titleTemplate = rows?.[0]?.link_preview_title?.trim() || DEFAULT_TITLE_TEMPLATE;
+    descriptionTemplate = rows?.[0]?.link_preview_description?.trim() || DEFAULT_DESCRIPTION_TEMPLATE;
   } catch {
     // No image configured or Supabase unreachable — bot just won't get a rich image.
   }
@@ -60,8 +73,9 @@ export default async function middleware(request: Request) {
         const month = cycleEnd ? MONTHS_PT_SHORT[Number(cycleEnd.slice(5, 7)) - 1] : null;
         const year = cycleEnd?.slice(0, 4);
         if (clientName && month && year) {
-          title = escapeHtml(`Conteúdos - ${clientName} | ${month}/${year}`);
-          description = escapeHtml(`Confira e aprove as publicações programadas para ${clientName} — ciclo ${month}/${year}.`);
+          const vars = { cliente: clientName, mes: month, ano: year };
+          title = escapeHtml(renderTemplate(titleTemplate, vars));
+          description = escapeHtml(renderTemplate(descriptionTemplate, vars));
         }
       }
     } catch {

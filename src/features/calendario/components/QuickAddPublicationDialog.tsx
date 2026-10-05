@@ -15,7 +15,8 @@ import { useUnscheduledClientTasks } from "../hooks/use-calendar-data";
 
 const sb = supabase as any;
 
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(PM_STAGES.map((s) => [s.key, s.label]));
+// Read lazily: the agency may have renamed its stages (catalog applied at runtime).
+const stageLabelMap = (): Record<string, string> => Object.fromEntries(PM_STAGES.map((s) => [s.key, s.label]));
 
 interface Props {
   open: boolean;
@@ -171,7 +172,7 @@ export function QuickAddPublicationDialog({ open, onClose, clientId, cycleStart,
                 {filteredTasks.map((t) => {
                   const assigneeName = t.assignee_id ? memberNameById.get(t.assignee_id) : null;
                   const meta = [
-                    STAGE_LABEL[t.stage_current] ?? t.stage_current,
+                    stageLabelMap()[t.stage_current] ?? t.stage_current,
                     t.due_date ? format(parseISO(t.due_date), "dd/MM", { locale: ptBR }) : null,
                     assigneeName,
                   ].filter(Boolean);

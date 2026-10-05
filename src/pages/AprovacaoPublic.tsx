@@ -406,7 +406,7 @@ export default function AprovacaoPublic() {
   const appLogoUrl = toStorageRenderUrl(
     publicTheme === "dark"
       ? (appSettingsQ.data?.sidebar_logo_dark_url ?? appSettingsQ.data?.sidebar_logo_url)
-      : appSettingsQ.data?.sidebar_logo_url,
+      : (appSettingsQ.data?.sidebar_logo_url ?? appSettingsQ.data?.sidebar_logo_dark_url),
   );
 
   const load = async () => {

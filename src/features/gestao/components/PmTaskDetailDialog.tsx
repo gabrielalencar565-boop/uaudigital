@@ -31,6 +31,8 @@ import {
   usePmComments, usePmAttachments, usePmSyncStageCompletion, useMergePdfTasks,
 } from "../hooks/use-pm-data";
 import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
+import { fetchTaskPlan, saveTaskPlan } from "../hooks/use-cascades";
+import { pushPlan, stepKeyFor, type CascadePlan } from "../lib/cascade";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -679,7 +681,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     nextDueDate: string;
     clientName: string;
     monthLabel: string | null;
-    remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[];
+    remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate?: string }[];
     deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string };
   } | null>(null);
 
@@ -1325,7 +1327,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   };
 
   const processSplitQueue = async (
-    splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[],
+    splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate?: string }[],
     snapshotDueDate: string, nextDueDate: string, clientName: string, monthLabel: string | null,
     deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string }
   ) => {
@@ -1341,7 +1343,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
 
     const [current, ...remaining] = splits;
-    const existing = await findExistingAgendaTaskForStage(current.stage, nextDueDate);
+    // Cascata: each branch (Design / Vídeo) can have its own planned date.
+    const dueForCurrent = current.dueDate ?? nextDueDate;
+    const existing = await findExistingAgendaTaskForStage(current.stage, dueForCurrent);
 
     if (existing) {
       setPendingSplit({
@@ -1350,7 +1354,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         children: current.children,
         postType: current.postType,
         snapshotDueDate,
-        nextDueDate,
+        nextDueDate: dueForCurrent,
         clientName,
         monthLabel,
         remainingSplits: remaining,
@@ -1362,7 +1366,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
 
     try {
-      await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, nextDueDate, clientName, monthLabel);
+      await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, dueForCurrent, clientName, monthLabel);
     } catch (err) {
       console.error("bg split error:", err);
     }
@@ -1426,6 +1430,29 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     if (await blockedByIncompleteCalendar(task, childTasks)) return;
 
     notifyTaskCompletion();
+
+    // Cascata: if this piece of work has a plan of dates, finishing this step late slides the following ones,
+    // and the next stage(s) come out with their planned date instead of the per-stage rule.
+    let planned: CascadePlan | null = null;
+    try {
+      const rootId = task.origin_task_id ?? task.id;
+      const taskPlan = await fetchTaskPlan(rootId);
+      if (taskPlan) {
+        const doneKey = stepKeyFor(completedStage, task.post_type);
+        const today = format(new Date(), "yyyy-MM-dd");
+        planned = taskPlan.push_on_delay ? pushPlan(taskPlan.steps, taskPlan.plan, doneKey, today, taskPlan.business_days) : taskPlan.plan;
+        if (planned !== taskPlan.plan) await saveTaskPlan(rootId, planned);
+        queryClient.invalidateQueries({ queryKey: ["pm_task_plan"] });
+      }
+    } catch (err) {
+      console.error("Cascade plan lookup failed (falling back to stage rules):", err);
+      planned = null;
+    }
+    // Which plan step a (completed → next) transition lands on; reviews are told apart by what they review.
+    const nextPlanKey = (completed: string, next: string) =>
+      next === "revisao"
+        ? completed === "planejamento" ? "revisao_plan" : completed === "design" ? "revisao_design" : completed === "edicao_videos" ? "revisao_video" : "revisao"
+        : next;
 
     // ═══ CAPTAÇÃO: just mark as done, no stage advancement ═══
     if (completedStage === "captacao") {
@@ -1579,11 +1606,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
             monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
           }
-          const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+          const nextDueDate = planned?.design ?? planned?.edicao_videos ?? newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
 
-          const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
-          if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
-          if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design" });
+          const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate?: string }[] = [];
+          if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video", dueDate: planned?.edicao_videos });
+          if (hasDesign) splits.push({ stage: "design", stageLabel: "Design", children: designChildren, postType: "design", dueDate: planned?.design });
 
           const deferredCompletion = { allIds, completedStage, snapshotDueDate };
 
@@ -1602,6 +1629,10 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
     // Default flow for other stages
     let resolvedNextStages = nextStages;
+
+    // Cascata: the plan already knows when the next stage is due — use it and skip the "escolher data" prompt.
+    const planDue = planned && resolvedNextStages.length === 1 ? planned[nextPlanKey(completedStage, resolvedNextStages[0])] : undefined;
+    if (planDue) newDueDate = planDue;
 
     // Multiple next stages → show stage choice first
     if (resolvedNextStages.length > 1) {
@@ -1624,7 +1655,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
 
     // No existing task found — if dateConfig is "pick", show date picker
-    if (dateConfig === "pick") {
+    if (dateConfig === "pick" && !planDue) {
       setPendingCompletedStage(completedStage);
       setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       setCompletionDateOpen(true);

@@ -13,8 +13,12 @@ export type PmStatusKey = (typeof PM_STATUSES)[number]["key"];
 
 export const PM_KANBAN_COLUMNS: PmStatusKey[] = ["backlog", "em_andamento", "em_aprovacao", "concluido"];
 
-// ── Stages: synced with agenda/magic. Fixed display order ──
-export const PM_STAGES = [
+// ── Stages ──
+// The built-in pipeline (original Uau/social-media flow). Each agency can rename, recolor, reorder, hide and add
+// stages in Configurações → Agência → Fluxo de etapas; the catalog (flow_stages) is applied on top of these at
+// runtime by applyStageCatalog() (see StageCatalogProvider). PM_STAGES / PM_ACTIVE_STAGES are mutated in place so
+// every importer sees the agency's version on its next render.
+export const DEFAULT_PM_STAGES = [
   { key: "captacao", label: "Captação" },
   { key: "planejamento", label: "Planejamento" },
   { key: "design", label: "Design" },
@@ -29,10 +33,61 @@ export const PM_STAGES = [
   { key: "alteracoes", label: "Alterações" },
 ] as const;
 
+const LEGACY_STAGE_KEYS = ["roteiro", "edicao"];
+
+export const PM_STAGES: { key: string; label: string }[] = DEFAULT_PM_STAGES.map((s) => ({ ...s }));
+
 // Active stages (visible in UI, in display order)
-export const PM_ACTIVE_STAGES = PM_STAGES.filter(
-  (s) => !["roteiro", "edicao"].includes(s.key)
-);
+export const PM_ACTIVE_STAGES: { key: string; label: string }[] = PM_STAGES.filter((s) => !LEGACY_STAGE_KEYS.includes(s.key));
+
+export type FlowStageRow = {
+  key: string;
+  label: string;
+  color: string | null;
+  kind: string;
+  is_system: boolean;
+  active: boolean;
+  sort_order: number;
+};
+
+// Tailwind needs literal class names, so the palette an agency can pick from is spelled out here.
+export const STAGE_PALETTE: Record<string, { border: string; bg: string; text: string }> = {
+  red: { border: "border-red-500", bg: "bg-red-500", text: "text-red-500" },
+  orange: { border: "border-orange-500", bg: "bg-orange-500", text: "text-orange-500" },
+  amber: { border: "border-amber-500", bg: "bg-amber-500", text: "text-amber-500" },
+  lime: { border: "border-lime-500", bg: "bg-lime-500", text: "text-lime-500" },
+  emerald: { border: "border-emerald-500", bg: "bg-emerald-500", text: "text-emerald-500" },
+  teal: { border: "border-teal-500", bg: "bg-teal-500", text: "text-teal-500" },
+  sky: { border: "border-sky-500", bg: "bg-sky-500", text: "text-sky-500" },
+  blue: { border: "border-blue-500", bg: "bg-blue-500", text: "text-blue-500" },
+  indigo: { border: "border-indigo-500", bg: "bg-indigo-500", text: "text-indigo-500" },
+  violet: { border: "border-violet-500", bg: "bg-violet-500", text: "text-violet-500" },
+  fuchsia: { border: "border-fuchsia-500", bg: "bg-fuchsia-500", text: "text-fuchsia-500" },
+  pink: { border: "border-pink-500", bg: "bg-pink-500", text: "text-pink-500" },
+  rose: { border: "border-rose-500", bg: "bg-rose-500", text: "text-rose-500" },
+  zinc: { border: "border-zinc-500", bg: "bg-zinc-500", text: "text-zinc-500" },
+};
+
+const stageColorOverrides: Record<string, string> = {};
+
+// null = no catalog (not loaded / failed): keep the built-in pipeline exactly as it always was.
+export function applyStageCatalog(rows: FlowStageRow[] | null) {
+  for (const k of Object.keys(stageColorOverrides)) delete stageColorOverrides[k];
+  if (!rows || rows.length === 0) {
+    PM_STAGES.splice(0, PM_STAGES.length, ...DEFAULT_PM_STAGES.map((s) => ({ ...s })));
+    PM_ACTIVE_STAGES.splice(0, PM_ACTIVE_STAGES.length, ...PM_STAGES.filter((s) => !LEGACY_STAGE_KEYS.includes(s.key)));
+    return;
+  }
+  const sorted = [...rows].sort((a, b) => a.sort_order - b.sort_order);
+  const all = sorted.map((r) => ({ key: r.key, label: r.label }));
+  // Legacy keys stay resolvable (old tasks) even though they are never offered.
+  for (const legacy of DEFAULT_PM_STAGES) {
+    if (!all.some((s) => s.key === legacy.key)) all.push({ key: legacy.key, label: legacy.label });
+  }
+  PM_STAGES.splice(0, PM_STAGES.length, ...all);
+  PM_ACTIVE_STAGES.splice(0, PM_ACTIVE_STAGES.length, ...sorted.filter((r) => r.active).map((r) => ({ key: r.key, label: r.label })));
+  for (const r of sorted) if (r.color && STAGE_PALETTE[r.color]) stageColorOverrides[r.key] = r.color;
+}
 
 // Stage flow: maps each stage to the next one when marked "concluído"
 // Planejamento → Revisão (revisão da pauta) → split em Design/Vídeo → Revisão (dos materiais) → PDF → Agendamento → Entrega
@@ -46,7 +101,7 @@ export const STAGE_FLOW_NEXT: Record<string, string> = {
   agendamento: "entrega",
 };
 
-export type PmStageKey = (typeof PM_STAGES)[number]["key"];
+export type PmStageKey = (typeof DEFAULT_PM_STAGES)[number]["key"];
 
 export const PM_PRIORITIES = [
   { key: "baixa", label: "Baixa", color: "text-muted-foreground", bg: "bg-muted" },
@@ -69,7 +124,7 @@ export const PM_SUBTASK_STATUSES = [
 
 export type PmSubtaskStatusKey = (typeof PM_SUBTASK_STATUSES)[number]["key"];
 
-export const PM_TEMPLATE_SUBTASKS = PM_ACTIVE_STAGES.map((s, i) => ({
+export const PM_TEMPLATE_SUBTASKS = DEFAULT_PM_STAGES.filter((s) => !LEGACY_STAGE_KEYS.includes(s.key)).map((s, i) => ({
   title: s.label,
   stage: s.key,
   order_index: i,
@@ -125,6 +180,8 @@ export const STAGE_CIRCLE_COLORS: Record<string, { border: string; bg: string; t
 };
 
 export function getStageCircleColor(key: string) {
+  const override = stageColorOverrides[key];
+  if (override) return STAGE_PALETTE[override];
   return STAGE_CIRCLE_COLORS[key] ?? { border: "border-muted-foreground", bg: "bg-muted-foreground", text: "text-muted-foreground" };
 }
 

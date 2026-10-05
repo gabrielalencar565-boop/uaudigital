@@ -36,7 +36,6 @@ const FinDespesasDetalhadasTab = lazy(() => import("@/features/financeiro/compon
 const FinLancamentosTab = lazy(() => import("@/features/financeiro/components/FinLancamentosTab").then((m) => ({ default: m.FinLancamentosTab })));
 const GestaoPanel = lazy(() => import("@/features/gestao/GestaoPanel").then((m) => ({ default: m.GestaoPanel })));
 const ProjetosPanel = lazy(() => import("@/features/projetos/ProjetosPanel").then((m) => ({ default: m.ProjetosPanel })));
-const RecompensasPanel = lazy(() => import("@/features/recompensas/RecompensasPanel").then((m) => ({ default: m.RecompensasPanel })));
 const ConversasPanel = lazy(() => import("@/features/conversas/ConversasPanel").then((m) => ({ default: m.ConversasPanel })));
 const ComercialPanel = lazy(() => import("@/features/admin/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
 const ClientesPanel = lazy(() => import("@/features/clientes/ClientesPanel").then((m) => ({ default: m.ClientesPanel })));
@@ -351,35 +350,8 @@ const Index = () => {
     if (tab === "fin_lancamentos" && canSeeFinanceiro) return <FinLancamentosTab />;
     if (tab === "metas" && canSeeFinanceiro) return <FinMetasTab />;
     if (tab === "visao_do_dia") return <DayViewPanel />;
-    if (tab === "recompensas") {
-      if (isAdmin) return <RecompensasPanel />;
-      return (
-        <div className="relative">
-          <div className="pointer-events-none select-none blur-[1px] opacity-95">
-            <RecompensasPanel />
-          </div>
-          <div className="absolute inset-0 bg-background/15 flex items-start justify-center pt-32 z-10">
-            <div className="max-w-md mx-4 rounded-2xl border border-amber-400/30 bg-card/95 backdrop-blur-xl shadow-2xl p-8 text-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{
-                backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, hsl(var(--foreground)) 8px, hsl(var(--foreground)) 16px)"
-              }} />
-              <div className="relative">
-                <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/15 ring-1 ring-amber-400/30">
-                  <span className="text-2xl">🔒</span>
-                </div>
-                <h2 className="text-xl font-bold mb-2">Uau XP em construção</h2>
-                <p className="text-sm text-muted-foreground mb-1">
-                  Estamos preparando algo incrível por aqui ✨
-                </p>
-                <p className="text-xs text-muted-foreground/80">
-                  Em breve você poderá trocar XP por prêmios reais.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    // A aba Uau XP saiu do menu; links antigos caem no Meu Painel.
+    if (tab === "recompensas") return <Navigate to="/" replace />;
 
     if (tab === "meu_painel") return <MeuPainelPanel />;
     if (tab === "desempenho") return <PerformancePanel />;

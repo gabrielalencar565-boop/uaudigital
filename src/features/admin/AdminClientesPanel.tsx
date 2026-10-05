@@ -166,7 +166,9 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
   if (linkErr) throw linkErr;
   if (!magic2ClientId) return;
   // magic2_cycles.due_date is RLS-constrained to make_date(year, month, current_magic_number_day()) — must match exactly.
-  const { data: settings } = await supabase.from("app_settings").select("magic_number_day").eq("id", 1).maybeSingle();
+  const { data: agencyId } = await (supabase as any).rpc("current_agency_id");
+  const settingsQuery: any = supabase.from("app_settings").select("magic_number_day");
+  const { data: settings } = await (agencyId ? settingsQuery.eq("agency_id", agencyId) : settingsQuery.eq("id", 1)).maybeSingle();
   const magicDay = (settings as any)?.magic_number_day ?? 27;
   const [y, m] = startISO.split("-").map(Number);
   const rows: any[] = [];

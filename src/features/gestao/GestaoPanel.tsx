@@ -29,7 +29,9 @@ import { PmTeamWeekView } from "./components/PmTeamWeekView";
 import { CalendarioPublicacaoPanel } from "@/features/calendario/components/CalendarioPublicacaoPanel";
 import { PmTaskDetailDialog } from "./components/PmTaskDetailDialog";
 import { PmCreateTaskDialog } from "./components/PmCreateTaskDialog";
-import { PmStageFlowConfig, useStageFlows } from "./components/PmStageFlowConfig";
+import { useStageFlows } from "./components/PmStageFlowConfig";
+import { FlowStudio } from "./components/FlowStudio";
+import { CascadeStudio } from "./components/CascadeStudio";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
@@ -453,7 +455,8 @@ export function GestaoPanel({
         }
         {effectiveView === "fluxo" &&
         <div className="space-y-8">
-            <PmStageFlowConfig />
+            <FlowStudio />
+            <CascadeStudio />
             <PmAssigneeFlowConfig />
           </div>
         }

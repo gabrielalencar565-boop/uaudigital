@@ -100,7 +100,9 @@ function MiniMasonryPreview({ images, selectedIdx, onSelect }: {
 
 const DEFAULT_BRAND_COLOR = "#6932c9";
 
-export function AdminAparenciaPanel() {
+export function AdminAparenciaPanel({ hideColors = false, hideLogos = false, embedded = false }: {
+  hideColors?: boolean; hideLogos?: boolean; embedded?: boolean;
+} = {}) {
   const appSettingsQ = useAppSettings();
   const updateAppSettings = useUpdateAppSettings();
   const { user } = useSession();
@@ -116,40 +118,6 @@ export function AdminAparenciaPanel() {
   }, [appSettingsQ.data?.brand_color]);
 
   const brandColorChanged = brandColorDraft.toLowerCase() !== (appSettingsQ.data?.brand_color ?? DEFAULT_BRAND_COLOR).toLowerCase();
-
-  /* ── Dia D (Magic Number) ── */
-  const [magicDayDraft, setMagicDayDraft] = useState("27");
-  const [magicLabelDraft, setMagicLabelDraft] = useState("Magic Number");
-  const [magicDirty, setMagicDirty] = useState(false);
-  const [savingMagic, setSavingMagic] = useState(false);
-
-  useEffect(() => {
-    if (magicDirty || !appSettingsQ.data) return;
-    setMagicDayDraft(String(appSettingsQ.data.magic_number_day));
-    setMagicLabelDraft(appSettingsQ.data.magic_number_label);
-  }, [appSettingsQ.data, magicDirty]);
-
-  const handleSaveMagicNumber = async () => {
-    const dayNum = Number(magicDayDraft);
-    if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > 28) {
-      toast.error("O dia deve ser um número entre 1 e 28");
-      return;
-    }
-    if (!magicLabelDraft.trim()) {
-      toast.error("Informe um nome");
-      return;
-    }
-    setSavingMagic(true);
-    try {
-      await updateAppSettings.mutateAsync({ magic_number_day: dayNum, magic_number_label: magicLabelDraft.trim() } as any);
-      setMagicDirty(false);
-      toast.success("Configurações salvas");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao salvar");
-    } finally {
-      setSavingMagic(false);
-    }
-  };
 
   const handleSaveBrandColor = async () => {
     if (!/^#[0-9a-fA-F]{6}$/.test(brandColorDraft)) {
@@ -346,263 +314,145 @@ export function AdminAparenciaPanel() {
     }
   };
 
-  /* ── Miniatura de link compartilhado (WhatsApp e redes) ── */
-  const linkPreviewImageUrl = appSettingsQ.data?.link_preview_image_url ?? null;
-  const [uploadingLinkPreview, setUploadingLinkPreview] = useState(false);
-
-  const handleLinkPreviewUpload = async (file: File) => {
-    if (!user) return;
-    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB"); return; }
-    setUploadingLinkPreview(true);
-    try {
-      const ext = (file.name.split(".").pop() || "png").toLowerCase();
-      const path = `link-preview/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
-      if (up.error) throw up.error;
-      const pub = supabase.storage.from("app-assets").getPublicUrl(path);
-      await updateAppSettings.mutateAsync({ link_preview_image_url: pub.data.publicUrl } as any);
-      toast.success("Miniatura de link atualizada!");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao enviar imagem");
-    } finally {
-      setUploadingLinkPreview(false);
-    }
-  };
-
-  const handleRemoveLinkPreview = async () => {
-    try {
-      await updateAppSettings.mutateAsync({ link_preview_image_url: null } as any);
-      toast.success("Miniatura de link removida");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao remover imagem");
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Cores */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cores</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Cor principal da marca</Label>
-            <div className="flex items-center gap-3">
-              <ColorPickerPopover value={brandColorDraft} onChange={setBrandColorDraft} />
-              <input
-                type="text"
-                value={brandColorDraft}
-                onChange={(e) => setBrandColorDraft(e.target.value)}
-                placeholder="#6932c9"
-                className="h-10 w-32 rounded-md border border-border bg-background px-3 text-sm font-mono"
-                maxLength={7}
-              />
+    <div className={cn("space-y-6", embedded && "[&>div]:border-0 [&>div]:bg-transparent [&>div]:shadow-none [&>div>div]:px-0")}>
+      {/* Cores — quando embutido no painel "Agência", a identidade visual mora lá */}
+      {!hideColors && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Cor principal da marca</Label>
+              <div className="flex items-center gap-3">
+                <ColorPickerPopover value={brandColorDraft} onChange={setBrandColorDraft} />
+                <input
+                  type="text"
+                  value={brandColorDraft}
+                  onChange={(e) => setBrandColorDraft(e.target.value)}
+                  placeholder="#6932c9"
+                  className="h-10 w-32 rounded-md border border-border bg-background px-3 text-sm font-mono"
+                  maxLength={7}
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="brand"
-              className="gap-2"
-              disabled={!brandColorChanged || savingBrandColor}
-              onClick={handleSaveBrandColor}
-            >
-              {savingBrandColor ? "Salvando..." : "Salvar cor"}
-            </Button>
-            {brandColorDraft.toLowerCase() !== DEFAULT_BRAND_COLOR && (
-              <Button type="button" variant="outline" onClick={() => setBrandColorDraft(DEFAULT_BRAND_COLOR)}>
-                Restaurar padrão
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="brand"
+                className="gap-2"
+                disabled={!brandColorChanged || savingBrandColor}
+                onClick={handleSaveBrandColor}
+              >
+                {savingBrandColor ? "Salvando..." : "Salvar cor"}
               </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dia D */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Dia D
-          </CardTitle>
-          <CardDescription>
-            Define o dia de fechamento mensal da operação (hoje chamado de "{appSettingsQ.data?.magic_number_label ?? "Magic Number"}").
-            Depois desse dia, os painéis passam a mostrar o próximo ciclo. O nome escolhido aqui substitui "Magic Number" em toda a interface.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 max-w-md">
-            <div className="space-y-2">
-              <Label htmlFor="magic_number_day">Dia do mês</Label>
-              <Input
-                id="magic_number_day"
-                type="number"
-                min={1}
-                max={28}
-                value={magicDayDraft}
-                onChange={(e) => { setMagicDayDraft(e.target.value); setMagicDirty(true); }}
-              />
-              <p className="text-xs text-muted-foreground">Entre 1 e 28.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="magic_number_label">Nome</Label>
-              <Input
-                id="magic_number_label"
-                value={magicLabelDraft}
-                onChange={(e) => { setMagicLabelDraft(e.target.value); setMagicDirty(true); }}
-                maxLength={60}
-              />
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="button" variant="brand" className="gap-2" disabled={!magicDirty || savingMagic} onClick={handleSaveMagicNumber}>
-            {savingMagic ? "Salvando..." : "Salvar"}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Logos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Logos</CardTitle>
-          <CardDescription>
-            Usadas na tela de login. O menu lateral já mostra o nome da agência automaticamente — não precisa de logo aqui.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 sm:grid-cols-2">
-            {/* Tema Claro */}
-            <div className="space-y-3">
-              <Label>Tema Claro</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-white transition hover:opacity-90"
-                onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.onchange = async () => {
-                    const f = input.files?.[0];
-                    if (f) await handleSidebarLogoUpload(f);
-                  };
-                  input.click();
-                }}
-              >
-                {sidebarLogoUrl ? (
-                  <>
-                    <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[90%] object-contain" />
-                    <button
-                      type="button"
-                      aria-label="Remover logo tema claro"
-                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveSidebarLogo();
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    {uploadingSidebarLogo ? "Enviando..." : "Sem logo — clique para enviar"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Tema Escuro */}
-            <div className="space-y-3">
-              <Label>Tema Escuro</Label>
-              <div
-                role="button"
-                tabIndex={0}
-                className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117] transition hover:opacity-90"
-                onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.onchange = async () => {
-                    const f = input.files?.[0];
-                    if (f) await handleSidebarLogoDarkUpload(f);
-                  };
-                  input.click();
-                }}
-              >
-                {sidebarLogoDarkUrl ? (
-                  <>
-                    <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[90%] object-contain" />
-                    <button
-                      type="button"
-                      aria-label="Remover logo tema escuro"
-                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveSidebarLogoDark();
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground text-center px-2">
-                    {uploadingSidebarLogoDark ? "Enviando..." : "Sem logo (usa a do tema claro) — clique para enviar"}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Miniatura de link compartilhado */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Miniatura de Link (WhatsApp e redes)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="flex h-32 w-56 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
-              {linkPreviewImageUrl ? (
-                <img src={linkPreviewImageUrl} alt="Miniatura de link" className="h-full w-full rounded-[10px] object-cover" />
-              ) : (
-                <span className="text-xs text-muted-foreground">Sem imagem</span>
+              {brandColorDraft.toLowerCase() !== DEFAULT_BRAND_COLOR && (
+                <Button type="button" variant="outline" onClick={() => setBrandColorDraft(DEFAULT_BRAND_COLOR)}>
+                  Restaurar padrão
+                </Button>
               )}
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={uploadingLinkPreview}
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.onchange = async () => {
-                  const f = input.files?.[0];
-                  if (f) await handleLinkPreviewUpload(f);
-                };
-                input.click();
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {uploadingLinkPreview ? "Enviando..." : linkPreviewImageUrl ? "Trocar imagem" : "Enviar imagem"}
-            </Button>
-            {linkPreviewImageUrl && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={handleRemoveLinkPreview}>
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Logos — quando embutido no painel "Agência", ficam na seção Marca */}
+      {!hideLogos && (
+      <Card>
+          <CardHeader>
+            <CardTitle>Logos</CardTitle>
+            <CardDescription>
+              Usadas na tela de login. O menu lateral já mostra o nome da agência automaticamente — não precisa de logo aqui.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Tema Claro */}
+              <div className="space-y-3">
+                <Label>Tema Claro</Label>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-white transition hover:opacity-90"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async () => {
+                      const f = input.files?.[0];
+                      if (f) await handleSidebarLogoUpload(f);
+                    };
+                    input.click();
+                  }}
+                >
+                  {sidebarLogoUrl ? (
+                    <>
+                      <img src={sidebarLogoUrl} alt="Logo tema claro" className="max-h-20 max-w-[90%] object-contain" />
+                      <button
+                        type="button"
+                        aria-label="Remover logo tema claro"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSidebarLogo();
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {uploadingSidebarLogo ? "Enviando..." : "Sem logo — clique para enviar"}
+                    </span>
+                  )}
+                </div>
+              </div>
+  
+              {/* Tema Escuro */}
+              <div className="space-y-3">
+                <Label>Tema Escuro</Label>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="group relative flex h-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border bg-[#0F1117] transition hover:opacity-90"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async () => {
+                      const f = input.files?.[0];
+                      if (f) await handleSidebarLogoDarkUpload(f);
+                    };
+                    input.click();
+                  }}
+                >
+                  {sidebarLogoDarkUrl ? (
+                    <>
+                      <img src={sidebarLogoDarkUrl} alt="Logo tema escuro" className="max-h-20 max-w-[90%] object-contain" />
+                      <button
+                        type="button"
+                        aria-label="Remover logo tema escuro"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSidebarLogoDark();
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground text-center px-2">
+                      {uploadingSidebarLogoDark ? "Enviando..." : "Sem logo (usa a do tema claro) — clique para enviar"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Preview masonry — replica do login */}
       <Card>
