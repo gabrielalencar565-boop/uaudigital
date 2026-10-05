@@ -7,8 +7,14 @@
 // pointing at the image, title and description configured in Configurações → Agência → Link de aprovação — editable
 // from Supabase without a redeploy. Everything else (real visitors, every other route)
 // falls straight through untouched.
+//
+// The site root ("/") is also handled here: it answers with the marketing landing page
+// (public/landing.html) while the address bar stays on "/". A static rewrite can't do this because
+// Vercel serves the SPA's index.html for "/" before rewrites run. The landing itself sends signed-in
+// people on to the app, and index.html has a client-side fallback that goes to /landing.html if this
+// middleware is ever unavailable.
 export const config = {
-  matcher: "/aprovacao/:token*",
+  matcher: ["/", "/aprovacao/:token*"],
 };
 
 const BOT_UA_RE =
@@ -29,7 +35,22 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
+async function serveLanding(request: Request) {
+  try {
+    const res = await fetch(new URL("/landing.html", request.url));
+    if (!res.ok) return; // fall through to the app
+    return new Response(res.body, {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=0, must-revalidate" },
+    });
+  } catch {
+    return; // fall through to the app
+  }
+}
+
 export default async function middleware(request: Request) {
+  if (new URL(request.url).pathname === "/") return serveLanding(request);
+
   const ua = request.headers.get("user-agent") || "";
   if (!BOT_UA_RE.test(ua)) return;
 
