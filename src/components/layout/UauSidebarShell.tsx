@@ -2,7 +2,7 @@ import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
   CalendarDays, ChevronDown, CircleHelp, ClipboardList, DollarSign,
-  Eye, FileSpreadsheet, FolderOpen, Gift, LayoutGrid, Lock, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
+  Eye, FileSpreadsheet, FolderOpen, LayoutGrid, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
   UserRound, Users, Workflow, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
   "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { useTeamActivity } from "@/hooks/use-team-activity";
 import { useTaskViewersPresence } from "@/hooks/use-task-viewers";
 import { TopBar } from "@/components/layout/TopBar";
 import { TopAnnouncementBanner } from "@/components/layout/TopAnnouncementBanner";
+import { SandboxBanner } from "./SandboxBanner";
 import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
 import { ElementHighlightWatcher } from "@/components/layout/ElementHighlightWatcher";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
@@ -103,7 +104,6 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-  { key: "recompensas", label: "Uau XP", icon: Gift },
   { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true },
   { key: "ajuda", label: "Ajuda", icon: CircleHelp }];
 
@@ -136,6 +136,7 @@ export function UauSidebarShell({
   const [notifTaskId, setNotifTaskId] = useState<string | null>(null);
   const appSettingsQ = useAppSettings();
   const workspaceName = appSettingsQ.data?.workspace_name?.trim() || "Uau Digital";
+  const slogan = appSettingsQ.data?.slogan?.trim() || "";
   const magicLabel = appSettingsQ.data?.magic_number_label ?? "Magic Number";
 
   useRealtimeSyncAll();
@@ -214,7 +215,10 @@ export function UauSidebarShell({
                     {workspaceName.trim().charAt(0).toUpperCase() || "?"}
                   </span>
                 ) : (
-                  <span className="text-sm font-bold text-sidebar-foreground truncate">{workspaceName}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-sidebar-foreground">{workspaceName}</span>
+                    {slogan && <span className="block truncate text-[11px] italic text-sidebar-foreground/70">{slogan}</span>}
+                  </span>
                 )}
                 <button
                   type="button"
@@ -237,11 +241,10 @@ export function UauSidebarShell({
                 {filteredNav.map((entry) => {
                   if (!isGroup(entry)) {
                     const active = isActive(entry.key);
-                    const isRecompensas = entry.key === "recompensas";
                     return (
                       <SidebarMenuItem key={entry.key}>
                         <SidebarMenuButton
-                          tooltip={isRecompensas ? "Em construção 🔒 (espiar)" : entry.label}
+                          tooltip={entry.label}
                           isActive={active}
                           onClick={() => onTabChange(entry.key)}
                           className={cn(
@@ -249,22 +252,11 @@ export function UauSidebarShell({
                             active
                               ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                               : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                            isRecompensas && "relative overflow-hidden",
                             collapsed && "justify-center"
                           )}>
-                          {isRecompensas && (
-                            <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
-                              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.15) 8px, rgba(255,255,255,0.15) 16px)"
-                            }} />
-                          )}
-                          <entry.icon className={cn("h-[18px] w-[18px] shrink-0", isRecompensas && !active && "opacity-70")} />
+                          <entry.icon className="h-[18px] w-[18px] shrink-0" />
                           {!collapsed && (
-                            <span className={cn("text-sm", isRecompensas && !active && "opacity-80")}>
-                              {entry.label}
-                            </span>
-                          )}
-                          {!collapsed && isRecompensas && (
-                            <Lock className="ml-auto h-3 w-3 text-amber-400/80 shrink-0" />
+                            <span className="text-sm">{entry.label}</span>
                           )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>);
@@ -374,6 +366,7 @@ export function UauSidebarShell({
             <div className="mx-auto w-full">
               <div className="animate-fade-in overflow-x-auto p-2 sm:p-4 lg:p-6 2xl:p-8">
                 <TopAnnouncementBanner />
+                <SandboxBanner />
                 {children}
               </div>
             </div>

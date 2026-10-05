@@ -9,6 +9,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { usePermission } from "@/hooks/use-permission";
+import { useClientDriveFolder } from "@/features/admin/hooks/use-drive-connection";
 import { ClienteAcessos } from "./ClienteAcessos";
 import {
   openClientDocument, useAddClientDocument, useClientDocuments, useDeleteClientDocument, useUpdateClientDocument,
@@ -196,6 +197,8 @@ function DocRow({ doc, onEdit, onDelete }: { doc: ClientDocument; onEdit: () => 
 
 export function ClienteDocumentos({ clientId }: { clientId: string }) {
   const canSeeLogins = usePermission("action_client_credentials");
+  const driveFolderQ = useClientDriveFolder(clientId);
+  const driveFolderId = driveFolderQ.data ?? null;
   const docsQ = useClientDocuments(clientId);
   const remove = useDeleteClientDocument(clientId);
   const [adding, setAdding] = useState<DocumentKind | null>(null);
@@ -228,6 +231,16 @@ export function ClienteDocumentos({ clientId }: { clientId: string }) {
                   </button>
                 ) : (
                   <h4 className="min-w-0 flex-1 truncate text-sm font-medium">{b.label}</h4>
+                )}
+                {b.kind === "drive" && driveFolderId && (
+                  <a
+                    href={`https://drive.google.com/drive/folders/${driveFolderId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Abrir pasta <ExternalLink className="h-3 w-3" />
+                  </a>
                 )}
                 <button
                   type="button"

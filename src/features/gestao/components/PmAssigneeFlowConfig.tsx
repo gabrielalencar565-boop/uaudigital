@@ -31,7 +31,8 @@ const VIRTUAL_REVIEW_COLUMNS: Record<string, { key: string; label: string; inser
   revisao_design: { key: "revisao_design", label: "Revisão (Design)", insertAfter: "design" },
   revisao_video: { key: "revisao_video", label: "Revisão (Vídeo)", insertAfter: "edicao_videos" },
 };
-const EDITABLE_STAGES: { key: string; label: string }[] = (() => {
+// Computed per render: the agency's stages (renamed/hidden/custom) are applied at runtime.
+const getEditableStages = (): { key: string; label: string }[] => {
   const base = PM_ACTIVE_STAGES.filter(
     s => !LINKED_STAGES.includes(s.key as any) && s.key !== "entrega" && s.key !== "revisao"
   );
@@ -42,7 +43,7 @@ const EDITABLE_STAGES: { key: string; label: string }[] = (() => {
     if (virtual) result.push({ key: virtual.key, label: virtual.label });
   }
   return result;
-})();
+};
 
 export function PmAssigneeFlowConfig() {
   const qc = useQueryClient();
@@ -173,7 +174,7 @@ export function PmAssigneeFlowConfig() {
                 <th className="text-left px-4 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground min-w-[180px] sticky left-0 bg-muted/30 z-10">
                   Cliente
                 </th>
-                {EDITABLE_STAGES.map(stage => {
+                {getEditableStages().map(stage => {
                   // As 3 colunas virtuais de revisão reusam a cor de 'revisao'
                   const color = getStageCircleColor(stage.key in VIRTUAL_REVIEW_COLUMNS ? "revisao" : stage.key);
                   const isLinked = stage.key === "planejamento";
@@ -199,7 +200,7 @@ export function PmAssigneeFlowConfig() {
                   <td className="px-4 py-2.5 font-medium text-sm sticky left-0 bg-background z-10 min-w-[180px]">
                     {client.name}
                   </td>
-                  {EDITABLE_STAGES.map(stage => {
+                  {getEditableStages().map(stage => {
                     const rawVal = assignees[stage.key]?.[client.id];
                     const currentVal = Array.isArray(rawVal) ? (rawVal[0] ?? null) : rawVal;
                     const hasConfig = rawVal !== undefined;
@@ -264,7 +265,7 @@ export function PmAssigneeFlowConfig() {
               ))}
               {clients.length === 0 && (
                 <tr>
-                  <td colSpan={EDITABLE_STAGES.length + 1} className="text-center py-8 text-sm text-muted-foreground">
+                  <td colSpan={getEditableStages().length + 1} className="text-center py-8 text-sm text-muted-foreground">
                     Nenhum cliente ativo encontrado.
                   </td>
                 </tr>

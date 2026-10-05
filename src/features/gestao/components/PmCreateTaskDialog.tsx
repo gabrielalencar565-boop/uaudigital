@@ -145,7 +145,7 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[88vh] max-w-md overflow-y-auto">
         <DialogTitle className="flex items-center gap-2 text-sm">
           <FolderOpen className="h-4 w-4 text-muted-foreground" />
           Nova Tarefa

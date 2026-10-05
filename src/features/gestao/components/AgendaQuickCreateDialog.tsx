@@ -11,6 +11,8 @@ import { PM_ACTIVE_STAGES } from "../pm-constants";
 import { useCreatePmTask } from "../hooks/use-pm-data";
 import { usePeriodicStages, isPeriodicStageKey } from "../hooks/use-periodic-stages";
 import { useDefaultFlowWithDates, getFixedAssignee, getFixedWatchers } from "./PmStageFlowConfig";
+import { CascadeOption, useCascadeChoice } from "./CascadeOption";
+import { createTaskPlan } from "../hooks/use-cascades";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -47,11 +49,16 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const [dueDate, setDueDate] = useState(defaultDate ?? format(new Date(), "yyyy-MM-dd"));
   const [isExtra, setIsExtra] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
+  // "Cliente freelancer": a client that isn't registered — the task goes under the Freelancer placeholder client
+  // and the typed name is what shows in the task title.
+  const [isFreelancer, setIsFreelancer] = useState(false);
+  const [freelancerName, setFreelancerName] = useState("");
   // Periodic-only fields
   const [periodicClientName, setPeriodicClientName] = useState("");
   const [periodicTime, setPeriodicTime] = useState("");
 
   const isPeriodic = isPeriodicStageKey(stage);
+  const cascadeChoice = useCascadeChoice(stage, !isExtra && !isPeriodic);
 
   // Reference month defaults from the due date (month only, no year)
   const dueDateObj = dueDate ? new Date(`${dueDate}T12:00:00`) : new Date();
@@ -66,6 +73,8 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     setMonthRef(String(d.getMonth() + 1).padStart(2, "0"));
     setIsExtra(false);
     setCustomTitle("");
+    setIsFreelancer(false);
+    setFreelancerName("");
     setClientId("");
     setStage("");
     setSelectedMemberIds([]);
@@ -97,8 +106,19 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
     [members]
   );
 
+  const sentinel = useMemo(() => clients.find((c) => /freelancer/i.test(c.name)) ?? null, [clients]);
+  const registeredClients = useMemo(() => clients.filter((c) => c.id !== sentinel?.id), [clients, sentinel]);
+  const freelancerActive = isFreelancer && !!sentinel && !isPeriodic;
+
+  const toggleFreelancer = (on: boolean) => {
+    setIsFreelancer(on);
+    setClientId(on && sentinel ? sentinel.id : "");
+    if (!on) setFreelancerName("");
+  };
+
   const handleCreate = async () => {
     if (!stage) { toast.error("Selecione uma etapa"); return; }
+    if (freelancerActive && !freelancerName.trim()) { toast.error("Informe o nome do cliente freelancer"); return; }
     if (!isPeriodic && !clientId) { toast.error("Selecione um cliente"); return; }
 
     const periodicLabel = periodicStages.find(p => p.key === stage)?.label ?? stage;
@@ -109,7 +129,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
 
     // Resolve client + name
     let resolvedClientId = clientId;
-    let displayClientName = clients.find(c => c.id === clientId)?.name ?? "";
+    let displayClientName = freelancerActive ? freelancerName.trim() : (clients.find(c => c.id === clientId)?.name ?? "");
 
     if (isPeriodic) {
       // If user picked a registered client, use it; else fallback to Freelancer sentinel
@@ -161,7 +181,13 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       is_extra_demand: isPeriodic ? true : isExtra,
       status_global: "backlog",
     } as any, {
-      onSuccess: () => {
+      onSuccess: (created: any) => {
+        // Cascata: save the planned dates of every step of this piece of work next to its first task.
+        if (cascadeChoice.active && cascadeChoice.cascade && created?.id) {
+          createTaskPlan(created.id, cascadeChoice.cascade, dueDate).catch((e) =>
+            toast.error(`Tarefa criada, mas o plano de datas não foi salvo: ${e?.message ?? "erro"}`),
+          );
+        }
         toast.success("Tarefa criada!");
         onClose();
       },
@@ -177,22 +203,63 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md rounded-2xl">
-        <DialogTitle className="text-lg font-bold">Nova tarefa rápida</DialogTitle>
-        <div className="space-y-4 mt-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">
-              Cliente {isPeriodic ? "(opcional)" : "*"}
-            </Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder={isPeriodic ? "Selecionar cliente cadastrado (opcional)" : "Selecionar cliente"} />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+      <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden rounded-2xl p-0">
+        <DialogTitle className="px-6 pb-3 pt-6 text-lg font-bold">Nova tarefa rápida</DialogTitle>
+        <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-6 pb-4">
+          {!isPeriodic && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {sentinel && (
+                <div className="flex items-center gap-2">
+                  <Checkbox id="is_freelancer" checked={isFreelancer} onCheckedChange={(v) => toggleFreelancer(!!v)} />
+                  <Label htmlFor="is_freelancer" className="cursor-pointer text-sm">Cliente Freelancer</Label>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
+                <Label htmlFor="is_extra" className="cursor-pointer text-sm">Demanda extra</Label>
+              </div>
+            </div>
+          )}
+
+          {isExtra && !isPeriodic && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Título personalizado</Label>
+              <Input
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder="Ex: [Cliente] - Demanda especial"
+                className="rounded-xl"
+              />
+            </div>
+          )}
+
+          {freelancerActive ? (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Nome do cliente freelancer *</Label>
+              <Input
+                autoFocus
+                value={freelancerName}
+                onChange={(e) => setFreelancerName(e.target.value)}
+                placeholder="Ex.: João da Silva"
+                maxLength={60}
+                className="rounded-xl"
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">
+                Cliente {isPeriodic ? "(opcional)" : "*"}
+              </Label>
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder={isPeriodic ? "Selecionar cliente cadastrado (opcional)" : "Selecionar cliente"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {registeredClients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground">Etapa *</Label>
@@ -259,7 +326,7 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
 
           <div className="space-y-2">
             <Label className="text-xs font-semibold text-muted-foreground">Membros da tarefa</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto pr-1">
               {sortedMembers.map((m) => {
                 const selected = selectedMemberIds.includes(m.id);
                 return (
@@ -268,19 +335,19 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
                     type="button"
                     onClick={() => toggleMember(m.id)}
                     className={cn(
-                      "flex items-center gap-2 rounded-full border px-3 py-1.5 transition",
+                      "flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition",
                       selected
                         ? "border-primary bg-primary/10 text-foreground"
                         : "border-border bg-background text-muted-foreground hover:bg-accent"
                     )}
                   >
-                    <Avatar className="h-7 w-7">
+                    <Avatar className="h-6 w-6">
                       <AvatarImage src={m.avatar ?? undefined} />
                       <AvatarFallback className="text-[10px]">
                         {initials(m.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{m.name}</span>
+                    <span className="text-xs">{m.name}</span>
                   </button>
                 );
               })}
@@ -295,26 +362,9 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             <DatePicker value={dueDate} onChange={(v) => setDueDate(v ?? format(new Date(), "yyyy-MM-dd"))} />
           </div>
 
-          {!isPeriodic && (
-            <div className="flex items-center gap-2">
-              <Checkbox id="is_extra" checked={isExtra} onCheckedChange={(v) => setIsExtra(!!v)} />
-              <Label htmlFor="is_extra" className="text-sm cursor-pointer">Demanda extra</Label>
-            </div>
-          )}
+          <CascadeOption choice={cascadeChoice} startDate={dueDate} />
 
-          {isExtra && !isPeriodic && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Título personalizado</Label>
-              <Input
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="Ex: [Cliente] - Demanda especial"
-                className="rounded-xl"
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="sticky bottom-0 -mx-6 mt-1 flex justify-end gap-2 border-t border-border/40 bg-popover px-6 py-3">
             <Button variant="ghost" onClick={onClose} className="rounded-xl">Cancelar</Button>
             <Button onClick={handleCreate} disabled={createTask.isPending} className="rounded-xl">
               {createTask.isPending ? "Criando..." : "Criar tarefa"}

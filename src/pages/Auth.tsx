@@ -33,7 +33,7 @@ const resetSchema = z
 type LoginSignupValues = z.infer<typeof loginSignupSchema>;
 type ForgotValues = z.infer<typeof forgotSchema>;
 type ResetValues = z.infer<typeof resetSchema>;
-type AuthMode = "login" | "signup" | "forgot" | "reset";
+type AuthMode = "login" | "signup" | "forgot" | "reset" | "verify";
 
 /* ── Masonry Gallery ── */
 function MasonryGallery({ avatars }: { avatars: string[] }) {
@@ -132,10 +132,16 @@ export default function Auth() {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);
   }, [bgImages]);
 
-  const [mode, setMode] = useState<AuthMode>(() =>
-    new URLSearchParams(window.location.search).get("mode") === "reset" ? "reset" : "login",
-  );
+  // `?mode=signup` lets the marketing landing page link straight to the trial signup
+  const [mode, setMode] = useState<AuthMode>(() => {
+    const m = new URLSearchParams(window.location.search).get("mode");
+    return m === "reset" ? "reset" : m === "signup" ? "signup" : "login";
+  });
   const [rememberMe, setRememberMe] = useState(true);
+  // Owner signup (the public "Criar conta" creates a brand-new agency, not a request to join an existing one)
+  const [agencyName, setAgencyName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [verifyEmail, setVerifyEmail] = useState("");
   const [hasRecoverySession, setHasRecoverySession] = useState<boolean | null>(null);
 
   const loginSignupForm = useForm<LoginSignupValues>({
@@ -177,22 +183,28 @@ export default function Auth() {
 
   const onLoginSignup = useCallback(async (values: LoginSignupValues) => {
     try {
-      const emailRedirectTo = `${window.location.origin}/`;
       if (mode === "signup") {
+        const agency = agencyName.trim();
+        const owner = ownerName.trim();
+        if (agency.length < 2) { toast.error("Informe o nome da sua agência"); return; }
+        if (owner.length < 2) { toast.error("Informe seu nome"); return; }
         const { data, error } = await supabase.auth.signUp({
           email: values.email,
           password: values.password,
-          options: { emailRedirectTo },
+          options: {
+            emailRedirectTo: `${window.location.origin}/onboarding`,
+            // read by the onboarding step, which creates the agency once there is a session
+            data: { signup_type: "owner", agency_name: agency, full_name: owner },
+          },
         });
         if (error) { toast.error(error.message); return; }
-        // The access_requests row is created server-side by a database trigger on
-        // auth.users insert (handle_new_user_access_request) — doing it here client-side
-        // used to silently fail whenever "Confirm email" left the new user with no active
-        // session yet (auth.uid() was null, so the RLS insert policy rejected the row),
-        // leaving the signup invisible in the admin approval list.
-        await supabase.auth.signOut();
-        toast.success("Cadastro criado! Agora aguarde aprovação do admin.");
-        navigate("/pending?status=pending", { replace: true });
+        if (data.session) {
+          navigate("/onboarding", { replace: true });
+          return;
+        }
+        // "Confirm email" is on: no session until the person clicks the link we just sent
+        setVerifyEmail(values.email);
+        setMode("verify");
         return;
       }
       const { error } = await supabase.auth.signInWithPassword({
@@ -205,7 +217,7 @@ export default function Auth() {
     } catch (e: any) {
       toast.error(e?.message ?? "Ocorreu um erro inesperado. Tente novamente.");
     }
-  }, [mode, navigate]);
+  }, [mode, navigate, agencyName, ownerName]);
 
   const onForgot = useCallback(async (values: ForgotValues) => {
     try {
@@ -232,7 +244,8 @@ export default function Auth() {
   }, [navigate]);
 
   const subtitle = useMemo(() => {
-    if (mode === "signup") return "Crie sua conta para começar.";
+    if (mode === "signup") return "Crie a conta da sua agência e teste por 14 dias.";
+    if (mode === "verify") return "Falta só confirmar seu e-mail.";
     if (mode === "forgot") return "Vamos te enviar um link de recuperação.";
     if (mode === "reset") return "Defina sua nova senha para entrar novamente.";
     return null;
@@ -267,7 +280,8 @@ export default function Auth() {
           <div className="space-y-2 text-center">
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               {mode === "login" && "Que bom ter você aqui!"}
-              {mode === "signup" && "Crie sua conta"}
+              {mode === "signup" && "Teste grátis"}
+              {mode === "verify" && "Verifique seu e-mail"}
               {mode === "forgot" && "Recuperar senha"}
               {mode === "reset" && "Nova senha"}
             </h1>
@@ -279,6 +293,34 @@ export default function Auth() {
           {/* Forms */}
           {(mode === "login" || mode === "signup") && (
             <form onSubmit={loginSignupForm.handleSubmit(onLoginSignup)} className="space-y-5 w-full">
+              {mode === "signup" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="agency_name" className="text-white/70 text-xs uppercase tracking-wider">Nome da agência</Label>
+                    <Input
+                      id="agency_name"
+                      autoComplete="organization"
+                      placeholder="Ex: Minha Agência"
+                      maxLength={80}
+                      value={agencyName}
+                      onChange={(e) => setAgencyName(e.target.value)}
+                      className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="owner_name" className="text-white/70 text-xs uppercase tracking-wider">Seu nome</Label>
+                    <Input
+                      id="owner_name"
+                      autoComplete="name"
+                      placeholder="Como você quer ser chamado(a)"
+                      maxLength={80}
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
+                      className="h-11 border-white/10 bg-white/5 text-white placeholder:text-white/25 focus:border-purple-500/50 focus:ring-purple-500/20"
+                    />
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-white/70 text-xs uppercase tracking-wider">Email</Label>
                 <Input
@@ -338,7 +380,7 @@ export default function Auth() {
                   animation: "gradientFlow 4s ease-in-out infinite",
                 }}
               >
-                {mode === "login" ? "Entrar" : "Criar conta"}
+                {mode === "login" ? "Entrar" : "Começar teste grátis"}
               </Button>
 
               <button
@@ -346,9 +388,25 @@ export default function Auth() {
                 className="w-full text-center text-sm text-white/40 transition-colors hover:text-white/60"
                 onClick={() => setMode((m) => (m === "login" ? "signup" : "login"))}
               >
-                {mode === "login" ? "Não tem conta? Criar agora" : "Já tem conta? Entrar"}
+                {mode === "login" ? "Tem uma agência? Comece o teste grátis" : "Já tem conta? Entrar"}
               </button>
             </form>
+          )}
+
+          {mode === "verify" && (
+            <div className="space-y-5 text-center">
+              <p className="text-sm text-white/60">
+                Enviamos um link de confirmação para <span className="font-medium text-white">{verifyEmail}</span>.
+                Clique nele para criar sua agência e começar. Confira também o spam.
+              </p>
+              <button
+                type="button"
+                className="w-full text-center text-sm text-white/40 transition-colors hover:text-white/60"
+                onClick={() => setMode("login")}
+              >
+                Voltar para login
+              </button>
+            </div>
           )}
 
           {mode === "forgot" && (

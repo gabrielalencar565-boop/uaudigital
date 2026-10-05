@@ -240,3 +240,30 @@ export function useDeleteClientCredential(clientId: string) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível remover."),
   });
 }
+
+// Client photo/logo: stored in the public app-assets bucket (same place the admin Clientes screen uses).
+export function useUpdateClientPhoto(clientId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File | null) => {
+      let url: string | null = null;
+      if (file) {
+        const ext = (file.name.split(".").pop() || "png").toLowerCase();
+        const path = `client-logos/${crypto.randomUUID()}.${ext}`;
+        const up = await supabase.storage.from("app-assets").upload(path, file, { upsert: true, contentType: file.type });
+        if (up.error) throw up.error;
+        url = supabase.storage.from("app-assets").getPublicUrl(path).data.publicUrl;
+      }
+      const { data, error } = await sb.from("clients").update({ logo_url: url }).eq("id", clientId).select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Sem permissão para editar este cliente.");
+      return url;
+    },
+    onSuccess: (url) => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+      toast.success(url ? "Foto atualizada." : "Foto removida.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível atualizar a foto."),
+  });
+}

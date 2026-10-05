@@ -13,7 +13,11 @@ import AprovacaoPublic from "./pages/AprovacaoPublic";
 import RelatorioPublic from "./pages/RelatorioPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
+import Onboarding from "./pages/Onboarding";
+import Convite from "./pages/Convite";
 import InstagramCallback from "./pages/InstagramCallback";
+import DriveCallback from "./pages/DriveCallback";
+import { StageCatalogProvider } from "./features/gestao/StageCatalogProvider";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
 import NotFound from "./pages/NotFound";
@@ -38,6 +42,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/pending" element={<Pending />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/convite/:token" element={<Convite />} />
         <Route path="/cronograma/:taskId" element={<CronogramaPublic />} />
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
@@ -52,6 +58,14 @@ function AppRoutes() {
             </RequireAuth>
           }
         />
+        <Route
+          path="/admin/drive-callback"
+          element={
+            <RequireAuth>
+              <DriveCallback />
+            </RequireAuth>
+          }
+        />
         <Route path="/" element={<Navigate to="/meu-painel" replace />} />
         {APP_TAB_ROUTES.map((path) => (
           <Route
@@ -59,7 +73,9 @@ function AppRoutes() {
             path={`/${path}`}
             element={
               <RequireAuth>
-                <Index />
+                <StageCatalogProvider>
+                  <Index />
+                </StageCatalogProvider>
               </RequireAuth>
             }
           />

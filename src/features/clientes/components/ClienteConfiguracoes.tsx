@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, BarChart3, CalendarDays, Copy, ExternalLink, Instagram, Link2, Plug, RefreshCw, StickyNote, Unplug } from "lucide-react";
+import { useRef, useState } from "react";
+import { AlertTriangle, Camera, Instagram, Plug, RefreshCw, Trash2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNowStrict, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -7,15 +7,15 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/hooks/use-permission";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
-import { reportUrl, useConnectWithInsights, useReportLink, useSaveReportLink } from "@/features/resultados/hooks/use-resultados";
-import { useClientDetails, useSaveClientNotes } from "../hooks/use-client-data";
+import { useConnectWithInsights } from "@/features/resultados/hooks/use-resultados";
+import { brandGradientCss } from "@/lib/brand-gradient";
+import { useClients } from "@/features/data/queries";
+import { toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
+import { useUpdateClientPhoto } from "../hooks/use-client-data";
 
 function Card({ icon: Icon, title, description, children }: { icon: typeof Instagram; title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -38,6 +38,47 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="text-muted-foreground">{label}</span>
       <span className="min-w-0 truncate text-right font-medium">{children}</span>
     </div>
+  );
+}
+
+function PhotoCard({ clientId }: { clientId: string }) {
+  const clientsQ = useClients();
+  const client = (clientsQ.data ?? []).find((c) => c.id === clientId);
+  const update = useUpdateClientPhoto(clientId);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const logo = client?.logo_url ?? null;
+
+  const pick = (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Envie uma imagem."); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("A foto passa de 5 MB."); return; }
+    update.mutate(file);
+  };
+
+  return (
+    <Card icon={Camera} title="Foto do cliente" description="Aparece na lista de clientes, no topo desta página e nos relatórios.">
+      <div className="flex items-center gap-4">
+        <span className="shrink-0 rounded-full p-[2.5px]" style={{ background: brandGradientCss(135) }}>
+          <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-card text-xl font-bold ring-2 ring-card">
+            {logo ? <img src={toGridThumbUrl(logo)} alt="" className="h-full w-full object-cover" /> : (client?.name.trim().charAt(0).toUpperCase() ?? "?")}
+          </span>
+        </span>
+        <div className="space-y-2">
+          <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" disabled={update.isPending} onClick={() => inputRef.current?.click()}>
+              {update.isPending ? "Enviando…" : logo ? "Trocar foto" : "Adicionar foto"}
+            </Button>
+            {logo && (
+              <Button variant="ghost" size="sm" className="gap-1.5 rounded-full text-muted-foreground hover:text-destructive" disabled={update.isPending} onClick={() => update.mutate(null)}>
+                <Trash2 className="h-3.5 w-3.5" /> Remover
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">JPG ou PNG quadrado, até 5 MB.</p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -129,98 +170,11 @@ function InstagramCard({ clientId }: { clientId: string }) {
   );
 }
 
-function LinksCard({ clientId }: { clientId: string }) {
-  const linkQ = useReportLink(clientId);
-  const save = useSaveReportLink();
-  const link = linkQ.data;
-  const url = link ? reportUrl(link.token) : "";
-
-  return (
-    <Card icon={Link2} title="Links para o cliente" description="Páginas abertas que o cliente acessa sem precisar de login.">
-      <div className="space-y-3 rounded-xl bg-muted/30 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-sm font-medium"><BarChart3 className="h-4 w-4 text-violet-500" /> Relatório de resultados</span>
-          {link ? (
-            <Switch checked={link.enabled} onCheckedChange={(enabled) => save.mutate({ clientId, periodDays: link.period_days, enabled })} />
-          ) : (
-            <Button size="sm" className="h-8 rounded-full" disabled={save.isPending} onClick={() => save.mutate({ clientId, periodDays: 30 })}>Criar link</Button>
-          )}
-        </div>
-        {link && (
-          <div className="flex items-center gap-2">
-            <Input readOnly value={url} className="h-8 text-xs" />
-            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado!"); }}>
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
-              <a href={url} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a>
-            </Button>
-          </div>
-        )}
-        {link && (
-          <button
-            type="button"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => save.mutate({ clientId, periodDays: link.period_days, enabled: link.enabled, regenerate: true })}
-          >
-            <RefreshCw className="h-3 w-3" /> Gerar novo link (invalida o anterior)
-          </button>
-        )}
-      </div>
-      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-        <CalendarDays className="h-3.5 w-3.5 shrink-0" /> O link de aprovação do cronograma fica no botão flutuante da aba Cronograma.
-      </p>
-    </Card>
-  );
-}
-
-function ContractCard({ clientId }: { clientId: string }) {
-  const q = useClientDetails(clientId);
-  const d = q.data;
-  const start = d?.contract_start ? parseISO(d.contract_start) : null;
-  return (
-    <Card icon={CalendarDays} title="Contrato" description="Dados do plano. Para alterar, use Configurações → Clientes.">
-      <div className="divide-y divide-border/40">
-        <Row label="Plano">{d?.plan_name ?? "—"}</Row>
-        <Row label="Início do contrato">{start ? format(start, "dd/MM/yyyy") : "—"}</Row>
-        <Row label="Tempo de casa">{start ? formatDistanceToNowStrict(start, { locale: ptBR }) : "—"}</Row>
-      </div>
-      {d?.services && d.services.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {d.services.map((s) => <span key={s} className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-500">{s}</span>)}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function NotesCard({ clientId }: { clientId: string }) {
-  const q = useClientDetails(clientId);
-  const save = useSaveClientNotes(clientId);
-  const [value, setValue] = useState("");
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    if (q.data && !loaded) { setValue(q.data.notes ?? ""); setLoaded(true); }
-  }, [q.data, loaded]);
-  const dirty = (q.data?.notes ?? "") !== value;
-
-  return (
-    <Card icon={StickyNote} title="Observações internas" description="Só a equipe vê. Bom para tom de voz, preferências e cuidados com o cliente.">
-      <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={5} placeholder="Ex.: prefere posts com pouca arte, aprova por WhatsApp…" className="rounded-xl" />
-      <div className="flex justify-end">
-        <Button className="rounded-full" disabled={!dirty || save.isPending} onClick={() => save.mutate(value)}>Salvar</Button>
-      </div>
-    </Card>
-  );
-}
-
 export function ClienteConfiguracoes({ clientId }: { clientId: string }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <PhotoCard clientId={clientId} />
       <InstagramCard clientId={clientId} />
-      <LinksCard clientId={clientId} />
-      <ContractCard clientId={clientId} />
-      <NotesCard clientId={clientId} />
     </div>
   );
 }

@@ -31,6 +31,7 @@ import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
 import { useSquads, useSquadMembers } from "@/features/projetos/hooks/use-squads";
 import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import type { AppRole } from "@/hooks/use-role";
+import { InviteDialog, PendingInvites } from "@/features/admin/AgencyInvites";
 
 /* ───────── helpers ───────── */
 
@@ -58,6 +59,7 @@ const ROLE_MAP: Record<string, { label: string; color: string }> = {
 
 export function AdminPanel() {
   const qc = useQueryClient();
+  const [inviteOpen, setInviteOpen] = useState(false);
   const { user } = useSession();
   const [filter, setFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -344,7 +346,14 @@ export function AdminPanel() {
             <SelectItem value="admin">Administrador</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button variant="brand" className="h-10 sm:ml-auto" onClick={() => setInviteOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" /> Convidar
+        </Button>
       </div>
+
+      <PendingInvites />
+      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
       {usersQ.isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
       {usersQ.isError && <p className="text-sm text-destructive">Erro ao carregar usuários.</p>}

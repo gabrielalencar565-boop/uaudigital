@@ -23,6 +23,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Fluxo App">
   <link rel="apple-touch-icon" href="/icons/icon-180x180.png">
+  <script>
+    // The root of the site is the marketing landing for visitors; people who are signed in (or arriving from an
+    // auth e-mail link, which carries tokens in the URL) go on to the app as usual.
+    (function () {
+      try {
+        if (location.pathname !== "/") return;
+        var authLink = /access_token|refresh_token|error_description|[?&]code=|type=(recovery|invite|signup|magiclink)/.test(location.hash + location.search);
+        var signedIn = Object.keys(localStorage).some(function (k) { return /^sb-.+-auth-token$/.test(k) && localStorage.getItem(k); });
+        if (!signedIn && !authLink) location.replace("/landing.html");
+      } catch (e) {}
+    })();
+  </script>
   <script src="/fluxo-loader.js"></script>
   <script>
     window.__fluxoLoader = FluxoLoader.show({ theme: "dark" });
