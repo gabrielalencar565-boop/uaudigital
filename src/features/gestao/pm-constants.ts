@@ -1,4 +1,5 @@
-import { STAGE_COLOR } from "@/lib/uau";
+import { STAGE_COLOR, STAGES, MAGIC_STAGES } from "@/lib/uau";
+import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 
 export const PM_STATUSES = [
   { key: "backlog", label: "Backlog", color: "bg-muted text-muted-foreground" },
@@ -76,6 +77,7 @@ export function applyStageCatalog(rows: FlowStageRow[] | null) {
   if (!rows || rows.length === 0) {
     PM_STAGES.splice(0, PM_STAGES.length, ...DEFAULT_PM_STAGES.map((s) => ({ ...s })));
     PM_ACTIVE_STAGES.splice(0, PM_ACTIVE_STAGES.length, ...PM_STAGES.filter((s) => !LEGACY_STAGE_KEYS.includes(s.key)));
+    syncLegacyStageLabels();
     return;
   }
   const sorted = [...rows].sort((a, b) => a.sort_order - b.sort_order);
@@ -87,6 +89,30 @@ export function applyStageCatalog(rows: FlowStageRow[] | null) {
   PM_STAGES.splice(0, PM_STAGES.length, ...all);
   PM_ACTIVE_STAGES.splice(0, PM_ACTIVE_STAGES.length, ...sorted.filter((r) => r.active).map((r) => ({ key: r.key, label: r.label })));
   for (const r of sorted) if (r.color && STAGE_PALETTE[r.color]) stageColorOverrides[r.key] = r.color;
+  syncLegacyStageLabels();
+}
+
+// The Magic Number, Agenda, Meu Painel etc. read their names from STAGES / MAGIC_STAGES (src/lib/uau.ts) and MAGIC2_STAGES; keep those
+// labels in step with the catalog so renaming a stage in the flow studio renames it everywhere.
+function syncLegacyStageLabels() {
+  for (const list of [STAGES, MAGIC_STAGES, MAGIC2_STAGES] as unknown as { key: string; label: string }[][]) {
+    for (const s of list) s.label = stageLabel(s.key);
+  }
+}
+
+const DEFAULT_STAGE_ABBR: Record<string, string> = {
+  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
+  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT",
+};
+
+// Short badge text for a stage: the built-in abbreviation while the stage keeps its original name, otherwise the
+// first letters of its (renamed) label.
+export function stageAbbr(key: string) {
+  const label = stageLabel(key);
+  const original = DEFAULT_PM_STAGES.find((s) => s.key === key)?.label;
+  if (DEFAULT_STAGE_ABBR[key] && original === label) return DEFAULT_STAGE_ABBR[key];
+  const letters = label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return letters.slice(0, 4) || key.toUpperCase().slice(0, 4);
 }
 
 // Stage flow: maps each stage to the next one when marked "concluído"
@@ -139,6 +165,10 @@ export function statusColor(key: string) {
 }
 export function stageLabel(key: string) {
   return PM_STAGES.find((s) => s.key === key)?.label ?? key;
+}
+// Pipeline stages show the catalog's current name; anything else (periodic "custom_*", tags…) keeps its own label.
+export function catalogStageLabel(key: string, fallback?: string | null) {
+  return PM_STAGES.find((s) => s.key === key)?.label ?? fallback ?? key;
 }
 
 /**

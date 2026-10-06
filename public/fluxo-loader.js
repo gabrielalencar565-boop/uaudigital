@@ -1,16 +1,162 @@
 /*!
- * Fluxo Loader — tela de carregamento animada do logo Fluxo.
+ * Fluxo Loader — tela de carregamento animada do logo Fluxo, com efeitos sonoros.
  * Sem dependências. Uso:
  *   <script src="fluxo-loader.js"></script>
  *   <script>
- *     const loader = FluxoLoader.show();          // abre a tela
- *     window.addEventListener('load', () => loader.hide()); // fecha quando o site carregar
+ *     const loader = FluxoLoader.show();                     // abre a tela
+ *     window.addEventListener('load', () => loader.hide());  // fecha quando o site carregar
  *   </script>
- * Opções de show({ theme: 'dark' | 'light', size: 420, minLoops: 1, zIndex: 9999 })
+ * Opções de show({
+ *   theme: 'dark' | 'light',   // padrão 'dark'
+ *   size: 420,                 // largura máxima do logo em px
+ *   minLoops: 1,               // quantas vezes o logo liga antes de poder fechar
+ *   zIndex: 9999,
+ *   sound: true,               // efeitos sonoros ligados
+ *   volume: 0.6,               // 0 a 1
+ *   soundEveryLoop: false,     // false = som só na primeira vez que o logo se forma
+ *   soundButton: true          // mostra o botão de som no canto da tela
+ * })
+ *
+ * Sobre o som: navegadores só liberam áudio depois que o visitante interage com a página
+ * (clique, toque ou tecla). Se a tela abrir antes disso, ela começa muda e o som entra
+ * assim que a pessoa tocar na tela ou no botão de som.
  */
 (function (global) {
   'use strict';
 
+  /* ---------- Som (Web Audio, tudo sintetizado, sem arquivos) ---------- */
+  var actx = null;
+  function getCtx() {
+    if (actx) return actx;
+    var AC = global.AudioContext || global.webkitAudioContext;
+    if (!AC) return null;
+    try { actx = new AC(); } catch (e) { actx = null; }
+    return actx;
+  }
+
+  function createSound(volume) {
+    var ctx = getCtx();
+    if (!ctx) return null;
+
+    var master = ctx.createGain(); master.gain.value = volume;
+    var comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .2;
+    var trim = ctx.createGain(); trim.gain.value = .9;
+    master.connect(comp); comp.connect(trim); trim.connect(ctx.destination);
+
+    // Reverb curto gerado na hora (dá o brilho "de marca")
+    var rev = ctx.createConvolver(), revGain = ctx.createGain(); revGain.gain.value = .22;
+    var len = Math.floor(ctx.sampleRate * 1.4), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = ir.getChannelData(ch);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    }
+    rev.buffer = ir; rev.connect(revGain); revGain.connect(master);
+
+    var noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), nd = noise.getChannelData(0);
+    for (var j = 0; j < nd.length; j++) nd[j] = Math.random() * 2 - 1;
+
+    function out(node, wet) {
+      node.connect(master);
+      if (wet) { var w = ctx.createGain(); w.gain.value = wet; node.connect(w); w.connect(rev); }
+    }
+    function env(g, t, a, peak, dec) {
+      g.gain.value = 0.0001;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + a);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec);
+    }
+
+    // 1. A bolinha desliza pelo braço do F: "swoosh" que sobe
+    function swoosh(t, dur, up, level) {
+      var src = ctx.createBufferSource(); src.buffer = noise;
+      var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime(up ? 350 : 2600, t);
+      bp.frequency.exponentialRampToValueAtTime(up ? 3200 : 300, t + dur);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(level, t + dur * .7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + .12);
+      src.connect(bp); bp.connect(g); out(g, .3);
+      src.start(t); src.stop(t + dur + .2);
+      if (up) {
+        var o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'triangle';
+        o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(520, t + dur);
+        og.gain.setValueAtTime(0.0001, t);
+        og.gain.exponentialRampToValueAtTime(level * .25, t + dur * .8);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + dur + .08);
+        o.connect(og); out(og, .2); o.start(t); o.stop(t + dur + .1);
+      }
+    }
+    // 2. O F acende: clique de interruptor + grave + acorde brilhante
+    function powerOn(t) {
+      var c = ctx.createBufferSource(); c.buffer = noise;
+      var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200;
+      var cg = ctx.createGain(); env(cg, t, .002, .3, .035);
+      c.connect(hp); hp.connect(cg); out(cg, .1); c.start(t); c.stop(t + .06);
+
+      var b = ctx.createOscillator(), bg = ctx.createGain(); b.type = 'sine';
+      b.frequency.setValueAtTime(140, t); b.frequency.exponentialRampToValueAtTime(52, t + .22);
+      env(bg, t, .005, .45, .28); b.connect(bg); out(bg, 0); b.start(t); b.stop(t + .35);
+
+      [440, 554.37, 659.25, 987.77].forEach(function (f, k) {
+        var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+        o.frequency.value = f; o.detune.value = (k % 2 ? 4 : -4);
+        env(g, t + .02, .06, .05, 1.3); o.connect(g); out(g, .6); o.start(t); o.stop(t + 1.5);
+      });
+    }
+    // 3. Cada letra desenhada: uma nota dedilhada subindo (pentatônica de Lá)
+    function pluck(t, f) {
+      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(5200, t); lp.frequency.exponentialRampToValueAtTime(1400, t + .3);
+      var g = ctx.createGain(); env(g, t, .004, .16, .42);
+      var o1 = ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = f;
+      var o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2;
+      var g2 = ctx.createGain(); g2.gain.value = .35;
+      o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); out(g, .45);
+      o1.start(t); o2.start(t); o1.stop(t + .5); o2.stop(t + .5);
+    }
+    // 4. Olho e ponto do "u" surgindo: "pop" de bolha
+    function pop(t, f, level) {
+      var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(f * .55, t); o.frequency.exponentialRampToValueAtTime(f * 1.7, t + .07);
+      env(g, t, .004, level, .14); o.connect(g); out(g, .35); o.start(t); o.stop(t + .2);
+    }
+    // 5. A piscada: "tim" curto e brilhante
+    function wink(t) {
+      [1760, 2637].forEach(function (f, k) {
+        var o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+        env(g, t + k * .045, .003, k ? .06 : .1, .5); o.connect(g); out(g, .7);
+        o.start(t + k * .045); o.stop(t + k * .045 + .6);
+      });
+    }
+
+    var NOTES = [659.25, 739.99, 880, 987.77, 1108.73];
+    return {
+      ctx: ctx,
+      ready: function () { return ctx.state === 'running'; },
+      resume: function () { try { return ctx.resume(); } catch (e) { return null; } },
+      setVolume: function (v) { master.gain.setTargetAtTime(v, ctx.currentTime, .05); },
+      /** Sequência do logo formando, sincronizada com turnOn(). */
+      formation: function () {
+        if (ctx.state !== 'running') return;
+        var t = ctx.currentTime + .02;
+        swoosh(t, .72, true, .22);
+        powerOn(t + .6);
+        NOTES.forEach(function (f, i) { pluck(t + .78 + i * .11, f); });
+        pop(t + 1.12, 620, .32);
+        pop(t + 1.24, 820, .26);
+        wink(t + 2.02);
+      },
+      /** Logo desligando (laço de carregamento), bem discreto. */
+      unform: function () {
+        if (ctx.state !== 'running') return;
+        swoosh(ctx.currentTime + .3, .7, false, .07);
+      }
+    };
+  }
+
+  /* ---------- Desenho do logo ---------- */
   var F_PATH = 'M38 102A40 40 0 0 1 78 62H182A28 28 0 0 1 182 118H112V275A37 37 0 0 1 38 275Z';
   var ARM_PATH = 'M53 196H120C150 196 162 190 180 178';
   var LETTERS = [
@@ -21,8 +167,8 @@
     'M832 224A66 66 0 1 1 700 224A66 66 0 1 1 832 224'    // o
   ];
   var THEMES = {
-    dark:  { bg: '#121016', on: '#FFFFFF', off: '#34303B', track: '#2C2833', knobOff: '#8C8597', halo: 'rgba(143,61,255,.22)' },
-    light: { bg: '#F7F4FB', on: '#18161B', off: '#DCD5E6', track: '#E7E1EF', knobOff: '#B9B1C6', halo: 'rgba(143,61,255,.14)' }
+    dark:  { bg: '#121016', on: '#FFFFFF', off: '#34303B', track: '#2C2833', knobOff: '#8C8597', halo: 'rgba(143,61,255,.22)', btn: 'rgba(255,255,255,.08)', btnInk: '#CFC8DA' },
+    light: { bg: '#F7F4FB', on: '#18161B', off: '#DCD5E6', track: '#E7E1EF', knobOff: '#B9B1C6', halo: 'rgba(143,61,255,.14)', btn: 'rgba(24,22,27,.06)', btnInk: '#4A4453' }
   };
 
   function ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
@@ -33,6 +179,9 @@
     var x = hexToRgb(a), y = hexToRgb(b);
     return 'rgb(' + Math.round(x[0] + (y[0] - x[0]) * t) + ',' + Math.round(x[1] + (y[1] - x[1]) * t) + ',' + Math.round(x[2] + (y[2] - x[2]) * t) + ')';
   }
+
+  var ICON_ON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  var ICON_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>';
 
   function buildSVG(id, th) {
     var NS = 'http://www.w3.org/2000/svg';
@@ -71,19 +220,49 @@
     var minLoops = opts.minLoops == null ? 1 : opts.minLoops;
     var reduce = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var uid = Math.random().toString(36).slice(2, 8);
+    var wantSound = opts.sound !== false;
+    var volume = opts.volume == null ? .6 : opts.volume;
+    var everyLoop = !!opts.soundEveryLoop;
+    var sfx = wantSound ? createSound(volume) : null;
+    var muted = false, playedOnce = false;
+    if (sfx && !sfx.ready()) sfx.resume();
 
-    var bgRgb = hexToRgb(th.bg);
-    var bgTranslucent = 'rgba(' + bgRgb.join(',') + ',0.8)';
     var overlay = document.createElement('div');
     overlay.setAttribute('role', 'status');
     overlay.setAttribute('aria-label', opts.label || 'Carregando');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:' + (opts.zIndex || 9999) + ';display:flex;align-items:center;justify-content:center;background:' + bgTranslucent + ';backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity .6s ease;opacity:1';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:' + (opts.zIndex || 9999) + ';display:flex;align-items:center;justify-content:center;background:' + th.bg + ';transition:opacity .5s ease;opacity:1';
     var halo = document.createElement('div');
     halo.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(45% 40% at 50% 50%,' + th.halo + ',transparent 70%)';
     var box = document.createElement('div');
-    box.style.cssText = 'position:relative;width:min(' + size + 'px,72vw);transition:transform .6s ease-in-out';
+    box.style.cssText = 'position:relative;width:min(' + size + 'px,72vw)';
     var svg = buildSVG(uid, th);
     box.appendChild(svg); overlay.appendChild(halo); overlay.appendChild(box);
+
+    // Botão de som (também serve para liberar o áudio no primeiro toque)
+    var btn = null;
+    function paintBtn() {
+      if (!btn) return;
+      var silent = muted || !sfx.ready();
+      btn.innerHTML = silent ? ICON_OFF : ICON_ON;
+      btn.setAttribute('aria-label', silent ? 'Ativar som' : 'Desativar som');
+      btn.setAttribute('aria-pressed', silent ? 'false' : 'true');
+    }
+    if (sfx && opts.soundButton !== false) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'position:absolute;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:' + th.btn + ';color:' + th.btnInk + ';padding:0';
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!sfx.ready()) { muted = false; var p = sfx.resume(); if (p && p.then) p.then(paintBtn); }
+        else { muted = !muted; sfx.setVolume(muted ? 0 : volume); }
+        paintBtn();
+      });
+      overlay.appendChild(btn); paintBtn();
+    }
+    // Qualquer toque na tela libera o áudio
+    function unlock() { if (sfx && !sfx.ready()) { var p = sfx.resume(); if (p && p.then) p.then(paintBtn); } }
+    if (sfx) { overlay.addEventListener('pointerdown', unlock); global.addEventListener('keydown', unlock); }
+
     (document.body || document.documentElement).appendChild(overlay);
 
     var q = function (k) { return svg.querySelector('[data-k="' + k + '"]'); };
@@ -129,9 +308,11 @@
       if (!done) raf = requestAnimationFrame(frame);
     }
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function soundOn() { return sfx && !muted && sfx.ready() && (everyLoop || !playedOnce); }
 
     function turnOn() {
       on = true; tweens = [];
+      if (soundOn()) { sfx.formation(); playedOnce = true; }
       tween('k', null, 1, .75, 0); tween('f', null, 1, .35, .6, easeOut); tween('m', null, 1, .9, .6);
       chars.forEach(function (_, i) { tween('c', i, 1, .55, .75 + i * .11, easeOut); });
       tween('e', null, 1, .4, 1.1, back); tween('d', null, 1, .4, 1.22, back); tween('w', null, 1, .22, 2.0, easeOut);
@@ -139,6 +320,7 @@
     }
     function turnOff() {
       on = false; tweens = [];
+      if (sfx && !muted && sfx.ready() && (everyLoop || !playedOnce)) sfx.unform();
       tween('e', null, 0, .2, .03); tween('d', null, 0, .2, 0); tween('w', null, 0, .01, .3);
       chars.forEach(function (_, i) { tween('c', i, 0, .35, (4 - i) * .07); });
       tween('f', null, 0, .35, .4); tween('m', null, 0, .7, .3); tween('k', null, 0, .7, .45);
@@ -152,12 +334,12 @@
     function finish() {
       if (finishing) return; finishing = true;
       overlay.style.opacity = '0';
-      box.style.transform = 'scale(.6)';
       later(function () {
         done = true; cancelAnimationFrame(raf); timers.forEach(clearTimeout);
+        global.removeEventListener('keydown', unlock);
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         if (resolveHide) resolveHide();
-      }, 600);
+      }, 520);
     }
 
     if (reduce) {
@@ -177,7 +359,9 @@
         return hidePromise;
       },
       /** Remove na hora, sem esperar a animação. */
-      destroy: function () { closing = true; finish(); return hidePromise; }
+      destroy: function () { closing = true; finish(); return hidePromise; },
+      /** Liga/desliga o som. */
+      mute: function (v) { muted = v !== false; if (sfx) sfx.setVolume(muted ? 0 : volume); paintBtn(); }
     };
   }
 

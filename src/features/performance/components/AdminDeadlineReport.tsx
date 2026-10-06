@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { TeamMemberRow } from "@/features/data/queries";
 import { STAGES, type StageKey } from "@/lib/uau";
+import { catalogStageLabel } from "@/features/gestao/pm-constants";
 import { STAGE_BADGE_CLASS } from "@/features/agenda/components/AgendaWeekTaskItem";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,7 +86,7 @@ function getReportStageKey(task: Pick<TaskForReport, "description" | "stage">): 
 }
 
 function getReportStageLabel(stageKey: string, configMap: Map<string, ScoringConfigRow>) {
-  return configMap.get(stageKey)?.label ?? STAGES.find((s) => s.key === stageKey)?.label ?? stageKey.replace(/^custom_/, "").replace(/_/g, " ");
+  return catalogStageLabel(stageKey, configMap.get(stageKey)?.label ?? stageKey.replace(/^custom_/, "").replace(/_/g, " "));
 }
 
 function yyyymm(year: number, month: number) {

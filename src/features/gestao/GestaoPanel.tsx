@@ -35,7 +35,7 @@ import { CascadeStudio } from "./components/CascadeStudio";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
-import { stageLabel, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
+import { stageLabel, stageAbbr, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
 import { toast } from "sonner";
@@ -46,11 +46,6 @@ import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
-
-const STAGE_ABBR: Record<string, string> = {
-  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
-  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
-};
 
 const STAGE_BADGE_BG: Record<string, string> = {
   captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
@@ -863,7 +858,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
     const abbr = t.periodic_stage_key
       ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
-      : gradientAbbr ?? (STAGE_ABBR[t.stage_current] ?? t.stage_current.toUpperCase().slice(0, 4));
+      : gradientAbbr ?? stageAbbr(t.stage_current);
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
@@ -1059,7 +1054,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                           el?.scrollIntoView({ behavior: "smooth", block: "center" });
                         });
                       } else if (overdueDays.length > 0) {
-                        toast.info("As tarefas atrasadas são de um mês anterior — troque o mês pra ver.");
+                        toast.info("As tarefas atrasadas são de um mês anterior. Troque o mês pra ver.");
                       }
                     }
                     return next;

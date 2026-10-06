@@ -33,7 +33,7 @@ import {
 "@/features/cleaning/hooks/use-cleaning";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
-import { TAG_COLORS, isHexColor } from "@/features/gestao/pm-constants";
+import { TAG_COLORS, isHexColor, stageAbbr as stageAbbrFor } from "@/features/gestao/pm-constants";
 
 function getPeriodicStageFallbackLabel(key: string) {
   return key.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -42,11 +42,6 @@ function getPeriodicStageFallbackLabel(key: string) {
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 }
-
-const STAGE_ABBR: Record<string, string> = {
-  captacao: "CAP", planejamento: "PLAN", design: "DSG", edicao_videos: "VDO",
-  revisao: "REV", alteracoes: "ALT", pdf: "PDF", agendamento: "AGN", entrega: "ENT"
-};
 
 const STAGE_BADGE_BG: Record<string, string> = {
   captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
@@ -974,7 +969,7 @@ export function DayViewPanel() {
         : undefined;
       const stageAbbr = periodicLabel
         ? periodicLabel.slice(0, 3).toUpperCase()
-        : (gradientAbbr ?? STAGE_ABBR[t.stage] ?? t.stage.toUpperCase().slice(0, 4));
+        : (gradientAbbr ?? stageAbbrFor(t.stage));
       const stageBg = periodicKey
         ? (periodicBgClass ?? "bg-black")
         : (gradientClass ?? STAGE_BADGE_BG[t.stage] ?? "bg-muted");

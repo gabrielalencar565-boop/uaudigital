@@ -2018,7 +2018,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         } as any);
       }
 
-      toast.success("Ajuste concluído — retornou para Revisão");
+      toast.success("Ajuste concluído. Retornou para Revisão");
     } else {
       // Fallback: no paused revisão found, just change stage on current task
       const fallbackAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
@@ -2048,7 +2048,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         updateTask.mutate(childUpdates);
       }
 
-      toast.success("Ajuste concluído — retornou para Revisão");
+      toast.success("Ajuste concluído. Retornou para Revisão");
     }
   };
 
@@ -2650,7 +2650,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                 // itself — reported as clicking "Desmarcar" repeatedly and it never sticking.
                 const onFailure = (err: any) => {
                   console.error("Error desconcluindo tarefa:", err);
-                  toast.error(err?.message ?? "Erro ao desconcluir tarefa — tente novamente");
+                  toast.error(err?.message ?? "Erro ao desconcluir tarefa. Tente novamente");
                   invalidateAll();
                 };
 

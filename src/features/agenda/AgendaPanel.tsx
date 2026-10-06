@@ -432,7 +432,7 @@ export function AgendaPanel() {
           }
           const clientName = (clientsQ.data ?? []).find(c => c.id === v.client_id)?.name;
           if (inactiveData?.inactiveAgendaIds?.has(v.client_id) || clientName && inactiveData?.inactiveNames?.has(normalizeName(clientName))) {
-            toast.error("Cliente removido do Magic v2 neste mês — não é possível criar tarefas na Agenda.");
+            toast.error("Cliente removido do Magic v2 neste mês. Não é possível criar tarefas na Agenda.");
             return;
           }
         }

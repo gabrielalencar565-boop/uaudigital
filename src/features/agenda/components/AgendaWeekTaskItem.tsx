@@ -9,20 +9,9 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { StageKey } from "@/lib/uau";
+import { stageAbbr } from "@/features/gestao/pm-constants";
 
 /** Abreviações curtas para pills da agenda */
-const STAGE_SHORT: Record<StageKey, string> = {
-  planejamento: "PLAN",
-  captacao: "CAP",
-  edicao_videos: "VDO",
-  design: "DSG",
-  revisao: "REV",
-  pdf: "PDF",
-  entrega: "ENT",
-  alteracoes: "ALT",
-  agendamento: "AGN",
-};
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -156,7 +145,7 @@ export function AgendaWeekTaskItem({
             )}
             title={stageLabel}
           >
-            <span className="whitespace-nowrap">{hasGradientPill ? gradientShort : (STAGE_SHORT[stage] ?? stageLabel)}</span>
+            <span className="whitespace-nowrap">{hasGradientPill ? gradientShort : (stageAbbr(stage) || stageLabel)}</span>
           </div>
         </div>
 

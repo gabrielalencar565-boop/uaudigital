@@ -46,7 +46,7 @@ function CascadeCard({ cascade }: { cascade: Cascade }) {
     }).eq("id", cascade.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Cascata salva — vale para as próximas tarefas criadas.");
+    toast.success("Cascata salva. Vale para as próximas tarefas criadas.");
     qc.invalidateQueries({ queryKey: ["flow_cascades"] });
   };
 

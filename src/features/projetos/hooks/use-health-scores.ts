@@ -51,7 +51,7 @@ export function useDeleteHealthScore() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["health_scores", vars.year, vars.month] });
-      toast.success("Avaliação removida — cliente marcado como não avaliado.");
+      toast.success("Avaliação removida. Cliente marcado como não avaliado.");
     },
     onError: (e: any) => toast.error(e.message),
   });

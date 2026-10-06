@@ -21,7 +21,7 @@ export function UauShell({ children, tab, onTabChange }: PropsWithChildren<{ tab
 
   const onLogout = async () => {
     await supabase.auth.signOut();
-    toast.message("Até já — mantendo o ritmo!");
+    toast.message("Até já, mantendo o ritmo!");
   };
 
   return (

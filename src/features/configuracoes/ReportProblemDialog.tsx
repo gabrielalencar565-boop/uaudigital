@@ -58,7 +58,7 @@ export function ReportProblemDialog({ open, onOpenChange }: { open: boolean; onO
       return;
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      toast.error("Imagem muito grande — o limite é 8MB");
+      toast.error("Imagem muito grande. O limite é 8MB");
       return;
     }
     setAttachmentFile(file);

@@ -168,7 +168,7 @@ const Index = () => {
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar dados públicos do time");
     }
-    toast.success("Perfil pronto — bora acelerar 🚀");
+    toast.success("Perfil pronto, bora acelerar 🚀");
     setHasProfile(true);
   };
 

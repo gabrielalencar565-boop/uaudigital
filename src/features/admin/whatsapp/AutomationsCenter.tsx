@@ -143,7 +143,7 @@ function AutomationCard({ automation, onToggle, onEdit, onDelete }: {
       const vars = trig?.vars ?? [];
       const rendered = renderTemplate(automation.message_template, vars);
       if (!rendered.trim()) {
-        toast.error("Mensagem vazia — nada para enviar.");
+        toast.error("Mensagem vazia. Nada para enviar.");
         return;
       }
 

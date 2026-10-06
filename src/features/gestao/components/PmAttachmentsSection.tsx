@@ -602,7 +602,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       }, 800);
       toast.success("Arquivo anexado!");
       if (compressionFailed) {
-        toast.warning(`"${file.name}" foi enviado sem compressão — pode não tocar corretamente no WhatsApp/Instagram. Se for um vídeo do iPhone, tente reexportar em "Mais compatível" (Ajustes > Câmera > Formatos) e reenviar.`, { duration: 12000 });
+        toast.warning(`"${file.name}" foi enviado sem compressão e pode não tocar corretamente no WhatsApp/Instagram. Se for um vídeo do iPhone, tente reexportar em "Mais compatível" (Ajustes > Câmera > Formatos) e reenviar.`, { duration: 12000 });
       }
 
       if (isVideo) {
@@ -614,7 +614,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         } catch (posterErr) {
           console.error("[video-poster] falha ao gerar miniatura", posterErr);
           if (!compressionFailed) {
-            toast.warning(`Não consegui gerar uma miniatura automática pra "${file.name}" — defina uma capa manualmente pra ele aparecer no Cronograma.`, { duration: 10000 });
+            toast.warning(`Não consegui gerar uma miniatura automática pra "${file.name}". Defina uma capa manualmente pra ele aparecer no Cronograma.`, { duration: 10000 });
           }
         }
       }
@@ -684,7 +684,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       const { data, error } = await sb.from("pm_attachments").delete().eq("id", att.id).select("id");
       if (error) throw error;
       if (!data || data.length === 0) {
-        throw new Error("Você não tem permissão para excluir este anexo — só quem enviou ou um admin pode.");
+        throw new Error("Você não tem permissão para excluir este anexo. Só quem enviou ou um admin pode.");
       }
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });

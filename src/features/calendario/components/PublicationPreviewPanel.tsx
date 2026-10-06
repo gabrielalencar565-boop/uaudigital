@@ -24,6 +24,7 @@ import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/feature
 import { downscaleVideoWithFallback, fitVideoToFormat, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
 import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
+import { stageLabel } from "@/features/gestao/pm-constants";
 
 const sb = supabase as any;
 
@@ -203,7 +204,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
         await uploadCover.mutateAsync({ task_id: publication.task_id, file: posterFile, category: "final" });
       } catch (posterErr) {
         console.error("[video-poster] falha ao gerar miniatura", posterErr);
-        toast.warning('Não consegui gerar uma miniatura automática — defina uma capa manualmente.');
+        toast.warning('Não consegui gerar uma miniatura automática. Defina uma capa manualmente.');
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao enviar vídeo");
@@ -371,7 +372,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
       return;
     }
     if (!data) {
-      toast.error("Você não tem permissão para excluir esta imagem — só quem enviou ou um admin pode.");
+      toast.error("Você não tem permissão para excluir esta imagem. Só quem enviou ou um admin pode.");
       return;
     }
     if (data?.drive_file_id) {
@@ -905,7 +906,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     {coverCandidates.length > 0 && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-normal text-muted-foreground">
-                          Capas Anexadas em PDF
+                          Capas Anexadas em {stageLabel("pdf")}
                         </Label>
                         <div className="flex flex-wrap gap-2">
                           {coverCandidates.map((img) => renderCoverThumb(img, false))}
