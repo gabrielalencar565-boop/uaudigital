@@ -245,7 +245,7 @@ export default function Auth() {
   }, [navigate]);
 
   const subtitle = useMemo(() => {
-    if (mode === "signup") return "Crie a conta da sua agência e teste por 14 dias.";
+    if (mode === "signup") return "Crie a conta da sua agência e teste por 30 dias.";
     if (mode === "verify") return "Falta só confirmar seu e-mail.";
     if (mode === "forgot") return "Vamos te enviar um link de recuperação.";
     if (mode === "reset") return "Defina sua nova senha para entrar novamente.";
