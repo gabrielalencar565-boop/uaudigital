@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send } from "lucide-react";
-import { TAG_COLORS } from "@/features/gestao/pm-constants";
+import { TAG_COLORS, stageLabel } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1144,7 +1144,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               className="h-9 gap-1.5 rounded-full border-violet-500/40 bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-600"
               onClick={() => setUnpublishConfirmOpen(true)}
             >
-              <Check className="h-3.5 w-3.5" /> PDF concluído
+              <Check className="h-3.5 w-3.5" /> {stageLabel("pdf")} concluído
             </Button>
           ) : (
             <Button
@@ -1159,7 +1159,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 }
               }}
             >
-              <Check className="h-3.5 w-3.5" /> Concluir PDF
+              <Check className="h-3.5 w-3.5" /> Concluir {stageLabel("pdf")}
             </Button>
           )}
 
@@ -1197,7 +1197,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   setForceScheduleConfirmOpen(true);
                 } else if (blockedByPdfNotConcluded.length > 0) {
                   const n = blockedByPdfNotConcluded.length;
-                  toast.info(`${n} publicaç${n === 1 ? "ão está pronta, mas o PDF dela ainda não foi concluído" : "ões estão prontas, mas o PDF delas ainda não foi concluído"}. Marque "Concluir PDF" primeiro.`);
+                  toast.info(`${n} publicaç${n === 1 ? `ão está pronta, mas o ${stageLabel("pdf")} dela ainda não foi concluído` : `ões estão prontas, mas o ${stageLabel("pdf")} delas ainda não foi concluído`}. Marque "Concluir ${stageLabel("pdf")}" primeiro.`);
                 } else {
                   toast.info("Nenhuma publicação pendente de agendamento.");
                 }
@@ -1373,7 +1373,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
       {!calendar && (
         <div className="space-y-3 rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "PDF". Dá pra escolher uma data pra uma publicação sem data (acima) que ele é criado na hora.</p>
+          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "{stageLabel("pdf")}". Dá pra escolher uma data pra uma publicação sem data (acima) que ele é criado na hora.</p>
           <Button
             size="sm"
             className="h-9 gap-1.5 rounded-full"
@@ -1508,7 +1508,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       <AlertDialog open={unpublishConfirmOpen} onOpenChange={setUnpublishConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desmarcar PDF concluído deste ciclo?</AlertDialogTitle>
+            <AlertDialogTitle>Desmarcar {stageLabel("pdf")} concluído deste ciclo?</AlertDialogTitle>
             <AlertDialogDescription>
               {allTaskIdsInCycle.length === 1 ? "A tarefa voltará" : `As ${allTaskIdsInCycle.length} tarefas voltarão`} para pendente na Gestão.
             </AlertDialogDescription>

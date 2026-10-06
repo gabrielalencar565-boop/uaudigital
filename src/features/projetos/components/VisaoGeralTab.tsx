@@ -37,6 +37,7 @@ import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
 import { ChurnRiskModule } from "./ChurnRiskModule";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
+import { stageLabel } from "@/features/gestao/pm-constants";
 
 
 function initials(name: string) {
@@ -304,10 +305,7 @@ export function VisaoGeralTab() {
   const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
 
   const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
-  const STAGE_LABELS: Record<string, string> = {
-    planejamento: "Planejamento", captacao: "Captação", edicao_videos: "Vídeo",
-    design: "Design", pdf: "PDF", alteracoes: "Alterações", agendamento: "Agendamento",
-  };
+  const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 
   const computeSpeed = (stages: any[]) => {
     if (stages.length === 0) return { speed: 0, avgDays: 0 };

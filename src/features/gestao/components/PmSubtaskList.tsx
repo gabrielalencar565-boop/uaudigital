@@ -190,7 +190,7 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
           if (!pub.publish_time) missing.push("Horário");
           if (!pub.caption?.trim()) missing.push("Legenda");
           if (missing.length > 0) {
-            toast.error(`Ciclo incompleto — complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
+            toast.error(`Ciclo incompleto. Complete no Cronograma antes de concluir: ${missing.join(", ")}.`);
             return;
           }
         }

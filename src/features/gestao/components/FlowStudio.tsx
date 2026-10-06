@@ -282,7 +282,7 @@ export function FlowStudio() {
   const useTemplate = (t: FlowTemplate) => {
     setDraft(draftFromTemplate(draft, t));
     setTemplatesOpen(false);
-    toast.success(`Modelo "${t.name}" carregado — revise e clique em Salvar.`);
+    toast.success(`Modelo "${t.name}" carregado. Revise e clique em Salvar.`);
   };
 
   const discard = () => setDraft(original);

@@ -18,7 +18,7 @@ async function copy(text: string) {
     await navigator.clipboard.writeText(text);
     toast.success("Link copiado");
   } catch {
-    toast.error("Não foi possível copiar — selecione o link e copie manualmente");
+    toast.error("Não foi possível copiar. Selecione o link e copie manualmente");
   }
 }
 

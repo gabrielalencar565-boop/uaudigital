@@ -259,7 +259,7 @@ function VideoDestaquePanel() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Vídeo destaque definido — XP distribuído");
+      toast.success("Vídeo destaque definido. XP distribuído");
       qc.invalidateQueries({ queryKey: ["xp_video_destaque"] });
       qc.invalidateQueries({ queryKey: ["rewards"] });
     },

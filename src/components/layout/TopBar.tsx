@@ -48,7 +48,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
 
   const onLogout = async () => {
     await supabase.auth.signOut();
-    toast.message("Até já — mantendo o ritmo!");
+    toast.message("Até já, mantendo o ritmo!");
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,11 +91,11 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
     // dialogs/sheets (z-50) so those still cover everything.
     <header className="fixed top-0 left-0 right-0 z-30 h-16 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="flex h-full items-center justify-between px-4">
-        {/* Left: Fluxo brand mark — outside/above the sidebar panel */}
+        {/* Left: Fluxo logo with wordmark — outside/above the sidebar panel */}
         <img
-          src={theme === "dark" ? "/branding/fluxo-mark-white.png" : "/branding/fluxo-mark-dark.png"}
+          src={theme === "dark" ? "/branding/fluxo-logo-white.svg" : "/branding/fluxo-logo-dark.svg"}
           alt="Fluxo"
-          className="h-7 w-auto select-none"
+          className="h-9 w-auto select-none"
         />
 
         {/* Right: Notifications + Profile */}

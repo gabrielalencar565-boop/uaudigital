@@ -16,12 +16,10 @@ import {
 import { getStagesForRoles } from "@/lib/role-stage-mapping";
 import { useMagicNumberConfig } from "@/features/data/queries";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
+import { stageLabel } from "@/features/gestao/pm-constants";
 
 const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
-const STAGE_LABELS: Record<string, string> = {
-  planejamento: "Planejamento", captacao: "Captação", edicao_videos: "Vídeo",
-  design: "Design", pdf: "PDF", alteracoes: "Alterações", agendamento: "Agendamento",
-};
+const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 const STAGE_COLORS: Record<string, string> = Object.fromEntries(
   STAGE_ORDER.map((k, i) => [k, brandSeriesColor(i)]),
 );

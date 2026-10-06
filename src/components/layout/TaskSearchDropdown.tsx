@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { catalogStageLabel } from "@/features/gestao/pm-constants";
 
 interface TaskSearchDropdownProps {
   onSelectTask: (taskId: string) => void;
@@ -224,7 +225,7 @@ export function TaskSearchDropdown({ onSelectTask }: TaskSearchDropdownProps) {
                       variant="secondary"
                       className={cn("text-[10px] px-1.5 py-0 shrink-0", STATUS_COLORS[r.status_global] ?? "")}
                     >
-                      {STAGE_LABELS[r.stage_current] ?? r.stage_current}
+                      {STAGE_LABELS[r.stage_current] ? catalogStageLabel(r.stage_current, STAGE_LABELS[r.stage_current]) : catalogStageLabel(r.stage_current)}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3 pl-6 text-xs text-muted-foreground">

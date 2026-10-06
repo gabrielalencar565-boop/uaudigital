@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { TAG_COLORS, tagColor, isHexColor } from "@/features/gestao/pm-constants";
+import { TAG_COLORS, tagColor, isHexColor, catalogStageLabel } from "@/features/gestao/pm-constants";
 import { usePmTags, useDeletePmTag } from "@/features/gestao/hooks/use-pm-tags";
 import { normalizePmTagStageKey } from "@/features/gestao/utils/normalize-pm-tag-stage";
 import { useMagicNumberConfig } from "@/features/data/queries";
@@ -376,7 +376,7 @@ export function AdminPontuacaoPanel() {
                       <TableRow key={row.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{getVal(row, "label")}</span>
+                            <span className="font-medium">{catalogStageLabel(row.stage, getVal(row, "label"))}</span>
                             {isCustom && (
                               <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Periódica</Badge>
                             )}
@@ -423,7 +423,7 @@ export function AdminPontuacaoPanel() {
                               title="Remover etapa periódica"
                               disabled={deleteCustomStageMut.isPending}
                               onClick={() => {
-                                if (confirm(`Remover a etapa "${row.label}"?`)) {
+                                if (confirm(`Remover a etapa "${catalogStageLabel(row.stage, row.label)}"?`)) {
                                   deleteCustomStageMut.mutate(row.stage);
                                 }
                               }}
@@ -570,7 +570,7 @@ export function AdminPontuacaoPanel() {
                                 aria-hidden
                               />
                             )}
-                            <span className="font-medium">{getVal(row, "label")}</span>
+                            <span className="font-medium">{catalogStageLabel(row.stage, getVal(row, "label"))}</span>
                             <Badge variant="outline" className="text-[10px]">Etiqueta</Badge>
                           </div>
                         </TableCell>

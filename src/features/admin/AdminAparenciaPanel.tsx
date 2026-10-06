@@ -121,7 +121,7 @@ export function AdminAparenciaPanel({ hideColors = false, hideLogos = false, emb
 
   const handleSaveBrandColor = async () => {
     if (!/^#[0-9a-fA-F]{6}$/.test(brandColorDraft)) {
-      toast.error("Cor inválida — use o formato #RRGGBB");
+      toast.error("Cor inválida. Use o formato #RRGGBB");
       return;
     }
     setSavingBrandColor(true);

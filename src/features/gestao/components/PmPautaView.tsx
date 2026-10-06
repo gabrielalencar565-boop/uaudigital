@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { PM_ACTIVE_STAGES, getStageCircleColor, stageLabel } from "../pm-constants";
+import { PM_ACTIVE_STAGES, getStageCircleColor, stageAbbr, stageLabel } from "../pm-constants";
 import { useCreatePmTask, useDeletePmTask } from "../hooks/use-pm-data";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
@@ -19,18 +19,6 @@ import { toast } from "sonner";
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
 }
-
-const STAGE_ABBR: Record<string, string> = {
-  captacao: "CAP",
-  planejamento: "PLAN",
-  design: "DSG",
-  edicao_videos: "VDO",
-  revisao: "REV",
-  alteracoes: "ALT",
-  pdf: "PDF",
-  agendamento: "AGN",
-  entrega: "OK",
-};
 
 const STAGE_BADGE_STYLE: Record<string, { bg: string; fg: string }> = {
   captacao: { bg: "bg-red-500", fg: "text-white" },
@@ -266,7 +254,7 @@ function PautaTaskCard({ task, clientsMap, membersMap, onTaskClick, onDelete, ex
 }) {
   const isDone = task.stage_current === "entrega";
   const stageTone = STAGE_BADGE_STYLE[task.stage_current] ?? { bg: "bg-muted", fg: "text-foreground" };
-  const abbr = STAGE_ABBR[task.stage_current] ?? task.stage_current.toUpperCase().slice(0, 4);
+  const abbr = task.stage_current === "entrega" ? "OK" : stageAbbr(task.stage_current);
   const member = task.assignee_id ? membersMap[task.assignee_id] : undefined;
   const clientName = clientsMap[task.client_id] ?? "—";
 
