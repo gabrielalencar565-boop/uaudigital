@@ -14,7 +14,7 @@ const anchorKey = (c: Cascade) => c.steps.find((s) => s.after.length === 0)?.key
 export function useCascadeChoice(stage: string, allowed: boolean) {
   const q = useCascades();
   const options = (q.data ?? []).filter((c) => anchorKey(c) === stage);
-  const [use, setUse] = useState(true);
+  const [use, setUse] = useState(false);
   const [id, setId] = useState("");
   const cascade = options.find((c) => c.id === id) ?? options.find((c) => c.is_default) ?? options[0] ?? null;
   return { available: allowed && !!cascade, use, setUse, options, setId, cascade, active: allowed && use && !!cascade };
