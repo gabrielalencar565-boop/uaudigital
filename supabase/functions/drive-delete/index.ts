@@ -63,15 +63,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // The shared Google Drive behind this function belongs to the legacy agency (Uau Digital). Other agencies must
+    // not write into it — they will use their own Drive connection (Configurações → Agência).
+    const { data: callerAgencyId } = await supabase.rpc("current_agency_id");
+    const { data: callerAgency } = callerAgencyId
+      ? await admin.from("agencies").select("slug").eq("id", callerAgencyId).maybeSingle()
+      : { data: null };
+    if (callerAgency?.slug !== (Deno.env.get("LEGACY_DRIVE_AGENCY_SLUG") ?? "uau-digital")) {
+      return new Response(JSON.stringify({ error: "O Google Drive compartilhado não está disponível para a sua agência. Conecte o Drive da agência em Configurações → Agência." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Task-cloning can leave multiple pm_attachments rows pointing at the same
     // physical Drive file (only the access_token differs). Deleting the real file
     // out from under a sibling row would permanently 404 it, so if another row
     // still references this drive_file_id, only drop the one being removed here —
     // the caller deletes its own pm_attachments row right after this call returns.
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
     let othersQuery = admin
       .from("pm_attachments")
       .select("id", { count: "exact", head: true })

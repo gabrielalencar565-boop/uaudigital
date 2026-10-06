@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 58 838 262" role="img" aria-label="Fluxo">
+  <defs>
+    <linearGradient id="fd-arm" x1="28" y1="0" x2="206" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6A24F0"/><stop offset="0.45" stop-color="#8F3DFF"/><stop offset="0.78" stop-color="#EE7BEA"/><stop offset="1" stop-color="#FFB88A"/>
+    </linearGradient>
+    <linearGradient id="fd-wink" x1="328" y1="0" x2="403" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EE7BEA"/><stop offset="1" stop-color="#FFB88A"/>
+    </linearGradient>
+    <linearGradient id="fd-shade" x1="0" y1="221" x2="0" y2="252" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#000" stop-opacity="0.35"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M38 102A40 40 0 0 1 78 62H182A28 28 0 0 1 182 118H112V275A37 37 0 0 1 38 275Z" fill="#18161B"/>
+  <rect x="38" y="221" width="74" height="31" fill="url(#fd-shade)"/>
+  <path d="M53 196H120C150 196 162 190 180 178" stroke="url(#fd-arm)" stroke-width="50" stroke-linecap="round" fill="none"/>
+  <circle cx="180" cy="178" r="22" fill="#FFB547"/>
+  <circle cx="178" cy="180" r="19" fill="#FFFFFF"/>
+  <g stroke="#18161B" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M248 88V244C248 272 261.3 286 288 286"/>
+    <path d="M354 166V235A51 51 0 0 0 456 235V166"/>
+    <path d="M524 166C574 200 574 252 524 286"/>
+    <path d="M634 166C584 200 584 252 634 286"/>
+    <circle cx="766" cy="224" r="66"/>
+  </g>
+  <path d="M341 97H390" stroke="url(#fd-wink)" stroke-width="26" stroke-linecap="round"/>
+  <circle cx="456" cy="92" r="22" fill="#FFB547"/>
+</svg>

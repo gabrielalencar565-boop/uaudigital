@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // "admin" is a global role, so being admin is not enough: the target must belong to the caller's own agency,
+    // otherwise any agency owner could take over any account (including other agencies' owners).
+    const { data: targetId } = await caller.rpc("my_agency_user_by_email", { p_email: email });
+    if (!targetId) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,

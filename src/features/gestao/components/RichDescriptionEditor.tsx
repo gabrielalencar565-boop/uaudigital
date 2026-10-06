@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { sanitizeHtml } from "@/lib/safe-html";
 import {
   Bold, Italic, Underline, Strikethrough, Code,
   List, ListOrdered, Heading1, Heading2, Heading3, Heading4, AlignLeft,
@@ -40,7 +41,7 @@ function sanitizeRichDescriptionHtml(html: string): string {
   if (!html || typeof document === "undefined") return html || "";
 
   const template = document.createElement("template");
-  template.innerHTML = html;
+  template.innerHTML = sanitizeHtml(html);
 
   // Nenhum comando desta toolbar depende de style inline (negrito/itálico/títulos/listas
   // usam tags semânticas), então removemos o atributo inteiro — conteúdo colado de fora
@@ -278,7 +279,7 @@ export function ExpandableDescription({
   const contentRef = useRef<HTMLDivElement>(null);
   const [needsExpand, setNeedsExpand] = useState(false);
 
-  const processedHtml = html ? linkifyHtml(sanitizeRichDescriptionHtml(html)) : "";
+  const processedHtml = html ? sanitizeHtml(linkifyHtml(sanitizeRichDescriptionHtml(html))) : "";
 
   useEffect(() => {
     if (contentRef.current) {

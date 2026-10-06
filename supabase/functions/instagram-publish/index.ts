@@ -404,6 +404,11 @@ Deno.serve(async (req) => {
       });
       const { data: userData, error: userError } = await userClient.auth.getUser();
       if (userError || !userData?.user) return json({ error: "invalid session" }, 401);
+      // publishing runs with the service role, so first make sure the caller's own (RLS-scoped) view includes this
+      // publication — otherwise anyone signed in could post to another agency's Instagram by id.
+      if (!body.publication_id) return json({ error: "publication_id is required" }, 400);
+      const { data: visible } = await userClient.from("calendar_publications").select("id").eq("id", body.publication_id).maybeSingle();
+      if (!visible) return json({ error: "publicação não encontrada" }, 404);
       return await handlePublishOne(admin, body);
     }
 
