@@ -97,7 +97,15 @@ async function requireFeaturePermission(req: Request, key: string) {
     }
   }
 
-  return { admin, userId };
+  // "admin" is a global role, so every action below must also be limited to the caller's own agency.
+  const { data: agencyId } = await userClient.rpc("current_agency_id");
+  return { admin, userId, agencyId: (agencyId as string | null) ?? null };
+}
+
+async function clientInAgency(admin: ReturnType<typeof createClient>, clientId: string, agencyId: string | null) {
+  if (!agencyId) return false;
+  const { data } = await admin.from("clients").select("id").eq("id", clientId).eq("agency_id", agencyId).maybeSingle();
+  return !!data;
 }
 
 async function graphGet(path: string, params: Record<string, string>) {
@@ -109,12 +117,11 @@ async function graphGet(path: string, params: Record<string, string>) {
   return data;
 }
 
-async function handleStart(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }) {
+async function handleStart(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }, agencyId: string | null) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
 
-  const { data: client } = await admin.from("clients").select("id").eq("id", clientId).maybeSingle();
-  if (!client) return json({ error: "client not found" }, 404);
+  if (!(await clientInAgency(admin, clientId, agencyId))) return json({ error: "client not found" }, 404);
 
   const state = crypto.randomUUID();
   const { error } = await admin.from("instagram_oauth_states").insert({ state, client_id: clientId, created_by: userId });
@@ -318,12 +325,11 @@ async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { 
 
 // ── Instagram API with Instagram Login — direct connection, no Facebook Page involved ──
 
-async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }) {
+async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }, agencyId: string | null) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
 
-  const { data: client } = await admin.from("clients").select("id").eq("id", clientId).maybeSingle();
-  if (!client) return json({ error: "client not found" }, 404);
+  if (!(await clientInAgency(admin, clientId, agencyId))) return json({ error: "client not found" }, 404);
 
   // Prefixed so InstagramCallback.tsx can tell the two OAuth flows apart from the `state`
   // alone (it comes back on the redirect before we have any other context to dispatch on).
@@ -451,9 +457,10 @@ async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, bod
   }
 }
 
-async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { client_id?: string }) {
+async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { client_id?: string }, agencyId: string | null) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
+  if (!(await clientInAgency(admin, clientId, agencyId))) return json({ error: "client not found" }, 404);
   // Clearing access_token (not just flipping status) is what makes "Desconectar Instagram"
   // an actual data-deletion action, not just a UI toggle — required for this to honestly
   // back the app's Instagram Data Deletion Instructions.
@@ -465,11 +472,15 @@ async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { 
   return json({ success: true });
 }
 
-async function handleStatus(admin: ReturnType<typeof createClient>, body: { client_id?: string }) {
+async function handleStatus(admin: ReturnType<typeof createClient>, body: { client_id?: string }, agencyId: string | null) {
   const clientId = body.client_id;
+  if (!agencyId) return json({ connections: [] });
+  const { data: agencyClients } = await admin.from("clients").select("id").eq("agency_id", agencyId);
+  const allowed = (agencyClients ?? []).map((c: { id: string }) => c.id);
   let query = admin
     .from("instagram_connections")
-    .select("client_id, status, auth_provider, facebook_page_name, instagram_username, token_expires_at, last_error");
+    .select("client_id, status, auth_provider, facebook_page_name, instagram_username, token_expires_at, last_error")
+    .in("client_id", allowed);
   if (clientId) query = query.eq("client_id", clientId);
   const { data, error } = await query;
   if (error) throw error;
@@ -495,24 +506,25 @@ Deno.serve(async (req) => {
       const { data: userData, error: userError } = await userClient.auth.getUser();
       if (userError || !userData?.user) return json({ error: "invalid session" }, 401);
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      return await handleStatus(admin, body);
+      const { data: agencyId } = await userClient.rpc("current_agency_id");
+      return await handleStatus(admin, body, (agencyId as string | null) ?? null);
     }
 
-    const { admin, userId } = await requireFeaturePermission(req, "action_instagram_connect");
+    const { admin, userId, agencyId } = await requireFeaturePermission(req, "action_instagram_connect");
 
     switch (action) {
       case "start":
-        return await handleStart(admin, userId, body);
+        return await handleStart(admin, userId, body, agencyId);
       case "callback":
         return await handleCallback(admin, body);
       case "select_page":
         return await handleSelectPage(admin, body);
       case "start_ig_login":
-        return await handleStartIgLogin(admin, userId, body);
+        return await handleStartIgLogin(admin, userId, body, agencyId);
       case "callback_ig_login":
         return await handleCallbackIgLogin(admin, body);
       case "disconnect":
-        return await handleDisconnect(admin, body);
+        return await handleDisconnect(admin, body, agencyId);
       default:
         return json({ error: `unknown action: ${action}` }, 400);
     }

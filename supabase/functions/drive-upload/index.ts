@@ -260,6 +260,19 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // The shared Google Drive behind this function belongs to the legacy agency (Uau Digital). Other agencies must
+    // not write into it — they will use their own Drive connection (Configurações → Agência).
+    const { data: callerAgencyId } = await supabase.rpc("current_agency_id");
+    const { data: callerAgency } = callerAgencyId
+      ? await admin.from("agencies").select("slug").eq("id", callerAgencyId).maybeSingle()
+      : { data: null };
+    if (callerAgency?.slug !== (Deno.env.get("LEGACY_DRIVE_AGENCY_SLUG") ?? "uau-digital")) {
+      return new Response(JSON.stringify({ error: "O Google Drive compartilhado não está disponível para a sua agência. Conecte o Drive da agência em Configurações → Agência." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Streaming relay (video): the browser POSTs the raw file as the request body
     // (metadata in the query string, since a streamed binary body can't carry JSON
     // alongside it) and this function pipes req.body straight into the outgoing PUT

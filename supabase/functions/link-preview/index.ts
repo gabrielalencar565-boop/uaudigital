@@ -11,10 +11,69 @@ function sanitizeUrl(raw: string): string | null {
   try {
     const url = new URL(raw.trim());
     if (!["http:", "https:"].includes(url.protocol)) return null;
+    if (url.username || url.password) return null;
+    if (url.port && url.port !== "80" && url.port !== "443") return null;
     return url.toString();
   } catch {
     return null;
   }
+}
+
+// ── SSRF guard ──────────────────────────────────────────────────────────────
+// This endpoint is public (the approval pages use it) and fetches any URL it is given, so it must never be a way
+// to reach internal services or cloud metadata. Block private/loopback/link-local targets, check what the host
+// resolves to, and re-validate every redirect hop instead of letting fetch follow them blindly.
+function isPrivateIp(ip: string): boolean {
+  if (ip.includes(":")) {
+    const l = ip.toLowerCase();
+    return l === "::1" || l === "::" || l.startsWith("fc") || l.startsWith("fd") || /^fe[89ab]/.test(l) || l.startsWith("::ffff:");
+  }
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4 || p.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return true;
+  const [a, b] = p;
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+}
+
+async function assertPublicHost(hostname: string): Promise<void> {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) {
+    throw new Error("Blocked host");
+  }
+  if (/^[0-9.]+$/.test(h) || h.includes(":")) {
+    if (isPrivateIp(h)) throw new Error("Blocked host");
+    return;
+  }
+  const ips = [
+    ...(await Deno.resolveDns(h, "A").catch(() => [] as string[])),
+    ...(await Deno.resolveDns(h, "AAAA").catch(() => [] as string[])),
+  ];
+  if (ips.length === 0 || ips.some(isPrivateIp)) throw new Error("Blocked host");
+}
+
+async function safeFetch(startUrl: string, signal: AbortSignal): Promise<Response> {
+  let current = startUrl;
+  for (let hop = 0; hop < 4; hop++) {
+    const clean = sanitizeUrl(current);
+    if (!clean) throw new Error("Invalid URL");
+    await assertPublicHost(new URL(clean).hostname);
+    const res = await fetch(clean, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; LinkPreviewBot/1.0)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal,
+      redirect: "manual",
+    });
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      res.body?.cancel();
+      current = new URL(location, clean).toString();
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Too many redirects");
 }
 
 function extractMeta(html: string, url: string) {
@@ -57,7 +116,17 @@ function extractMeta(html: string, url: string) {
 
   const siteName = get("og:site_name") || null;
 
-  const ogUrl = get("og:url") || url;
+  // These values come from a third-party page and end up in href/src attributes in the app: only accept http(s).
+  const httpOnly = (v: string | null): string | null => {
+    if (!v) return null;
+    try {
+      const u = new URL(v.replace(/&amp;/g, "&"), url);
+      return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
+    } catch {
+      return null;
+    }
+  };
+  const ogUrl = httpOnly(get("og:url")) || url;
 
   // Detect platform
   let platform: string | null = null;
@@ -81,7 +150,7 @@ function extractMeta(html: string, url: string) {
   return {
     title: decode(title),
     description: decode(description),
-    image: image?.replace(/&amp;/g, "&") || null,
+    image: httpOnly(image),
     url: ogUrl,
     site_name: decode(siteName),
     platform,
@@ -124,14 +193,17 @@ Deno.serve(async (req) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(sanitized, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; LinkPreviewBot/1.0)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-      signal: controller.signal,
-      redirect: "follow",
-    });
+    let response: Response;
+    try {
+      response = await safeFetch(sanitized, controller.signal);
+    } catch (e) {
+      clearTimeout(timeout);
+      const blocked = e instanceof Error && (e.message === "Blocked host" || e.message === "Invalid URL");
+      return new Response(
+        JSON.stringify({ error: blocked ? "URL not allowed" : "Failed to fetch URL" }),
+        { status: blocked ? 400 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     clearTimeout(timeout);
 
     if (!response.ok) {

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { sanitizeHtml } from "@/lib/safe-html";
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Wand2, Loader2, SpellCheck as SpellCheckIcon, ArrowUpRight, ArrowDownRight, Feather, Sparkles,
@@ -76,7 +77,7 @@ function setImportantColor(el: HTMLElement, color: string) {
 // follow the editor's own styling instead of the source site's.
 function sanitizePastedHtml(html: string): string {
   const container = document.createElement("div");
-  container.innerHTML = html;
+  container.innerHTML = sanitizeHtml(html);
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT);
   const elements: Element[] = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -304,7 +305,7 @@ function linkifyHtmlContent(html: string) {
   if (!html) return "";
 
   const container = document.createElement("div");
-  container.innerHTML = html;
+  container.innerHTML = sanitizeHtml(html);
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   const textNodes: Text[] = [];
   let currentNode: Node | null;
@@ -910,7 +911,7 @@ export function SmartCaptionEditor({ value, onChange, placeholder = "Escreva aqu
 
   const restoreFromHistory = useCallback((entry: { html: string; time: Date }) => {
     if (editorRef.current) {
-      editorRef.current.innerHTML = entry.html;
+      editorRef.current.innerHTML = sanitizeHtml(entry.html);
       onChange(entry.html);
       setSaveStatus("saved");
       setHistoryOpen(false);

@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { useAppSettings } from "@/features/data/queries";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
+import { Download } from "lucide-react";
 
 /* ── Schemas ── */
 const loginSignupSchema = z.object({
@@ -123,10 +125,9 @@ export default function Auth() {
   const appSettings = useAppSettings();
   
 
-  // This panel's background is always dark (#0B0B0B below), so the dark-theme logo reads
-  // best here regardless of the app's own theme setting — falls back to the light variant
-  // if only that one is configured.
-  const logoUrl = appSettings.data?.sidebar_logo_dark_url || appSettings.data?.sidebar_logo_url || null;
+  // The login page belongs to the platform (one domain for every agency, and the visitor has no agency yet), so it
+  // always carries the Fluxo logo — never an agency's own settings.
+  const pwa = usePwaInstall();
   const bgImages = appSettings.data?.login_bg_images ?? [];
   const galleryPhotos = useMemo(() => {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);
@@ -269,11 +270,7 @@ export default function Auth() {
         <div className="relative z-10 w-full max-w-sm space-y-8">
           {/* Logo */}
           <div className="flex justify-center">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
-            ) : (
-              <img src="/branding/fluxo-mark-white.png" alt="Fluxo" className="h-12 w-auto object-contain" />
-            )}
+            <img src="/branding/fluxo-logo-white.svg" alt="Fluxo" className="h-12 w-auto object-contain" />
           </div>
 
           {/* Title */}
@@ -286,7 +283,7 @@ export default function Auth() {
               {mode === "reset" && "Nova senha"}
             </h1>
             <p className="text-sm text-white/50">
-              {subtitle ?? "Bora fazer acontecer é Uau ou nada! 🚀"}
+              {subtitle ?? "Sua agência inteira, em um só fluxo."}
             </p>
           </div>
 
@@ -503,10 +500,30 @@ export default function Auth() {
               </button>
             </form>
           )}
+
+          {/* Install the app — uses this domain's own manifest (name/icon), nothing agency-specific */}
+          {pwa.available && (mode === "login" || mode === "signup") && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (pwa.canPrompt) {
+                  await pwa.install();
+                } else {
+                  toast.message("Instalar o Fluxo no iPhone", {
+                    description: "Toque em Compartilhar e depois em “Adicionar à Tela de Início”.",
+                    duration: 9000,
+                  });
+                }
+              }}
+              className="mx-auto flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              <Download className="h-3.5 w-3.5" /> Baixar o app do Fluxo
+            </button>
+          )}
         </div>
 
         {/* Bottom credit */}
-        <p className="absolute bottom-4 text-[10px] text-white/20">© Uau Digital</p>
+        <p className="absolute bottom-4 text-[10px] text-white/20">© Fluxo</p>
       </div>
 
       {/* ─── Right Column: Photo Gallery ─── */}
