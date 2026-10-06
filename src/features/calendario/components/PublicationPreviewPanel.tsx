@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle, RefreshCw, Crop, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,12 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { toStorageRenderUrl } from "@/lib/storage-image-url";
+import { fitImageToFormat } from "@/lib/image-format";
 import { supabase } from "@/integrations/supabase/client";
-import { CONTENT_TYPE_LABELS, FEED_ASPECT_CONTENT_TYPES, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
+import { CONTENT_TYPE_LABELS, FEED_FORMAT, VERTICAL_FORMAT, getInstagramFormat, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication, useSetPublicationDate } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/features/gestao/hooks/use-pm-data";
-import { downscaleVideoWithFallback, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
+import { downscaleVideoWithFallback, fitVideoToFormat, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
 import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 
@@ -28,7 +29,7 @@ const sb = supabase as any;
 
 interface Props {
   publication: CalendarPublication | null;
-  media: { id: string; url: string; type: string | null }[];
+  media: { id: string; url: string; type: string | null; sourceId?: string | null }[];
   clientId: string | null;
   clientName: string;
   clientLogoUrl?: string | null;
@@ -82,8 +83,16 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [capturingFrame, setCapturingFrame] = useState(false);
   const [dragImageIndex, setDragImageIndex] = useState<number | null>(null);
   const [dragOverImageIndex, setDragOverImageIndex] = useState<number | null>(null);
+  const instagramFormat = getInstagramFormat(publication?.content_type);
   const [feedCropSrc, setFeedCropSrc] = useState<string | null>(null);
   const [feedCropFile, setFeedCropFile] = useState<File | null>(null);
+  // what to do with the cropped image: add it as media, use it as the Reel cover, or replace a photo that is being re-framed
+  type CropIntent = { kind: "media" } | { kind: "cover" } | { kind: "replace"; oldId: string; sourceId: string | null };
+  const [cropIntent, setCropIntent] = useState<CropIntent>({ kind: "media" });
+  // several photos being added at once ("Enviando 2/5")
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  // real pixel size of the attached video, to warn when it isn't 9:16
+  const [videoDims, setVideoDims] = useState<{ w: number; h: number } | null>(null);
   const frameVideoRef = useRef<HTMLVideoElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const timeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -136,8 +145,19 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     setTimeOpen(false);
   };
 
+  // Imagem que vira o formato padrão do Instagram antes de subir: 1080x1350 (feed) ou 1080x1920 (Reels/Stories).
+  const startImageCrop = (file: File, intent: CropIntent) => {
+    setCropIntent(intent);
+    setFeedCropFile(file);
+    setFeedCropSrc(URL.createObjectURL(file));
+  };
+
   const uploadAsCover = (file: File) => {
     if (!file.type.startsWith("image/")) return;
+    if (instagramFormat) {
+      startImageCrop(file, { kind: "cover" });
+      return;
+    }
     uploadCover.mutate(
       { task_id: publication.task_id, file, category: "final" },
       { onSuccess: (att) => save({ cover_attachment_id: att.id }) },
@@ -150,11 +170,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   // failure on raw 4K exports.
   const uploadAsMedia = async (file: File) => {
     if (file.type.startsWith("image/")) {
-      // Carrossel/Post/Foto ocupam o feed no formato retrato — ajusta pro tamanho padrão
-      // (1080x1350) antes de subir. Stories e Reels têm proporções diferentes, sobem direto.
-      if (FEED_ASPECT_CONTENT_TYPES.includes(publication.content_type)) {
-        setFeedCropFile(file);
-        setFeedCropSrc(URL.createObjectURL(file));
+      // Ajusta pro tamanho padrão do Instagram antes de subir: Carrossel/Post/Foto 1080x1350,
+      // Stories/Reels 1080x1920.
+      if (instagramFormat) {
+        startImageCrop(file, { kind: "media" });
         return;
       }
       uploadCover.mutate({ task_id: publication.task_id, file, category: "final" });
@@ -165,7 +184,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     // exports report an empty file.type).
     setVideoUpload({ phase: "compressing", pct: 0 });
     try {
-      const compressed = await downscaleVideoWithFallback(file, (pct) => setVideoUpload({ phase: "compressing", pct }));
+      // Reels/Stories: re-frame to 1080x1920 (no bars). Anything else keeps the usual downscale.
+      const compressed = instagramFormat?.aspect === VERTICAL_FORMAT.aspect
+        ? await fitVideoToFormat(file, instagramFormat, (pct) => setVideoUpload({ phase: "compressing", pct }))
+        : await downscaleVideoWithFallback(file, (pct) => setVideoUpload({ phase: "compressing", pct }));
       setVideoUpload({ phase: "uploading", pct: 0 });
       await uploadVideoResumable.mutateAsync({
         task_id: publication.task_id,
@@ -190,14 +212,147 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     }
   };
 
+  // A video attached before this rule (or exported in another shape) is re-framed to 9:16 and replaces the old one.
+  const refitCurrentVideo = async () => {
+    const current = videos[0];
+    if (!current || !instagramFormat) return;
+    setVideoUpload({ phase: "compressing", pct: 0 });
+    try {
+      const res = await fetch(current.url);
+      if (!res.ok) throw new Error("Não consegui baixar o vídeo atual para ajustá-lo.");
+      const blob = await res.blob();
+      const source = new File([blob], `reels-${Date.now()}.mp4`, { type: blob.type || "video/mp4" });
+      const fitted = await fitVideoToFormat(source, instagramFormat, (pct) => setVideoUpload({ phase: "compressing", pct }));
+      setVideoUpload({ phase: "uploading", pct: 0 });
+      await uploadVideoResumable.mutateAsync({
+        task_id: publication.task_id,
+        file: fitted,
+        category: "final",
+        onProgress: (pct) => setVideoUpload({ phase: "uploading", pct }),
+      });
+      try {
+        const posterBlob = await renderVideoPoster(fitted);
+        const posterFile = new File([posterBlob], `${source.name.replace(/\.[^.]+$/, "")}-poster.jpg`, { type: "image/jpeg" });
+        await uploadCover.mutateAsync({ task_id: publication.task_id, file: posterFile, category: "final" });
+      } catch (posterErr) {
+        console.error("[video-poster] falha ao gerar miniatura", posterErr);
+      }
+      await deleteCoverImage(current.id); // the old, unadjusted video
+      setVideoDims(null);
+      toast.success("Vídeo ajustado para 1080x1920.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao ajustar o vídeo");
+    } finally {
+      setVideoUpload(null);
+    }
+  };
+
+  // Adding a second photo to a Post/Foto turns it into a Carrossel (Instagram only has the carousel for several images).
+  const isFeedType = !!instagramFormat && instagramFormat.aspect === FEED_FORMAT.aspect;
+  const promoteToCarouselIfNeeded = (totalImages: number) => {
+    if (isFeedType && totalImages > 1 && publication.content_type !== "carrossel") {
+      save({ content_type: "carrossel" });
+      toast.success("Com mais de uma foto, a publicação virou Carrossel.");
+    }
+  };
+
   const handleFeedCropConfirm = (blob: Blob) => {
     if (feedCropSrc) URL.revokeObjectURL(feedCropSrc);
     const original = feedCropFile;
+    const intent = cropIntent;
     setFeedCropSrc(null);
     setFeedCropFile(null);
     if (!original) return;
     const croppedFile = new File([blob], `${original.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
-    uploadCover.mutate({ task_id: publication.task_id, file: croppedFile, category: "final" });
+
+    if (intent.kind === "replace") {
+      // keep the original linked: reuse the existing one, or (legacy photo) keep the old file itself as the original
+      uploadCover.mutate(
+        { task_id: publication.task_id, file: croppedFile, category: "final", ...(intent.sourceId ? { source_attachment_id: intent.sourceId } : { original }) },
+        {
+          onSuccess: async (att) => {
+            const orderedIds = images.map((img) => (img.id === intent.oldId ? att.id : img.id));
+            if (orderedIds.length > 1) reorderCarousel.mutate({ orderedIds });
+            await deleteCoverImage(intent.oldId, { silent: true });
+            toast.success("Foto ajustada.");
+          },
+        },
+      );
+      return;
+    }
+
+    // keep the uncropped original so "Ajustar" can re-frame from it later
+    uploadCover.mutate(
+      { task_id: publication.task_id, file: croppedFile, category: "final", original },
+      {
+        onSuccess: (att) => {
+          if (intent.kind === "cover") save({ cover_attachment_id: att.id });
+          else promoteToCarouselIfNeeded(images.length + 1);
+        },
+      },
+    );
+  };
+
+  // Several photos at once (carousel): each is centered-cropped to 1080x1350 automatically and its original is kept, so
+  // nothing has to be cropped one by one — "Ajustar" re-frames any of them afterwards.
+  const MAX_CAROUSEL_IMAGES = 10;
+  const addMediaFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    if (files.length === 1) {
+      uploadAsMedia(files[0]);
+      return;
+    }
+    if (!isFeedType) {
+      toast.error("Só Post, Foto e Carrossel aceitam várias fotos de uma vez.");
+      return;
+    }
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length !== files.length) {
+      toast.error("Para montar um carrossel envie só imagens (vídeo vai em Reels).");
+      return;
+    }
+    const room = MAX_CAROUSEL_IMAGES - images.length;
+    if (room <= 0) {
+      toast.error(`O carrossel do Instagram aceita no máximo ${MAX_CAROUSEL_IMAGES} fotos.`);
+      return;
+    }
+    const batch = imageFiles.slice(0, room);
+    if (imageFiles.length > room) toast.warning(`Só cabem ${room} foto(s) a mais (máx. ${MAX_CAROUSEL_IMAGES}); as demais foram ignoradas.`);
+
+    setBatchProgress({ done: 0, total: batch.length });
+    try {
+      for (let i = 0; i < batch.length; i++) {
+        const fitted = await fitImageToFormat(batch[i], instagramFormat!);
+        await uploadCover.mutateAsync({ task_id: publication.task_id, file: fitted, category: "final", original: batch[i] });
+        setBatchProgress({ done: i + 1, total: batch.length });
+      }
+      promoteToCarouselIfNeeded(images.length + batch.length);
+      toast.success(`${batch.length} fotos adicionadas em ${instagramFormat!.width}x${instagramFormat!.height}. Use "Ajustar" para reenquadrar cada uma.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar as fotos");
+    } finally {
+      setBatchProgress(null);
+    }
+  };
+
+  // "Ajustar": reopens the crop on the ORIGINAL photo (when there is one) so the framing can be redone freely.
+  const reframeImage = async (img: { id: string; url: string }) => {
+    if (!instagramFormat) return;
+    const current = media.find((m) => m.id === img.id);
+    try {
+      let sourceUrl = current?.url ?? img.url;
+      if (current?.sourceId) {
+        const { data } = await sb.from("pm_attachments").select("public_url").eq("id", current.sourceId).maybeSingle();
+        if (data?.public_url) sourceUrl = data.public_url;
+      }
+      const res = await fetch(sourceUrl);
+      if (!res.ok) throw new Error("download");
+      const blob = await res.blob();
+      const file = new File([blob], `foto-${Date.now()}.${(blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg")}`, { type: blob.type || "image/jpeg" });
+      startImageCrop(file, { kind: "replace", oldId: img.id, sourceId: current?.sourceId ?? null });
+    } catch {
+      toast.error("Não consegui abrir a foto para ajustar. Tente de novo ou reenvie a imagem.");
+    }
   };
 
   const handleFeedCropCancel = () => {
@@ -206,7 +361,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     setFeedCropFile(null);
   };
 
-  const deleteCoverImage = async (imgId: string) => {
+  const deleteCoverImage = async (imgId: string, opts?: { silent?: boolean }) => {
     // RLS only lets the uploader or an admin delete a given attachment — a delete blocked by
     // that returns success with no row back (data stays null) rather than an error, so check
     // for that explicitly or this silently no-ops while still claiming success.
@@ -227,7 +382,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     qc.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
     qc.invalidateQueries({ queryKey: ["cover_candidates"] });
     qc.invalidateQueries({ queryKey: ["cover_attachments_by_id"] });
-    toast.success("Imagem excluída");
+    if (!opts?.silent) toast.success("Imagem excluída");
   };
 
   // Grabs whatever frame the video is paused on and uploads it as a new cover
@@ -307,8 +462,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const LIMIT = 150;
   const isLong = plainCaption.length > LIMIT;
 
-  const mediaUploadBusy = uploadCover.isPending || !!videoUpload;
-  const mediaUploadLabel = videoUpload
+  const mediaUploadBusy = uploadCover.isPending || !!videoUpload || !!batchProgress;
+  const mediaUploadLabel = batchProgress
+    ? `Enviando fotos... ${batchProgress.done}/${batchProgress.total}`
+    : videoUpload
     ? `${videoUpload.phase === "compressing" ? "Otimizando vídeo" : "Enviando vídeo"}... ${videoUpload.pct}%`
     : uploadCover.isPending
       ? "Enviando..."
@@ -372,6 +529,15 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => reframeImage(images[0])}
+                        disabled={mediaUploadBusy || uploadCover.isPending}
+                        title="Ajustar o enquadramento (1080x1920)"
+                        className="absolute bottom-3 right-2 flex h-7 items-center gap-1 rounded-full bg-white/90 px-2.5 text-[11px] font-medium text-neutral-900 shadow-sm opacity-0 transition group-hover:opacity-100 hover:bg-white disabled:opacity-50"
+                      >
+                        <Crop className="h-3.5 w-3.5" /> Ajustar
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -381,8 +547,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       onDrop={(e) => {
                         e.preventDefault();
                         setMediaDragActive(false);
-                        const file = e.dataTransfer.files?.[0];
-                        if (file) uploadAsMedia(file);
+                        void addMediaFiles(Array.from(e.dataTransfer.files ?? []));
                       }}
                       onClick={() => mediaFileInputRef.current?.click()}
                       disabled={mediaUploadBusy}
@@ -397,7 +562,23 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                   )
                 ) : hasVideo ? (
                   <div className="relative">
-                    <video src={videos[0].url} controls className="mx-auto block h-auto max-h-[68vh] w-auto max-w-full rounded-xl object-contain" />
+                    <video
+                      key={videos[0].url}
+                      src={videos[0].url}
+                      controls
+                      onLoadedMetadata={(e) => setVideoDims({ w: e.currentTarget.videoWidth, h: e.currentTarget.videoHeight })}
+                      className="mx-auto block rounded-xl bg-black object-contain"
+                      style={{ aspectRatio: "9 / 16", width: "min(100%, 38.25vh)" }}
+                    />
+                    {videoDims && Math.abs(videoDims.w / videoDims.h - 9 / 16) > 0.02 && (
+                      <div className="mx-auto mt-2 max-w-[38.25vh] space-y-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-center text-[11px] text-amber-600 dark:text-amber-400">
+                        <p>Vídeo em {videoDims.w}x{videoDims.h}: fora do padrão 1080x1920 (9:16) — sairia com tarjas no Instagram.</p>
+                        <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={mediaUploadBusy} onClick={refitCurrentVideo}>
+                          {mediaUploadBusy ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+                          {mediaUploadLabel ?? "Ajustar para 9:16 (sem tarjas)"}
+                        </Button>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => deleteCoverImage(videos[0].id)}
@@ -409,8 +590,14 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                   </div>
                 ) : images.length > 0 ? (
                   <>
-                    <button type="button" onClick={() => setViewerOpen(true)} className="block w-full">
-                      <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full cursor-zoom-in rounded-xl object-cover" />
+                    {/* sempre no enquadramento padrão do Instagram (4:5 no feed), mesmo que o arquivo tenha outra proporção */}
+                    <button
+                      type="button"
+                      onClick={() => setViewerOpen(true)}
+                      className="mx-auto block overflow-hidden rounded-xl"
+                      style={{ aspectRatio: "4 / 5", width: "min(100%, 54.4vh)" }}
+                    >
+                      <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="h-full w-full cursor-zoom-in object-cover" />
                     </button>
                     <button
                       type="button"
@@ -423,18 +610,29 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
+                    {instagramFormat && (
+                      <button
+                        type="button"
+                        onClick={() => reframeImage(images[carouselIndex] ?? images[0])}
+                        disabled={mediaUploadBusy || uploadCover.isPending}
+                        title={`Ajustar o enquadramento (${instagramFormat.width}x${instagramFormat.height})`}
+                        className="absolute bottom-3 right-3 flex h-7 items-center gap-1 rounded-full bg-white/90 px-2.5 text-[11px] font-medium text-neutral-900 shadow-sm opacity-0 transition group-hover:opacity-100 hover:bg-white disabled:opacity-50"
+                      >
+                        <Crop className="h-3.5 w-3.5" /> Ajustar
+                      </button>
+                    )}
                     {isCarousel && (
                       <>
                         <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
                           {carouselIndex + 1}/{images.length}
                         </div>
                         {carouselIndex > 0 && (
-                          <button onClick={() => setCarouselIndex((i) => i - 1)} className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
+                          <button onClick={() => setCarouselIndex((i) => i - 1)} className="absolute left-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-neutral-900 opacity-0 shadow-sm transition group-hover:opacity-100">
                             <ChevronLeft className="h-4 w-4" />
                           </button>
                         )}
                         {carouselIndex < images.length - 1 && (
-                          <button onClick={() => setCarouselIndex((i) => i + 1)} className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
+                          <button onClick={() => setCarouselIndex((i) => i + 1)} className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-neutral-900 opacity-0 shadow-sm transition group-hover:opacity-100">
                             <ChevronRight className="h-4 w-4" />
                           </button>
                         )}
@@ -454,8 +652,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     onDrop={(e) => {
                       e.preventDefault();
                       setMediaDragActive(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) uploadAsMedia(file);
+                      void addMediaFiles(Array.from(e.dataTransfer.files ?? []));
                     }}
                     onClick={() => mediaFileInputRef.current?.click()}
                     disabled={mediaUploadBusy}
@@ -465,18 +662,19 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     )}
                   >
                     {mediaUploadBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                    {mediaUploadLabel ?? "Sem mídia anexada — clique ou arraste pra adicionar"}
+                    {mediaUploadLabel ?? (isFeedType ? "Sem mídia anexada — clique ou arraste uma ou várias fotos (carrossel)" : "Sem mídia anexada — clique ou arraste pra adicionar")}
                   </button>
                 )}
                 <input
                   ref={mediaFileInputRef}
                   type="file"
                   accept="image/*,video/*"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
+                    const files = Array.from(e.target.files ?? []);
                     e.target.value = "";
-                    if (file) uploadAsMedia(file);
+                    void addMediaFiles(files);
                   }}
                 />
               </div>
@@ -524,12 +722,25 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     {/* "video" is a legacy content_type kept only so old rows still render
                         (see calendar-types.ts) — every video format is Reels now, so it's
                         not offered as a choice here. */}
-                    {Object.entries(CONTENT_TYPE_LABELS).filter(([key]) => key !== "video").map(([key, label]) => (
+                    {/* "outro" had no behavior at all (no format, no automatic publishing), so it is no longer offered;
+                        it only stays listed on rows that already have it, so their current value still renders. */}
+                    {Object.entries(CONTENT_TYPE_LABELS).filter(([key]) => key !== "video" && (key !== "outro" || publication.content_type === "outro")).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {isFeedType && images.length > 0 && !isCarousel && (
+                <div className="space-y-1.5">
+                  <Label>Fotos</Label>
+                  <Button type="button" variant="outline" size="sm" disabled={mediaUploadBusy} onClick={() => mediaFileInputRef.current?.click()}>
+                    {mediaUploadBusy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Plus className="mr-1.5 h-4 w-4" />}
+                    {mediaUploadLabel ?? "Adicionar mais fotos (vira carrossel)"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Selecione várias de uma vez — cada uma é enquadrada em 1080x1350 e pode ser reajustada com “Ajustar”.</p>
+                </div>
+              )}
 
               {isCarousel && (
                 <div className="space-y-1.5">
@@ -562,8 +773,20 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         </HoverCardContent>
                       </HoverCard>
                     ))}
+                    {images.length < MAX_CAROUSEL_IMAGES && (
+                      <button
+                        type="button"
+                        onClick={() => mediaFileInputRef.current?.click()}
+                        disabled={mediaUploadBusy}
+                        title="Adicionar mais fotos ao carrossel"
+                        className="flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-border bg-muted text-[10px] text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                      >
+                        {mediaUploadBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Adicionar
+                      </button>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas.</p>
+                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas. Máx. 10 fotos — cada uma em 1080x1350.</p>
                 </div>
               )}
 
@@ -1145,11 +1368,11 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
       <AvatarCropDialog
         open={!!feedCropSrc}
         imageSrc={feedCropSrc ?? ""}
-        title="Ajustar foto pro feed (1080x1350)"
-        aspect={4 / 5}
+        title={`Ajustar foto pro ${(instagramFormat ?? FEED_FORMAT).label}`}
+        aspect={(instagramFormat ?? FEED_FORMAT).aspect}
         cropShape="rect"
-        outputWidth={1080}
-        outputHeight={1350}
+        outputWidth={(instagramFormat ?? FEED_FORMAT).width}
+        outputHeight={(instagramFormat ?? FEED_FORMAT).height}
         onConfirm={handleFeedCropConfirm}
         onCancel={handleFeedCropCancel}
       />

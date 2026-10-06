@@ -71,6 +71,8 @@ export interface PmAttachment {
   created_at: string;
   category?: "material" | "final";
   drive_file_id?: string | null;
+  // For a cropped feed/story photo: the uncropped original (a separate "material" attachment), used by "Ajustar".
+  source_attachment_id?: string | null;
 }
 
 export interface PmProject {

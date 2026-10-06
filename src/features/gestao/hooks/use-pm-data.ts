@@ -799,43 +799,62 @@ async function uploadImageThumbnail(file: File, taskId: string): Promise<string 
 export function useUploadPmAttachment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ task_id, file, category }: { task_id: string; file: File; category?: "material" | "final" }) => {
+    mutationFn: async (
+      { task_id, file, category, original, source_attachment_id }:
+      {
+        task_id: string; file: File; category?: "material" | "final";
+        // The uncropped file this (cropped) one came from: uploaded first as its own "material" attachment and linked, so
+        // "Ajustar" can later re-frame from the original.
+        original?: File;
+        // Link to an original that is already attached (re-framing an existing photo).
+        source_attachment_id?: string;
+      },
+    ) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("task_id", task_id);
-      const { data: driveData, error: driveErr } = await supabase.functions.invoke("drive-upload", {
-        body: formData,
-      });
-      if (driveErr) throw driveErr;
+      const insertOne = async (f: File, cat: "material" | "final", sourceId: string | null, log: boolean): Promise<PmAttachment> => {
+        const formData = new FormData();
+        formData.append("file", f);
+        formData.append("task_id", task_id);
+        const { data: driveData, error: driveErr } = await supabase.functions.invoke("drive-upload", {
+          body: formData,
+        });
+        if (driveErr) throw driveErr;
 
-      const thumbnailUrl = await uploadImageThumbnail(file, task_id);
+        const thumbnailUrl = await uploadImageThumbnail(f, task_id);
 
-      const { data, error } = await sb.from("pm_attachments").insert({
-        task_id,
-        uploaded_by: user.id,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        storage_provider: "drive",
-        drive_file_id: driveData.drive_file_id,
-        public_url: driveData.public_url,
-        thumbnail_url: thumbnailUrl,
-        access_token: driveData.access_token,
-        category: category ?? "material",
-      }).select().single();
-      if (error) throw error;
+        const { data, error } = await sb.from("pm_attachments").insert({
+          task_id,
+          uploaded_by: user.id,
+          file_name: f.name,
+          file_type: f.type,
+          file_size: f.size,
+          storage_provider: "drive",
+          drive_file_id: driveData.drive_file_id,
+          public_url: driveData.public_url,
+          thumbnail_url: thumbnailUrl,
+          access_token: driveData.access_token,
+          category: cat,
+          source_attachment_id: sourceId,
+        }).select().single();
+        if (error) throw error;
 
-      await sb.from("pm_activity_log").insert({
-        entity_type: "attachment",
-        entity_id: task_id,
-        action: "file_added",
-        metadata: { task_id, file_name: file.name },
-        created_by: user.id,
-      });
-      return data as PmAttachment;
+        if (log) {
+          await sb.from("pm_activity_log").insert({
+            entity_type: "attachment",
+            entity_id: task_id,
+            action: "file_added",
+            metadata: { task_id, file_name: f.name },
+            created_by: user.id,
+          });
+        }
+        return data as PmAttachment;
+      };
+
+      let sourceId = source_attachment_id ?? null;
+      if (original) sourceId = (await insertOne(original, "material", null, false)).id;
+      return await insertOne(file, category ?? "material", sourceId, true);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pm_attachments"] });
