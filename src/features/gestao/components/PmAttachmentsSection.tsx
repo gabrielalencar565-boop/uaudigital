@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/upload-tray-store";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
+import { FEED_FORMAT, VERTICAL_FORMAT, type InstagramFormat } from "@/features/calendario/calendar-types";
 
 const sb = supabase as any;
 
@@ -246,6 +247,73 @@ export async function downscaleVideoWithFallback(file: File, onProgress?: (pct: 
   throw lastErr;
 }
 
+// Output widths tried in order when fitting a video to a vertical format; both keep the exact 9:16 shape (1080x1920,
+// then 720x1280 for sources that run the WASM heap out of memory at full size).
+const FIT_FALLBACK_WIDTHS = [1080, 720];
+
+/** Re-frames a video to a vertical Instagram format (Stories/Reels, 1080x1920) with NO letterbox bars: the largest
+ * 9:16 region is cropped from the center of each frame and scaled to exactly the target size (1080x1920). A video that
+ * is already 9:16 and no bigger than the target is returned untouched. Runs client-side in ffmpeg.wasm like downscaleVideo; throws if
+ * the browser can't read or re-encode the file — callers must NOT fall back to the original, since that is exactly
+ * what would be published with bars. */
+export async function fitVideoToFormat(file: File, format: InstagramFormat, onProgress?: (pct: number) => void): Promise<File> {
+  const dims = await probeVideoDimensions(file);
+  if (!dims) {
+    throw new Error(`Não consegui ler este vídeo no navegador para ajustá-lo a ${format.width}x${format.height}. Exporte em MP4 (H.264) e tente de novo.`);
+  }
+  const sameAspect = Math.abs(dims.width / dims.height - format.aspect) <= 0.01;
+  if (sameAspect && dims.width <= format.width) {
+    onProgress?.(100);
+    return file;
+  }
+
+  // largest centered region with the target aspect ratio (even dimensions, as H.264 needs)
+  const even = (n: number) => Math.max(2, Math.floor(n / 2) * 2);
+  const wider = dims.width / dims.height > format.aspect;
+  const cropH = wider ? even(dims.height) : even(dims.width / format.aspect);
+  const cropW = wider ? even(dims.height * format.aspect) : even(dims.width);
+
+  const { fetchFile } = await import("@ffmpeg/util");
+  let lastErr: unknown;
+  for (const targetW of FIT_FALLBACK_WIDTHS.filter((w) => w <= format.width)) {
+    // always the exact standard size (1080x1920 — or 720x1280 in the low-memory retry), even when the source is smaller
+    const outW = even(targetW);
+    const outH = even(outW / format.aspect);
+    const ffmpeg = await loadFfmpeg();
+    const ext = file.name.match(/\.[^.]+$/)?.[0] || ".mp4";
+    const inputName = `fit-input${ext}`;
+    const outputName = "fit-output.mp4";
+    const onFfmpegProgress = ({ progress }: { progress: number }) => {
+      if (Number.isFinite(progress)) onProgress?.(Math.max(0, Math.min(99, Math.round(progress * 100))));
+    };
+    ffmpeg.on("progress", onFfmpegProgress);
+    try {
+      await ffmpeg.writeFile(inputName, await fetchFile(file));
+      await runFfmpeg(ffmpeg, [
+        "-i", inputName,
+        "-vf", `crop=${cropW}:${cropH},scale=${outW}:${outH}:flags=lanczos,setsar=1,format=yuv420p`,
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+        "-x264-params", "rc-lookahead=0:ref=1",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        outputName,
+      ]);
+      const data = (await ffmpeg.readFile(outputName)) as Uint8Array;
+      onProgress?.(100);
+      return new File([new Blob([data], { type: "video/mp4" })], `${file.name.replace(/\.[^.]+$/, "")}.mp4`, { type: "video/mp4" });
+    } catch (err) {
+      lastErr = err;
+      console.error(`[video-fit] falha ao ajustar para ${outW}x${outH}`, err);
+    } finally {
+      ffmpeg.off("progress", onFfmpegProgress);
+      await ffmpeg.deleteFile(inputName).catch(() => {});
+      await ffmpeg.deleteFile(outputName).catch(() => {});
+    }
+  }
+  console.error("[video-fit] todas as tentativas falharam", lastErr);
+  throw new Error(`Não foi possível ajustar o vídeo para ${format.width}x${format.height} neste navegador (pode ser falta de memória). Use um vídeo menor ou exporte já em 9:16.`);
+}
+
 async function uploadWithRetry<T>(attempt: () => Promise<T>, retries = 2, delayMs = 2000): Promise<T> {
   try {
     return await attempt();
@@ -281,10 +349,9 @@ interface Props {
   membersMap: Record<string, { name: string; avatar?: string }>;
   onSetCover?: (url: string) => void;
   currentCoverUrl?: string | null;
-  // Quando true, toda imagem anexada na categoria "Final" passa por um recorte pro formato
-  // de feed do Instagram (1080x1350) antes de subir — ligado só pra tarefas que alimentam
-  // uma publicação de Carrossel/Post/Foto no Cronograma (ver PmTaskDetailDialog.tsx).
-  cropFeedImages?: boolean;
+  // Quando definido, toda imagem anexada na categoria "Final" passa por um recorte nesse formato antes de subir:
+  // 1080x1350 pra Carrossel/Post/Foto, 1080x1920 pra Reels/Stories (ver getInstagramFormat e PmTaskDetailDialog.tsx).
+  cropFormat?: InstagramFormat | null;
 }
 
 function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUrl, onClick }: { url: string; name: string; isKnownImage: boolean; isPdf?: boolean; isVideo?: boolean; posterUrl?: string; onClick?: () => void }) {
@@ -404,7 +471,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUr
   );
 }
 
-export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl, cropFeedImages }: Props) {
+export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl, cropFormat }: Props) {
   const upload = useUploadPmAttachment();
   const uploadResumable = useUploadPmAttachmentResumable();
   const queryClient = useQueryClient();
@@ -452,7 +519,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   }, [cropRequest]);
 
   const performUpload = useCallback(async (rawFile: File, category: AttachmentCategory) => {
-    const file = cropFeedImages && category === "final" && rawFile.type.startsWith("image/")
+    const file = cropFormat && category === "final" && rawFile.type.startsWith("image/")
       ? await requestFeedCrop(rawFile)
       : rawFile;
     const isVideo = file.type.startsWith("video/");
@@ -488,7 +555,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       let fileToUpload = file;
       let compressionFailed = false;
 
-      if (isVideo) {
+      if (isVideo && cropFormat?.aspect === VERTICAL_FORMAT.aspect && category === "final") {
+        // Reels/Stories: the final video must be exactly the Instagram vertical format — no bars. A failure here
+        // aborts the upload (caught below) instead of sending the original, which would be published with bars.
+        applyProgress(0, "compressing");
+        fileToUpload = await fitVideoToFormat(file, cropFormat, (pct) => applyProgress(pct, "compressing"));
+        applyProgress(0, "uploading");
+      } else if (isVideo) {
         try {
           applyProgress(0, "compressing");
           fileToUpload = await downscaleVideoWithFallback(file, (pct) => applyProgress(pct, "compressing"));
@@ -517,7 +590,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
           onProgress: (pct) => applyProgress(Math.min(pct, 99), "uploading"),
         }));
       } else {
-        await upload.mutateAsync({ task_id: taskId, file, category });
+        // a cropped feed/story photo keeps its uncropped original linked, so it can be re-framed later ("Ajustar")
+        await upload.mutateAsync({ task_id: taskId, file, category, ...(file !== rawFile && file.type.startsWith("image/") ? { original: rawFile } : {}) });
       }
       if (interval) clearInterval(interval);
       applyProgress(100);
@@ -550,7 +624,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       updateGlobalUpload(globalId, { status: "error", errorMessage: err?.message ?? "Erro ao enviar arquivo" });
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
-  }, [taskId, upload, uploadResumable, cropFeedImages, requestFeedCrop]);
+  }, [taskId, upload, uploadResumable, cropFormat, requestFeedCrop]);
 
   // Attaching a file whose name matches one already here is ambiguous — could be an
   // updated version meant to replace it, or a genuinely different file that happens to
@@ -865,11 +939,11 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       <AvatarCropDialog
         open={!!cropRequest}
         imageSrc={cropRequest?.src ?? ""}
-        title="Ajustar foto pro feed (1080x1350)"
-        aspect={4 / 5}
+        title={`Ajustar foto pro ${(cropFormat ?? FEED_FORMAT).label}`}
+        aspect={(cropFormat ?? FEED_FORMAT).aspect}
         cropShape="rect"
-        outputWidth={1080}
-        outputHeight={1350}
+        outputWidth={(cropFormat ?? FEED_FORMAT).width}
+        outputHeight={(cropFormat ?? FEED_FORMAT).height}
         onConfirm={handleFeedCropConfirm}
         onCancel={handleFeedCropCancel}
       />

@@ -53,7 +53,7 @@ import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
 import { useTaskAttachmentsMap, useTaskCalendarEntry, useTaskCalendarEntriesFor, useRemoveCalendarPublication } from "@/features/calendario/hooks/use-calendar-data";
-import { FEED_ASPECT_CONTENT_TYPES } from "@/features/calendario/calendar-types";
+import { getInstagramFormat, type InstagramFormat } from "@/features/calendario/calendar-types";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -210,7 +210,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
   const childTasks = childTasksQ.data ?? [];
   const comments = commentsQ.data ?? [];
   const attachments = attachmentsQ.data ?? [];
-  const cropFeedImages = !!taskCalendarEntryQ.data?.content_type && FEED_ASPECT_CONTENT_TYPES.includes(taskCalendarEntryQ.data.content_type);
+  const cropFormat = getInstagramFormat(taskCalendarEntryQ.data?.content_type);
 
 
   const stackTasks = taskStack.map(id => {
@@ -307,7 +307,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
 
           {/* CENTER: Task detail */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} childTasksLoading={childTasksQ.isLoading || childTasksQ.isFetching} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} cropFeedImages={cropFeedImages} />
+            <TaskContentView task={currentTask} parentTask={resolvedRootTask} childTasks={childTasks} childTasksLoading={childTasksQ.isLoading || childTasksQ.isFetching} attachments={attachments} membersMap={membersMap} members={members} isAdmin={isAdmin} onSelectSubtask={handleSelectSubtask} activeSubtaskId={null} onClose={handleClose} clientsMap={clientsMap} allTags={allTags} parentStageCurrent={isSubtaskView ? resolvedRootTask.stage_current : undefined} globalTags={globalTagsQ.data ?? []} onEditTask={(taskId) => setTaskStack(prev => [...prev, taskId])} onOpenInCalendario={onOpenInCalendario} cropFormat={cropFormat} />
           </div>
 
           {/* RIGHT: Comments sidebar (hidden on mobile) */}
@@ -619,7 +619,7 @@ function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; chil
 
 // ─── Task Content View ───
 
-function TaskContentView({ task, parentTask, childTasks, childTasksLoading, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario, cropFeedImages }: {
+function TaskContentView({ task, parentTask, childTasks, childTasksLoading, attachments, membersMap, members, isAdmin, onSelectSubtask, activeSubtaskId, onClose, clientsMap, allTags, parentStageCurrent, globalTags, onEditTask, onOpenInCalendario, cropFormat }: {
   task: PmTask; parentTask: PmTask; childTasks: PmTask[]; childTasksLoading: boolean; attachments: any[];
   membersMap: Record<string, { name: string; avatar?: string }>; members: { id: string; name: string }[];
   isAdmin: boolean; onSelectSubtask: (sub: PmTask) => void; activeSubtaskId: string | null;
@@ -628,7 +628,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   globalTags: { id: string; name: string; color_key: string; created_by: string; created_at: string }[];
   onEditTask?: (taskId: string) => void;
   onOpenInCalendario?: (taskId: string) => void;
-  cropFeedImages?: boolean;
+  cropFormat?: InstagramFormat | null;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -2822,7 +2822,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         {/* Attachments — hidden for planning parent tasks */}
         {!(!task.periodic_stage_key && (task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")) && (
           <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
-            <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} cropFeedImages={cropFeedImages} />
+            <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} cropFormat={cropFormat} />
           </div>
         )}
 
