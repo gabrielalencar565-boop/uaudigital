@@ -56,7 +56,7 @@ function PhotoCard({ clientId }: { clientId: string }) {
   };
 
   return (
-    <Card icon={Camera} title="Foto do cliente" description="Aparece na lista de clientes, no topo desta página e nos relatórios.">
+    <Card icon={Camera} title="Foto do cliente">
       <div className="flex items-center gap-4">
         <span className="shrink-0 rounded-full p-[2.5px]" style={{ background: brandGradientCss(135) }}>
           <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-card text-xl font-bold ring-2 ring-card">
@@ -106,7 +106,7 @@ function InstagramCard({ clientId }: { clientId: string }) {
       : { label: "Não conectado", className: "bg-muted text-muted-foreground" };
 
   return (
-    <Card icon={Instagram} title="Instagram" description="Conta usada para agendar publicações e puxar as métricas.">
+    <Card icon={Instagram} title="Instagram">
       <div className="flex items-center justify-between rounded-xl bg-muted/30 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{conn?.instagram_username ? `@${conn.instagram_username}` : "Nenhuma conta conectada"}</p>
