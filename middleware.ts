@@ -43,43 +43,68 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-// Shown on the legacy address: explains the move, then sends the person to the same page on the current domain.
+// Shown on the legacy address: explains the move, then sends the person to the same page on the current domain
+// after 10 seconds. Styled like the marketing site (dark graphite, Fluxo wordmark, violet→pink→peach gradient).
+const MOVED_NOTICE_SECONDS = 10;
+
 function renderMovedNotice(target: string) {
   const safeHref = escapeHtml(target);
   const jsTarget = JSON.stringify(target).replace(/</g, "\\u003c");
+  const seconds = MOVED_NOTICE_SECONDS;
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>O sistema mudou de endereço</title>
-<meta http-equiv="refresh" content="8;url=${safeHref}">
+<meta name="theme-color" content="#18161B">
+<title>Mudamos de endereço — Fluxo</title>
+<meta http-equiv="refresh" content="${seconds + 3};url=${safeHref}">
+<link rel="icon" type="image/png" sizes="32x32" href="https://${CURRENT_HOST}/icons/icon-32x32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;600;700;800&display=swap">
 <style>
-  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#181818;color:#fff;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;text-align:center}
-  .card{max-width:640px;width:100%;border:1px solid rgba(107,33,168,.35);border-radius:20px;background:#232323;padding:40px 32px;box-shadow:0 25px 60px -20px rgba(0,0,0,.6)}
-  .rocket{font-size:44px;margin-bottom:20px}h1{margin:0 0 16px;font-size:clamp(24px,5vw,32px);font-weight:800;letter-spacing:-.01em}
-  p{margin:0;color:#d1d5db;font-size:clamp(15px,2.5vw,18px);line-height:1.5}
-  .btn{display:inline-flex;align-items:center;gap:8px;margin:26px 0 18px;padding:14px 26px;border-radius:12px;background:#7c3aed;color:#fff;font-weight:600;font-size:17px;text-decoration:none;transition:background .15s}
-  .btn:hover{background:#6d28d9}.url{color:#8b5cf6;font-weight:600;word-break:break-all;font-size:16px}
-  .count{margin-top:18px;color:#9ca3af;font-size:14px}.warn{margin-top:22px;padding:14px 16px;border-radius:10px;border:1px solid rgba(234,179,8,.3);background:rgba(234,179,8,.1);color:#fde68a;font-size:14px;line-height:1.5}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;align-items:center;justify-content:center;padding:28px;color:#fff;text-align:center;
+    background:#18161B radial-gradient(70% 55% at 50% 0%,rgba(143,61,255,.20),transparent 70%);
+    font-family:"Bricolage Grotesque",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  main{width:100%;max-width:520px;animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .logo{height:46px;width:auto;margin:0 auto 44px;display:block}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+    font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.7)}
+  .dot{width:7px;height:7px;border-radius:50%;background:#FFB547;box-shadow:0 0 0 4px rgba(255,181,71,.18)}
+  h1{margin:22px 0 14px;font-size:clamp(32px,7vw,46px);line-height:1.05;font-weight:800;letter-spacing:-.025em}
+  .grad{background:linear-gradient(90deg,#8F3DFF,#EE7BEA 70%,#FFB88A);-webkit-background-clip:text;background-clip:text;color:transparent}
+  p{margin:0 auto;max-width:400px;color:rgba(255,255,255,.58);font-size:17px;line-height:1.55}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:34px;padding:14px 30px;border-radius:999px;color:#fff;text-decoration:none;font-weight:600;font-size:15px;
+    background:linear-gradient(90deg,#6A24F0,#8F3DFF 60%,#C45CF0);box-shadow:0 10px 30px -10px rgba(143,61,255,.8);transition:transform .15s ease,box-shadow .15s ease}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 14px 34px -10px rgba(143,61,255,.95)}
+  .bar{height:3px;width:min(220px,60%);margin:34px auto 12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#6A24F0,#EE7BEA,#FFB88A);animation:fill ${seconds}s linear forwards}
+  @keyframes fill{to{width:100%}}
+  .count{font-size:13px;color:rgba(255,255,255,.45)}.count b{color:rgba(255,255,255,.8);font-weight:600}
+  .note{margin-top:30px;font-size:12.5px;line-height:1.55;color:rgba(255,255,255,.38)}
+  @media (prefers-reduced-motion:reduce){main{animation:none}.bar i{animation:none;width:100%}}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="rocket">🚀</div>
-  <h1>O SISTEMA DA UAU MUDOU!</h1>
-  <p>Agora ele é o <b>Fluxo</b> e está em um novo endereço.</p>
-  <a class="btn" id="go" href="${safeHref}">Acesse pelo novo link &rarr;</a>
-  <div class="url">appfluxo.app.br</div>
-  <div class="count" id="count">Levando você para lá em <b id="n">5</b> segundos…</div>
-  <div class="warn">⚠️ Importante: atualize o endereço salvo nos seus favoritos e use somente este link daqui pra frente. Na primeira vez, será preciso entrar novamente.</div>
-</div>
+<main>
+  <img class="logo" src="https://${CURRENT_HOST}/branding/fluxo-logo-white.svg" alt="Fluxo">
+  <span class="pill"><span class="dot"></span>NOVO ENDEREÇO</span>
+  <h1>Mudamos de casa.<br><span class="grad">Agora é Fluxo.</span></h1>
+  <p>O sistema da UAU agora vive em <b style="color:#fff;font-weight:600">${CURRENT_HOST}</b>. É só seguir por lá.</p>
+  <a class="btn" id="go" href="${safeHref}">Ir para o Fluxo <span aria-hidden="true">&rarr;</span></a>
+  <div class="bar" aria-hidden="true"><i></i></div>
+  <div class="count">Levando você em <b id="n">${seconds}</b> segundos</div>
+  <div class="note">Atualize seus favoritos. Na primeira vez, será preciso entrar de novo.</div>
+</main>
 <script>
   (function () {
     var target = ${jsTarget} + (location.hash || "");
     document.getElementById("go").setAttribute("href", target);
-    var n = 5, el = document.getElementById("n");
+    var n = ${seconds}, el = document.getElementById("n");
     var t = setInterval(function () {
       n--; el.textContent = String(Math.max(n, 0));
       if (n <= 0) { clearInterval(t); location.replace(target); }
