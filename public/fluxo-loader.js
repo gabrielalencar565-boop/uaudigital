@@ -224,8 +224,13 @@
     var volume = opts.volume == null ? .6 : opts.volume;
     var everyLoop = !!opts.soundEveryLoop;
     var sfx = wantSound ? createSound(volume) : null;
-    var muted = false, playedOnce = false;
+    // Escolha do visitante (botão de som) lembrada entre visitas: quem silenciou continua em silêncio.
+    var PREF_KEY = 'fluxo-loader-sound';
+    function readPref() { try { return global.localStorage.getItem(PREF_KEY); } catch (e) { return null; } }
+    function savePref(v) { try { global.localStorage.setItem(PREF_KEY, v); } catch (e) {} }
+    var muted = readPref() === 'off', playedOnce = false;
     if (sfx && !sfx.ready()) sfx.resume();
+    if (sfx && muted) sfx.setVolume(0);
 
     var overlay = document.createElement('div');
     overlay.setAttribute('role', 'status');
@@ -253,14 +258,15 @@
       btn.style.cssText = 'position:absolute;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:' + th.btn + ';color:' + th.btnInk + ';padding:0';
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (!sfx.ready()) { muted = false; var p = sfx.resume(); if (p && p.then) p.then(paintBtn); }
-        else { muted = !muted; sfx.setVolume(muted ? 0 : volume); }
+        if (!sfx.ready()) { muted = false; savePref('on'); sfx.setVolume(volume); var p = sfx.resume(); if (p && p.then) p.then(afterUnlock); }
+        else { muted = !muted; savePref(muted ? 'off' : 'on'); sfx.setVolume(muted ? 0 : volume); if (!muted) playLate(); }
         paintBtn();
       });
       overlay.appendChild(btn); paintBtn();
     }
     // Qualquer toque na tela libera o áudio
-    function unlock() { if (sfx && !sfx.ready()) { var p = sfx.resume(); if (p && p.then) p.then(paintBtn); } }
+    function afterUnlock() { paintBtn(); playLate(); }
+    function unlock() { if (sfx && !sfx.ready()) { var p = sfx.resume(); if (p && p.then) p.then(afterUnlock); } }
     if (sfx) { overlay.addEventListener('pointerdown', unlock); global.addEventListener('keydown', unlock); }
 
     (document.body || document.documentElement).appendChild(overlay);
@@ -309,6 +315,8 @@
     }
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
     function soundOn() { return sfx && !muted && sfx.ready() && (everyLoop || !playedOnce); }
+    // O áudio só foi liberado depois da animação já ter começado: toca a abertura agora (o som segue depois do loader fechar).
+    function playLate() { if (!done && on && soundOn()) { sfx.formation(); playedOnce = true; } }
 
     function turnOn() {
       on = true; tweens = [];
