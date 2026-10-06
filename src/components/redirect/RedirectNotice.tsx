@@ -5,7 +5,7 @@ const ALLOWED_HOST = "uaudigital.lovable.app";
 
 export function RedirectNotice() {
   const [isVisible, setIsVisible] = useState(false);
-  const newUrl = "https://uaudigital.vercel.app/";
+  const newUrl = "https://appfluxo.app.br/";
 
   useEffect(() => {
     if (typeof window !== "undefined") {
