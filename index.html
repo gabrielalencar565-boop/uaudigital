@@ -24,6 +24,19 @@
   <meta name="apple-mobile-web-app-title" content="Fluxo App">
   <link rel="apple-touch-icon" href="/icons/icon-180x180.png">
   <script>
+    // Came from the old address (uaudigital.vercel.app): remember it for the login screen and tidy the URL.
+    (function () {
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get("from") === "legacy") {
+          sessionStorage.setItem("fluxo-legacy-notice", "1");
+          q.delete("from");
+          history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q.toString() : "") + location.hash);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <script>
     // The root of the site is the marketing landing for visitors; people who are signed in (or arriving from an
     // auth e-mail link, which carries tokens in the URL) go on to the app as usual.
     (function () {

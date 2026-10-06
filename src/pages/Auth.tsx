@@ -128,6 +128,10 @@ export default function Auth() {
   // The login page belongs to the platform (one domain for every agency, and the visitor has no agency yet), so it
   // always carries the Fluxo logo — never an agency's own settings.
   const pwa = usePwaInstall();
+  // People redirected from the old address (uaudigital.vercel.app) must log in again — say why, once.
+  const [legacyNotice, setLegacyNotice] = useState(() => {
+    try { return sessionStorage.getItem("fluxo-legacy-notice") === "1"; } catch { return false; }
+  });
   const bgImages = appSettings.data?.login_bg_images ?? [];
   const galleryPhotos = useMemo(() => {
     return bgImages.map((img: any) => img.url as string).filter(Boolean);
@@ -272,6 +276,23 @@ export default function Auth() {
           <div className="flex justify-center">
             <img src="/branding/fluxo-logo-white.svg" alt="Fluxo" className="h-12 w-auto object-contain" />
           </div>
+
+          {legacyNotice && (mode === "login" || mode === "signup") && (
+            <div className="relative rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 pr-9 text-sm text-amber-100/90">
+              <p className="font-medium text-amber-100">O Fluxo mudou de endereço</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
+                Agora é <b>appfluxo.app.br</b>. Entre novamente (só desta vez) e atualize seus favoritos.
+              </p>
+              <button
+                type="button"
+                aria-label="Fechar aviso"
+                className="absolute right-2 top-2 rounded p-1 text-amber-100/60 hover:text-amber-100"
+                onClick={() => { try { sessionStorage.removeItem("fluxo-legacy-notice"); } catch { /* ignore */ } setLegacyNotice(false); }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Title */}
           <div className="space-y-2 text-center">
