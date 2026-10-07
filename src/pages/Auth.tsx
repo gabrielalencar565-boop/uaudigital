@@ -199,7 +199,7 @@ export default function Auth() {
           options: {
             emailRedirectTo: `${window.location.origin}/onboarding`,
             // read by the onboarding step, which creates the agency once there is a session
-            data: { signup_type: "owner", agency_name: agency, full_name: owner },
+            data: { signup_type: "owner", agency_name: agency, full_name: owner, first_name: owner.split(/\s+/)[0] }, // first_name: used to greet the person in the e-mails
           },
         });
         if (error) { toast.error(error.message); return; }
@@ -294,19 +294,18 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Title */}
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {mode === "login" && "Que bom ter você aqui!"}
-              {mode === "signup" && "Teste grátis"}
-              {mode === "verify" && "Verifique seu e-mail"}
-              {mode === "forgot" && "Recuperar senha"}
-              {mode === "reset" && "Nova senha"}
-            </h1>
-            <p className="text-sm text-white/50">
-              {subtitle ?? "Sua agência inteira, em um só fluxo."}
-            </p>
-          </div>
+          {/* Title (the sign-in screen itself has none: just the logo and the form) */}
+          {mode !== "login" && (
+            <div className="space-y-2 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                {mode === "signup" && "Teste grátis"}
+                {mode === "verify" && "Verifique seu e-mail"}
+                {mode === "forgot" && "Recuperar senha"}
+                {mode === "reset" && "Nova senha"}
+              </h1>
+              {subtitle && <p className="text-sm text-white/50">{subtitle}</p>}
+            </div>
+          )}
 
           {/* Forms */}
           {(mode === "login" || mode === "signup") && (
