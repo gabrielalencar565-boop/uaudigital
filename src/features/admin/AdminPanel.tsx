@@ -170,11 +170,13 @@ export function AdminPanel() {
     mutationFn: async (req: AdminUserRow) => {
       if (!user) throw new Error("Não autenticado");
       if (!req.access_request_id) throw new Error("Solicitação não encontrada");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("access_requests")
         .update({ status: "approved", decided_at: new Date().toISOString(), decided_by: user.id })
-        .eq("id", req.access_request_id);
+        .eq("id", req.access_request_id)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("Não foi possível aprovar: sem permissão para esta solicitação.");
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["admin_users"] });
@@ -187,11 +189,13 @@ export function AdminPanel() {
     mutationFn: async (req: AdminUserRow) => {
       if (!user) throw new Error("Não autenticado");
       if (!req.access_request_id) throw new Error("Solicitação não encontrada");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("access_requests")
         .update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: user.id })
-        .eq("id", req.access_request_id);
+        .eq("id", req.access_request_id)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("Não foi possível recusar: sem permissão para esta solicitação.");
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["admin_users"] });
@@ -207,8 +211,10 @@ export function AdminPanel() {
       const up = await supabase
         .from("access_requests")
         .update({ status: "rejected", decided_at: new Date().toISOString(), decided_by: user.id })
-        .eq("id", req.access_request_id);
+        .eq("id", req.access_request_id)
+        .select("id");
       if (up.error) throw up.error;
+      if (!up.data?.length) throw new Error("Não foi possível revogar: sem permissão para esta solicitação.");
       const delRoles = await supabase.from("user_roles").delete().eq("user_id", req.user_id);
       if (delRoles.error) throw delRoles.error;
       const tm = await supabase.from("team_members").update({ is_active: false }).eq("user_id", req.user_id);
