@@ -21,6 +21,20 @@ describe("parseStatementCsv", () => {
     expect(rows[1]).toMatchObject({ amount: 219, type: "saida" });
     expect(rows[3]).toMatchObject({ amount: 17.97, type: "saida" });
   });
+  it("reads the multi-column Sicoob layout and rebuilds the description from counterpart, CPF/CNPJ and note", () => {
+    const rows = parseStatementCsv([
+      "Data;Histórico;Modalidade;Contraparte;CPF/CNPJ;Descrição;Documento;Tipo;Valor",
+      "01/07/2026;PIX EMIT.OUTRA IF;Pagamento Pix;;***.861.953-**;CARTAO NUBANK;Pix;Débito;-132,00",
+      "01/07/2026;PIX RECEB.OUTRA IF;Recebimento Pix;A M LEITE & CIA LTDA;10.915.751 0001-91;;Pix;Crédito;1497,00",
+      "01/07/2026;DEB PACOTE SERVIÇOS;;;;;129;Débito;-18,00",
+      "06/07/2026;PIX RECEB.OUTRA IF;Recebimento Pix;44.139.688 AYRTON MANOEL;44.139.688 0001-60;pagamento ponto G;Pix;Crédito;1794,20",
+    ].join("\n"));
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toMatchObject({ description: "PIX EMIT.OUTRA IF Pagamento Pix ***.861.953-** CARTAO NUBANK", amount: 132, type: "saida" });
+    expect(rows[1]).toMatchObject({ description: "PIX RECEB.OUTRA IF Recebimento Pix A M LEITE & CIA LTDA 10.915.751 0001-91", amount: 1497, type: "entrada" });
+    expect(rows[2]).toMatchObject({ description: "DEB PACOTE SERVIÇOS", type: "saida" });
+    expect(rows[3].description).toContain("pagamento ponto G");
+  });
   it("keeps the old headerless layout working", () => {
     const rows = parseStatementCsv("Data;Descricao;Doc;Valor\n05/10/2026;DAS SIMPLES;1;-340,00\n06/10/2026;MENSALIDADE;2;1500,00");
     expect(rows.map((r) => [r.type, r.amount])).toEqual([["saida", 340], ["entrada", 1500]]);

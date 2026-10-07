@@ -1,6 +1,9 @@
-// Bank-statement CSV reader. Understands files with a header row (columns found by name, e.g. Sicoob's
-// "Data;Histórico de Movimentação;Valor (R$);Tipo (C/D)") and keeps the older headerless layout working
-// (date;description;x;signed value).
+// Bank-statement CSV reader. Understands files with a header row (columns found by name) and keeps the older
+// headerless layout working (date;description;x;signed value). Sicoob exports come in two shapes:
+//   "Data;Histórico de Movimentação;Valor (R$);Tipo (C/D)"                      (one text column)
+//   "Data;Histórico;Modalidade;Contraparte;CPF/CNPJ;Descrição;Documento;Tipo;Valor"  (text spread over several columns)
+// For the second one the description is rebuilt from every descriptive column, in file order, so it reads like the
+// first shape: "PIX RECEB.OUTRA IF Recebimento Pix NOME DA PESSOA 12.345.678 0001-90 observação".
 
 export type ParsedStatementRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
 
@@ -35,14 +38,18 @@ export function parseStatementCsv(text: string): ParsedStatementRow[] {
 
   const header = split(lines[0]).map((h) => h.toLowerCase());
   const col = (re: RegExp) => header.findIndex((h) => re.test(h));
-  const iDate = col(/^data/), iDesc = col(/hist[oó]rico|descri[cç][aã]o|lan[cç]amento/), iVal = col(/valor/), iType = col(/tipo|c\/d|d\/c|natureza/);
-  const hasHeader = iDate >= 0 && iDesc >= 0 && iVal >= 0;
+  const iDate = col(/^data/), iVal = col(/valor/), iType = col(/tipo|c\/d|d\/c|natureza/);
+  // every column that says who/what the line is, in file order (Histórico, Modalidade, Contraparte, CPF/CNPJ, Descrição…)
+  const textCols = header.map((h, k) => (/^(hist[oó]rico|descri[cç][aã]o|lan[cç]amento|modalidade|contraparte|favorecido|benefici[aá]rio|pagador|remetente|cpf\/cnpj|cpf|cnpj)/.test(h) ? k : -1)).filter((k) => k >= 0);
+  const hasHeader = iDate >= 0 && textCols.length > 0 && iVal >= 0;
 
   const rows: ParsedStatementRow[] = [];
   for (const line of lines.slice(1)) {
     const c = split(line);
     const dateRaw = hasHeader ? c[iDate] : c[0];
-    const description = (hasHeader ? c[iDesc] : c[1]) ?? "";
+    const description = hasHeader
+      ? textCols.reduce((acc, k) => { const v = (c[k] ?? "").trim(); return v && !acc.includes(v) ? `${acc} ${v}`.trim() : acc; }, "")
+      : (c[1] ?? "");
     const valueRaw = (hasHeader ? c[iVal] : c[3]) ?? "";
     if (!description || /^saldo/i.test(description) || /saldo (do dia|anterior|final|parcial)/i.test(description)) continue;
     const value = parseMoney(valueRaw);
