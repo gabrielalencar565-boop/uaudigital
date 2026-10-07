@@ -1300,7 +1300,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
               })()}
 
               <div className="flex items-center gap-2 border-t pt-4">
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onOpenTask(publication.task_id)}>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { const id = publication.task_id; onClose(); onOpenTask(id); }}>
                   <ExternalLink className="h-3.5 w-3.5" /> Abrir tarefa original
                 </Button>
                 <Button variant="outline" size="sm" className="ml-auto gap-1.5 text-destructive hover:text-destructive" onClick={() => setConfirmRemoveOpen(true)}>

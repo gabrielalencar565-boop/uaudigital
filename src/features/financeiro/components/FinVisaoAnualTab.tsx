@@ -7,8 +7,11 @@ import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
 import { FinMetricCard } from "./FinMetricCard";
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
-import { BRAND_GRADIENT_STOPS, brandSeriesColor } from "@/lib/brand-gradient";
+import { BRAND_GRADIENT_STOPS } from "@/lib/brand-gradient";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users } from "lucide-react";
+
+// bar charts here are plain purple: the brand purple for the main series, a lighter one for the second
+const LIGHT_PURPLE = "#a78bfa";
 
 const MONTH_LABELS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -23,9 +26,7 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
   const year = externalYear ?? internalYear;
   const hasExternal = externalYear !== undefined;
 
-  const entSaiIds = useBrandGradientIds();
   const receitaIds = useBrandGradientIds();
-  const lucroIds = useBrandGradientIds();
   const ticketIds = useBrandGradientIds();
   const clientsQ = useFinClients();
   const goalsQ = useFinGoals(year);
@@ -233,13 +234,12 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={monthlyData} barGap={4}>
-                {brandChartDefs(entSaiIds)}
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                 <XAxis dataKey="short" className="text-xs" axisLine={false} tickLine={false} />
                 <YAxis className="text-xs" axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }} />
-                <Bar dataKey="receita" name="Receita" fill={`url(#${entSaiIds.v})`} radius={[6, 6, 6, 6]} barSize={18} />
-                <Bar dataKey="despesa" name="Despesa" fill={brandSeriesColor(2)} radius={[6, 6, 6, 6]} barSize={18} />
+                <Bar dataKey="receita" name="Receita" fill={BRAND_GRADIENT_STOPS[0]} radius={[6, 6, 6, 6]} barSize={18} />
+                <Bar dataKey="despesa" name="Despesa" fill={LIGHT_PURPLE} radius={[6, 6, 6, 6]} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -270,12 +270,11 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={monthlyData}>
-                {brandChartDefs(lucroIds)}
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="short" className="text-xs" />
                 <YAxis className="text-xs" tickFormatter={(v: number) => `R$ ${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => fmtSign(v)} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="lucro" name="Lucro" fill={`url(#${lucroIds.v})`} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="lucro" name="Lucro" fill={BRAND_GRADIENT_STOPS[0]} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

@@ -4,7 +4,9 @@ import { Eye, MousePointerClick, ScanSearch, Sparkles, TrendingUp, Users } from 
 
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 import { GradientBar } from "@/components/ui/gradient-bar";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip as InfoTooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCompareSetting } from "../hooks/use-compare-setting";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 import { cn } from "@/lib/utils";
@@ -251,7 +253,7 @@ function FormatRanking({ media }: { media: ReportData["media"] }) {
   );
 }
 
-export function ReportView({ data, range, mode }: { data: ReportData; range: DateRange; mode: "internal" | "public" }) {
+export function ReportView({ data, range, mode, compare: compareProp }: { data: ReportData; range: DateRange; mode: "internal" | "public"; compare?: boolean }) {
   const gradientIds = useBrandGradientIds();
   const periodMedia = useMemo(() => postsWithin(data.media, range), [data.media, range]);
   const summary = useMemo(() => computeSummary(data.snapshots, data.media, range), [data.snapshots, data.media, range]);
@@ -266,6 +268,10 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
   );
   const firstReachDate = data.snapshots.find((s) => s.reach != null)?.snapshot_date ?? null;
   const partialCoverage = firstReachDate !== null && firstReachDate > range.from;
+
+  // controlled by the parent when it shows the switch itself (internal screen); the public report keeps its own
+  const [ownCompare, setOwnCompare] = useCompareSetting();
+  const compare = compareProp ?? ownCompare;
 
   const cover = (covered: number) => (covered < range.days && covered > 0 ? ` Dados coletados de ${covered} dos ${range.days} dias.` : "");
 
@@ -290,6 +296,13 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
         </div>
       )}
 
+      {compareProp === undefined && (
+        <div className="flex items-center justify-end gap-2">
+          <label htmlFor="report-compare" className="cursor-pointer text-xs text-muted-foreground">Comparar com o período anterior</label>
+          <Switch id="report-compare" checked={compare} onCheckedChange={setOwnCompare} />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <div className="lg:col-span-2">
           <MetricSparkCard
@@ -298,7 +311,7 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
             icon={<Eye className="h-5 w-5" />}
             tone="violet"
             description={`Contas diferentes que viram o conteúdo ${range.phrase}.${cover(summary.reach.days)}`}
-            footer={<Delta value={summary.reach.delta} unit="%" />}
+            footer={compare ? <Delta value={summary.reach.delta} unit="%" /> : undefined}
           />
         </div>
         <div className="lg:col-span-2">
@@ -308,7 +321,7 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
             icon={<ScanSearch className="h-5 w-5" />}
             tone="amber"
             description={`Quantas vezes os conteúdos foram vistos (uma mesma pessoa pode ver mais de uma vez).${cover(summary.views.days)}`}
-            footer={<Delta value={summary.views.delta} unit="%" />}
+            footer={compare ? <Delta value={summary.views.delta} unit="%" /> : undefined}
           />
         </div>
         <div className="col-span-2 lg:col-span-2">
@@ -318,7 +331,7 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
             icon={<Users className="h-5 w-5" />}
             tone="violet"
             description={`Quantas vezes o perfil foi aberto.${cover(summary.profileViews.days)}`}
-            footer={<Delta value={summary.profileViews.delta} unit="%" />}
+            footer={compare ? <Delta value={summary.profileViews.delta} unit="%" /> : undefined}
           />
         </div>
         <div className="lg:col-span-3">
@@ -328,21 +341,21 @@ export function ReportView({ data, range, mode }: { data: ReportData; range: Dat
             icon={<MousePointerClick className="h-5 w-5" />}
             tone="amber"
             description={`Toques no link da bio do perfil.${cover(summary.linkTaps.days)}`}
-            footer={<Delta value={summary.linkTaps.delta} unit="%" />}
+            footer={compare ? <Delta value={summary.linkTaps.delta} unit="%" /> : undefined}
           />
         </div>
         <div className="lg:col-span-3">
           <MetricSparkCard
-            label="Seguidores"
-            value={summary.followers ?? 0}
+            label="Novos seguidores"
+            value={Math.max(summary.newFollowers ?? 0, 0)}
             icon={<TrendingUp className="h-5 w-5" />}
             tone="emerald"
-            description={`Total atual de seguidores. A variação mostra o saldo de novos seguidores no período.${cover(0)}`}
+            description={`Seguidores que o perfil ganhou ${range.phrase}. O Instagram informa o saldo do dia (entradas menos saídas), então só os dias e períodos com saldo positivo contam como aumento.${cover(0)}`}
             footer={
-              summary.newFollowers === null ? (
+              !compare ? undefined : summary.newFollowers === null ? (
                 <span className="text-muted-foreground">sem comparação ainda</span>
               ) : (
-                <Delta value={summary.newFollowers} unit=" no período" />
+                <Delta value={summary.newFollowersDelta} unit="%" />
               )
             }
           />

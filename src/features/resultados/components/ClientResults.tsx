@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { useCompareSetting } from "../hooks/use-compare-setting";
 import { PeriodFilter } from "./PeriodFilter";
 import { ReportView } from "./ReportView";
 import { resolveRange, type PeriodSelection, type PresetPeriod, type ReportData } from "../lib/report-metrics";
@@ -126,6 +127,7 @@ export function ClientResults({ clientId, clientName, logoUrl, username }: { cli
   const [needsReauth, setNeedsReauth] = useState(false);
   const [selection, setSelection] = useState<PeriodSelection>({ kind: "preset", days: DEFAULT_PERIOD });
   const range = useMemo(() => resolveRange(selection), [selection]);
+  const [compare, setCompare] = useCompareSetting();
   useEffect(() => setNeedsReauth(false), [clientId]);
 
   const snapshotsQ = useMetricSnapshots(clientId);
@@ -156,6 +158,10 @@ export function ClientResults({ clientId, clientName, logoUrl, username }: { cli
       <div className="flex flex-wrap items-center justify-end gap-2">
         <PeriodFilter value={selection} onChange={setSelection} />
         <ShareReport clientId={clientId} selection={selection} />
+        <label htmlFor="client-compare" className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border/60 px-3 text-xs text-muted-foreground">
+          Comparar com o período anterior
+          <Switch id="client-compare" checked={compare} onCheckedChange={setCompare} />
+        </label>
         <Button size="sm" className="h-9 gap-1.5 rounded-full" disabled={sync.isPending} onClick={runSync}>
           <RefreshCw className={`h-3.5 w-3.5 ${sync.isPending ? "animate-spin" : ""}`} /> Atualizar dados
         </Button>
@@ -173,7 +179,7 @@ export function ClientResults({ clientId, clientName, logoUrl, username }: { cli
         </div>
       )}
 
-      <ReportView data={report} range={range} mode="internal" />
+      <ReportView data={report} range={range} mode="internal" compare={compare} />
     </div>
   );
 }

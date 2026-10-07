@@ -155,6 +155,7 @@ export function computeSummary(snapshots: MetricSnapshot[], media: MediaInsight[
     }
   }
   const newFollowers = covered("follower_delta") > 0 ? sumOf(current, "follower_delta") : null;
+  const newFollowersPrev = newFollowers !== null && enoughPrevious("follower_delta") ? sumOf(previous, "follower_delta") : null;
 
   return {
     reach: metric("reach"),
@@ -163,6 +164,7 @@ export function computeSummary(snapshots: MetricSnapshot[], media: MediaInsight[
     linkTaps: metric("profile_link_taps"),
     followers,
     newFollowers,
+    newFollowersDelta: newFollowers !== null && newFollowersPrev !== null && newFollowersPrev > 0 ? pctDelta(newFollowers, newFollowersPrev) : null,
   };
 }
 
