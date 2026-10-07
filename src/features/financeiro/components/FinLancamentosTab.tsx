@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
+import { Loader2, Sparkles, Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,13 +10,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, type FinTransaction } from "../hooks/use-financial-data";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useFinTransactions, useUpsertFinTransaction, useDeleteFinTransaction, useBulkInsertTransactions, useFinAllTransactions, fetchCategorizationHistory, type FinTransaction } from "../hooks/use-financial-data";
+import { parseStatementCsv, decodeText } from "../utils/parse-statement";
+import { buildHistoryIndex, categoryFromHistory, categoriesForType, pickExamples, type CatSource } from "../utils/categorize";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
 import { toast } from "sonner";
 
-type CSVRow = { date: string; description: string; amount: number; type: "entrada" | "saida" };
+type CSVRow = {
+  date: string; description: string; amount: number; type: "entrada" | "saida";
+  // filled by the automatic categorization (history first, then AI); "pendente" = AI still working on it
+  category?: string | null; catSource?: CatSource | "pendente"; confidence?: "alta" | "media" | "baixa";
+};
 
 const TRANSACTION_CATEGORIES = [
   { value: "receita_recorrente", label: "Receita Recorrente" },
@@ -113,6 +121,11 @@ export function FinLancamentosTab() {
   const [editingTx, setEditingTx] = useState<FinTransaction | null>(null);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvRows, setCsvRows] = useState<CSVRow[]>([]);
+  const categorizeRun = useRef(0);
+  // preview rows whose full description is open (click toggles; hover shows it in a tooltip)
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const toggleRow = (i: number) => setExpandedRows((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  const aiExamples = useRef<Array<{ description: string; category: string }>>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
 
@@ -327,28 +340,109 @@ export function FinLancamentosTab() {
     return rows;
   };
 
+  const parseOfx = (buf: ArrayBuffer): CSVRow[] => {
+    let text = new TextDecoder("utf-8").decode(buf);
+    if (text.includes("\ufffd")) text = new TextDecoder("windows-1252").decode(buf);
+    const rows: CSVRow[] = [];
+    const tag = (block: string, name: string) => block.match(new RegExp(`<${name}>([^<\\r\\n]+)`, "i"))?.[1]?.trim() ?? "";
+    for (const m of text.matchAll(/<STMTTRN>([\s\S]*?)(?=<\/STMTTRN>|<STMTTRN>|<\/BANKTRANLIST>)/gi)) {
+      const block = m[1];
+      const dt = tag(block, "DTPOSTED");
+      const amount = parseFloat(tag(block, "TRNAMT").replace(",", "."));
+      const description = tag(block, "MEMO") || tag(block, "NAME");
+      if (!/^\d{8}/.test(dt) || isNaN(amount) || amount === 0 || !description) continue;
+      rows.push({ date: `${dt.slice(0, 4)}-${dt.slice(4, 6)}-${dt.slice(6, 8)}`, description, amount: Math.abs(amount), type: amount > 0 ? "entrada" : "saida" });
+    }
+    return rows;
+  };
+
+  // Opens the preview with the lines already categorized from the agency's history, then asks the AI about the rest.
+  const openPreview = async (parsed: CSVRow[]) => {
+    const run = ++categorizeRun.current;
+    let history: Awaited<ReturnType<typeof fetchCategorizationHistory>> = [];
+    try { history = await fetchCategorizationHistory(); } catch { /* without history everything goes to the AI */ }
+    const index = buildHistoryIndex(history);
+    const rows: CSVRow[] = parsed.map((r) => {
+      const cat = categoryFromHistory(index, r.description, r.type);
+      return cat ? { ...r, category: cat, catSource: "historico" as const } : { ...r, category: null, catSource: "pendente" as const };
+    });
+    setExpandedRows(new Set());
+    setCsvRows(rows);
+    setCsvDialogOpen(true);
+
+    aiExamples.current = pickExamples(history);
+    await classifyWithAi(rows.map((r, k) => (r.catSource === "pendente" ? k : -1)).filter((k) => k >= 0), rows, run);
+  };
+
+  // Asks the AI about the given line indexes, in parallel batches; lines it can't resolve stay "revisar" for manual choice.
+  const classifyWithAi = async (idxs: number[], source: CSVRow[], run: number) => {
+    if (idxs.length === 0) return;
+    const CHUNK = 40, PARALLEL = 3;
+    const chunks: number[][] = [];
+    for (let k = 0; k < idxs.length; k += CHUNK) chunks.push(idxs.slice(k, k + CHUNK));
+    let failed = 0;
+    const doChunk = async (chunk: number[]) => {
+      let results: Array<{ id: number; category: string; confidence: "alta" | "media" | "baixa" }> = [];
+      try {
+        const { data, error } = await supabase.functions.invoke("finance-categorize", {
+          body: { items: chunk.map((k) => ({ id: k, description: source[k].description, type: source[k].type, amount: source[k].amount })), examples: aiExamples.current },
+        });
+        if (!error && Array.isArray((data as any)?.results)) results = (data as any).results;
+      } catch { /* leaves them for manual review */ }
+      if (categorizeRun.current !== run) return; // preview was closed or replaced meanwhile
+      if (results.length === 0) failed += chunk.length;
+      const byId = new Map(results.map((x) => [x.id, x]));
+      setCsvRows((prev) => prev.map((row, k) => {
+        if (!chunk.includes(k) || (row.catSource !== "pendente" && row.catSource !== "revisar")) return row;
+        const hit = byId.get(k);
+        return hit && categoriesForType(row.type).includes(hit.category)
+          ? { ...row, category: hit.category, catSource: "ia", confidence: hit.confidence }
+          : { ...row, category: null, catSource: "revisar" };
+      }));
+    };
+    const queue = [...chunks];
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, async () => {
+      for (let c = queue.shift(); c; c = queue.shift()) await doChunk(c);
+    }));
+    if (failed > 0 && categorizeRun.current === run) toast.error(`A IA não conseguiu classificar ${failed} linha${failed > 1 ? "s" : ""}. Escolha na lista ou tente de novo.`);
+  };
+
+  const retryAi = () => {
+    const run = ++categorizeRun.current;
+    const idxs = csvRows.map((r, k) => (r.catSource === "revisar" ? k : -1)).filter((k) => k >= 0);
+    setCsvRows((prev) => prev.map((row) => (row.catSource === "revisar" ? { ...row, catSource: "pendente" } : row)));
+    void classifyWithAi(idxs, csvRows, run);
+  };
+
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
-    const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
-    if (isXlsx) {
+    const lower = file.name.toLowerCase();
+    const isXlsx = lower.endsWith(".xlsx") || lower.endsWith(".xls");
+    if (lower.endsWith(".ofx")) {
       const reader = new FileReader();
-      reader.onload = async (ev) => { const parsed = await parseXlsx(ev.target?.result as ArrayBuffer); if (parsed.length === 0) { toast.error("Nenhum lançamento encontrado."); return; } setCsvRows(parsed); setCsvDialogOpen(true); };
+      reader.onload = (ev) => { const parsed = parseOfx(ev.target?.result as ArrayBuffer); if (parsed.length === 0) { toast.error("Nenhum lançamento encontrado."); return; } void openPreview(parsed); };
+      reader.readAsArrayBuffer(file);
+    } else if (isXlsx) {
+      const reader = new FileReader();
+      reader.onload = async (ev) => { const parsed = await parseXlsx(ev.target?.result as ArrayBuffer); if (parsed.length === 0) { toast.error("Nenhum lançamento encontrado."); return; } void openPreview(parsed); };
       reader.readAsArrayBuffer(file);
     } else {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const lines = (ev.target?.result as string).split("\n").filter(Boolean);
-        const rows: CSVRow[] = [];
-        for (let i = 1; i < lines.length; i++) { const cols = lines[i].split(";"); if (cols.length < 4) continue; const dateStr = cols[0].trim(); const desc = cols[1].trim(); const valStr = cols[3].replace(/\./g, "").replace(",", ".").trim(); const val = parseFloat(valStr); if (isNaN(val) || !desc) continue; const parts = dateStr.split("/"); const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr; rows.push({ date: isoDate, description: desc, amount: Math.abs(val), type: val >= 0 ? "entrada" : "saida" }); }
-        setCsvRows(rows); setCsvDialogOpen(true);
+        const rows = parseStatementCsv(decodeText(ev.target?.result as ArrayBuffer));
+        if (rows.length === 0) { toast.error("Nenhum lançamento encontrado."); return; }
+        void openPreview(rows);
       };
-      reader.readAsText(file, "utf-8");
+      reader.readAsArrayBuffer(file);
     }
     e.target.value = "";
   };
 
   const importCSV = () => {
-    bulkInsert.mutate(csvRows.map((r) => ({ ...r, source: "xlsx_import" })), { onSuccess: () => { setCsvDialogOpen(false); setCsvRows([]); } });
+    bulkInsert.mutate(
+      csvRows.map((r) => ({ date: r.date, description: r.description, amount: r.amount, type: r.type, category: r.category ?? null, source: "xlsx_import" })),
+      { onSuccess: () => { categorizeRun.current++; setCsvDialogOpen(false); setCsvRows([]); } },
+    );
   };
 
   return (
@@ -364,7 +458,7 @@ export function FinLancamentosTab() {
               <SelectItem value="saida">Saídas</SelectItem>
             </SelectContent>
           </Select>
-          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileImport} className="hidden" />
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.ofx" onChange={handleFileImport} className="hidden" />
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleUndo} disabled={undoStack.length === 0} title="Desfazer (Ctrl+Z)"><Undo2 className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleRedo} disabled={redoStack.length === 0} title="Refazer (Ctrl+Shift+Z)"><Redo2 className="h-4 w-4" /></Button>
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><FileSpreadsheet className="mr-1 h-4 w-4" /> Importar</Button>
@@ -460,17 +554,74 @@ export function FinLancamentosTab() {
         </DialogContent>
       </Dialog>
 
-      {/* CSV preview dialog */}
-      <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Statement preview: categories suggested from the history and the AI, reviewed here before saving */}
+      <Dialog open={csvDialogOpen} onOpenChange={(o) => { setCsvDialogOpen(o); if (!o) { categorizeRun.current++; } }}>
+        <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5" /> Pré-visualização — {csvRows.length} lançamentos</DialogTitle></DialogHeader>
-          <div className="max-h-80 overflow-auto rounded-md border">
-            <Table><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-center">Tipo</TableHead></TableRow></TableHeader>
-              <TableBody>{csvRows.slice(0, 50).map((r, i) => (<TableRow key={i}><TableCell className="text-sm">{formatDayMonth(r.date)}</TableCell><TableCell className="text-sm">{r.description}</TableCell><TableCell className="text-right text-sm">R$ {r.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell><TableCell className="text-center"><Badge variant={r.type === "entrada" ? "default" : "secondary"}>{r.type}</Badge></TableCell></TableRow>))}</TableBody>
+          {(() => {
+            const count = (src: string) => csvRows.filter((r) => r.catSource === src).length;
+            const pending = count("pendente");
+            const review = csvRows.filter((r) => !r.category && r.catSource !== "pendente").length;
+            return (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>{count("historico")} pelo histórico</span>
+                <span>{count("ia")} pela IA</span>
+                {pending > 0 && <span className="flex items-center gap-1 text-primary"><Loader2 className="h-3 w-3 animate-spin" /> IA analisando {pending}…</span>}
+                {review > 0 && <span className="text-amber-500">{review} sem categoria, escolha abaixo</span>}
+                {csvRows.some((r) => r.catSource === "revisar") && pending === 0 && (
+                  <button type="button" onClick={retryAi} className="flex items-center gap-1 text-primary hover:underline"><Sparkles className="h-3 w-3" /> Tentar a IA de novo</button>
+                )}
+              </p>
+            );
+          })()}
+          <div className="max-h-[55vh] overflow-auto rounded-md border">
+            <Table>
+              <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-center">Tipo</TableHead><TableHead>Categoria</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {csvRows.map((r, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-sm">{formatDayMonth(r.date)}</TableCell>
+                    <TableCell className={`max-w-[260px] cursor-pointer text-sm ${expandedRows.has(i) ? "whitespace-normal break-words" : "truncate"}`} onClick={() => toggleRow(i)}>
+                      {expandedRows.has(i) ? r.description : (
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><span className="block truncate">{r.description}</span></TooltipTrigger>
+                          <TooltipContent side="top" align="start" className="max-w-md break-words text-xs leading-relaxed">{r.description}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">R$ {r.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-center"><Badge variant={r.type === "entrada" ? "default" : "secondary"}>{r.type}</Badge></TableCell>
+                    <TableCell>
+                      {r.catSource === "pendente" ? (
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> analisando…</span>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Select
+                            value={r.category ?? ""}
+                            onValueChange={(v) => setCsvRows((prev) => prev.map((row, k) => (k === i ? { ...row, category: v, catSource: "manual" } : row)))}
+                          >
+                            <SelectTrigger className={`h-7 w-44 text-xs ${r.category ? "" : "border-amber-500/60"}`}><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                            <SelectContent>
+                              {TRANSACTION_CATEGORIES.filter((c) => categoriesForType(r.type).includes(c.value)).map((c) => <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {r.catSource === "ia" && (
+                            <span title={`Sugerido pela IA (confiança ${r.confidence ?? "baixa"})`} className={r.confidence === "alta" ? "text-primary" : "text-amber-500"}>
+                              <Sparkles className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </div>
-          {csvRows.length > 50 && <p className="text-xs text-muted-foreground">Mostrando 50 de {csvRows.length}</p>}
-          <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={importCSV} disabled={bulkInsert.isPending}>Importar {csvRows.length} lançamentos</Button></DialogFooter>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={importCSV} disabled={bulkInsert.isPending || csvRows.some((r) => r.catSource === "pendente")}>Importar {csvRows.length} lançamentos</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
