@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { BarChart3, CalendarDays, ChevronLeft, FileText, Instagram, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useClients } from "@/features/data/queries";
+import { useClientsIncludingEnded } from "@/features/data/queries";
 import { useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
 import { CalendarioPublicacaoPanel, toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
 import { ClientResults } from "@/features/resultados/components/ClientResults";
@@ -42,7 +42,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
     return subscribePendingCalendarioFocus((v) => { if (v?.clientId === clientId) setFocusRequest(v); });
   }, [clientId]);
 
-  const clientsQ = useClients();
+  const clientsQ = useClientsIncludingEnded();
   const client = (clientsQ.data ?? []).find((c) => c.id === clientId) ?? null;
   const connectionsQ = useInstagramConnections();
   const username = (connectionsQ.data ?? []).find((c) => c.client_id === clientId && c.status === "active")?.instagram_username ?? null;
@@ -54,7 +54,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
           <ChevronLeft className="h-4 w-4" /> Clientes
         </button>
         <p className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          {clientsQ.isLoading ? "Carregando…" : "Cliente não encontrado ou inativo."}
+          {clientsQ.isLoading ? "Carregando…" : "Cliente não encontrado."}
         </p>
       </div>
     );
@@ -123,6 +123,12 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
           </div>
         </header>
       </div>
+
+      {!client.is_active && (
+        <p className="rounded-2xl border border-border/40 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Contrato encerrado{client.ended_at ? ` em ${new Date(client.ended_at.slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}` : ""}. Os posts já agendados continuam no Cronograma; se algum não deve mais sair, desmarque o agendamento nele.
+        </p>
+      )}
 
       <main className="min-w-0">
         {section === "cronograma" && <CalendarioPublicacaoPanel

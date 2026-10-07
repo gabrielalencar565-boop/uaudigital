@@ -1,56 +1,42 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Instagram, Search } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Instagram, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { brandGradientCss } from "@/lib/brand-gradient";
-import { useClients } from "@/features/data/queries";
+import { useClientsIncludingEnded, type ClientRow } from "@/features/data/queries";
 import { useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
 import { toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
 
 export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => void }) {
-  const clientsQ = useClients();
+  const clientsQ = useClientsIncludingEnded();
   const connectionsQ = useInstagramConnections();
   const [search, setSearch] = useState("");
+  // always starts minimized; a search opens it so a match among the ended clients is never hidden
+  const [endedOpen, setEndedOpen] = useState(false);
 
   const handleByClient = useMemo(
     () => new Map((connectionsQ.data ?? []).filter((c) => c.status === "active").map((c) => [c.client_id, c.instagram_username])),
     [connectionsQ.data],
   );
 
-  const clients = useMemo(() => {
+  const { clients, ended } = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return [...(clientsQ.data ?? [])]
+    const matching = [...(clientsQ.data ?? [])]
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
       .filter((c) => !term || c.name.toLowerCase().includes(term));
+    return { clients: matching.filter((c) => c.is_active), ended: matching.filter((c) => !c.is_active) };
   }, [clientsQ.data, search]);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-sm text-muted-foreground">Cronograma, resultados e tudo de cada cliente num só lugar.</p>
-        </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente" className="h-10 rounded-full pl-10" />
-        </div>
-      </div>
+  const showEnded = endedOpen || search.trim().length > 0;
 
-      {clients.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          {clientsQ.isLoading ? "Carregando…" : "Nenhum cliente encontrado."}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {clients.map((c) => {
+  const renderCard = (c: ClientRow) => {
             const handle = handleByClient.get(c.id);
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => onSelect(c.id)}
-                className="group relative flex flex-col items-start gap-4 rounded-3xl border border-border/40 bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated"
+                className={`group relative flex flex-col items-start gap-4 rounded-3xl border border-border/40 bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated ${c.is_active ? "" : "opacity-70 hover:opacity-100"}`}
               >
                 <div className="flex w-full items-start justify-between">
                   <span className="rounded-full p-[2.5px]" style={{ background: brandGradientCss(135) }}>
@@ -69,11 +55,59 @@ export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => voi
                   ) : (
                     <span className="truncate text-xs text-muted-foreground/70">{c.plan_name ?? "Instagram não conectado"}</span>
                   )}
+                  {!c.is_active && (
+                    <span className="mt-1 w-fit rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Encerrado{c.ended_at ? ` em ${new Date(c.ended_at.slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}` : ""}
+                    </span>
+                  )}
                 </div>
               </button>
             );
-          })}
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Cronograma, resultados e tudo de cada cliente num só lugar.</p>
         </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente" className="h-10 rounded-full pl-10" />
+        </div>
+      </div>
+
+      {clients.length === 0 && ended.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+          {clientsQ.isLoading ? "Carregando…" : "Nenhum cliente encontrado."}
+        </div>
+      ) : (
+        <>
+          {clients.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {clients.map(renderCard)}
+            </div>
+          )}
+          {ended.length > 0 && (
+            <section className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setEndedOpen((v) => !v)}
+                aria-expanded={showEnded}
+                className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-3 text-left transition-colors hover:bg-accent/30"
+              >
+                <span className="block text-sm font-semibold uppercase tracking-wider text-muted-foreground">Encerrados ({ended.length})</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${showEnded ? "rotate-180" : ""}`} />
+              </button>
+              {showEnded && (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {ended.map(renderCard)}
+                </div>
+              )}
+            </section>
+          )}
+        </>
       )}
     </div>
   );

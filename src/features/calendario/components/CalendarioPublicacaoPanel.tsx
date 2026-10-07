@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useClients, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
+import { useClients, useClientsIncludingEnded, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/components/PmStageFlowConfig";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -315,11 +315,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const clientsQ = useClients();
+  const clientsWithEndedQ = useClientsIncludingEnded();
   const sortedClients = useMemo(
     () => [...(clientsQ.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     [clientsQ.data],
   );
-  const selectedClient = clientsQ.data?.find((c) => c.id === clientId);
+  const selectedClient = clientsWithEndedQ.data?.find((c) => c.id === clientId) ?? clientsQ.data?.find((c) => c.id === clientId);
   const clientName = selectedClient?.name ?? "Cliente";
   const clientLogoUrl = selectedClient?.logo_url ?? null;
 
