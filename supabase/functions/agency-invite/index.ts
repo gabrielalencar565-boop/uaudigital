@@ -44,9 +44,22 @@ Deno.serve(async (req) => {
 
     if (send_email !== false) {
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      // who is inviting and to which agency: the invitation e-mail says "Ana, da Uau Digital, convidou você"
+      // (separate keys from the owner-signup metadata, which the onboarding step reads)
+      let inviterName: string | null = null;
+      let agencyName: string | null = null;
+      try {
+        const { data: agencyId } = await caller.rpc("current_agency_id");
+        const [{ data: prof }, { data: ag }] = await Promise.all([
+          admin.from("profiles").select("full_name").eq("user_id", userData.user.id).maybeSingle(),
+          agencyId ? admin.from("agencies").select("name").eq("id", agencyId).maybeSingle() : Promise.resolve({ data: null }),
+        ]);
+        inviterName = (prof as any)?.full_name ?? null;
+        agencyName = (ag as any)?.name ?? null;
+      } catch { /* names are cosmetic: the invite goes out without them */ }
       const sent = await admin.auth.admin.inviteUserByEmail(email.trim().toLowerCase(), {
         redirectTo: link,
-        data: { signup_type: "invite" },
+        data: { signup_type: "invite", inviter_name: inviterName, invite_agency_name: agencyName },
       });
       if (sent.error) emailError = sent.error.message;
       else emailed = true;
