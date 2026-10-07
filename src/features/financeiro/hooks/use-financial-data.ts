@@ -328,7 +328,7 @@ export function useDeleteFinTransaction() {
 export function useBulkInsertTransactions() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (txs: Array<{ description: string; amount: number; date: string; type: string; source: string }>) => {
+    mutationFn: async (txs: Array<{ description: string; amount: number; date: string; type: string; source: string; category?: string | null }>) => {
       const { error } = await supabase.from("financial_transactions" as any).insert(txs as any);
       if (error) throw error;
     },
@@ -526,4 +526,16 @@ export function useUpsertOpeningBalance() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+}
+
+// Already-categorized lines of the agency: what the statement import learns from (RLS keeps it to the agency).
+export async function fetchCategorizationHistory(): Promise<Array<{ description: string; category: string | null; type: string }>> {
+  const { data, error } = await supabase
+    .from("financial_transactions" as any)
+    .select("description, category, type")
+    .not("category", "is", null)
+    .order("date", { ascending: false })
+    .limit(5000);
+  if (error) throw error;
+  return (data ?? []) as unknown as Array<{ description: string; category: string | null; type: string }>;
 }
