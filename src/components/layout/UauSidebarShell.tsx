@@ -21,6 +21,7 @@ import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
 import { ElementHighlightWatcher } from "@/components/layout/ElementHighlightWatcher";
 import { EditProfileDialog } from "@/features/meu-painel/components/EditProfileDialog";
 import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import type { PmTask } from "@/features/gestao/pm-types";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { useQuery } from "@tanstack/react-query";
@@ -389,10 +390,21 @@ export function UauSidebarShell({
 
 function NotifTaskDialogWrapper({ taskId, onClose, isAdmin }: {taskId: string | null;onClose: () => void;isAdmin: boolean;}) {
   const pmTasksQ = usePmTasks();
+  // usePmTasks only holds root tasks: a subtask (e.g. the one behind a Cronograma publication) has to be fetched by id
+  const inRootList = !!taskId && (pmTasksQ.data ?? []).some((t) => t.id === taskId);
+  const fallbackTaskQ = useQuery({
+    queryKey: ["pm_task_by_id", taskId],
+    enabled: !!taskId && !inRootList && !pmTasksQ.isLoading,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("pm_tasks").select("*").eq("id", taskId!).single();
+      if (error) throw error;
+      return data as unknown as PmTask;
+    },
+  });
   const task = useMemo(() => {
     if (!taskId) return null;
-    return (pmTasksQ.data ?? []).find((t) => t.id === taskId) ?? null;
-  }, [taskId, pmTasksQ.data]);
+    return (pmTasksQ.data ?? []).find((t) => t.id === taskId) ?? fallbackTaskQ.data ?? null;
+  }, [taskId, pmTasksQ.data, fallbackTaskQ.data]);
 
   const clientsQ = useQuery({
     queryKey: ["clients_all"],

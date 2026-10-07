@@ -9,7 +9,7 @@ import {
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
-import { brandSeriesColor } from "@/lib/brand-gradient";
+import { BRAND_GRADIENT_STOPS, brandSeriesColor } from "@/lib/brand-gradient";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Users } from "lucide-react";
 
 const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -227,8 +227,8 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
                   contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.3, radius: 6 }}
                 />
-                <Bar dataKey="receita" name="Receita" fill={`url(#${ids.v})`} radius={[6, 6, 6, 6]} barSize={18} />
-                <Bar dataKey="despesa" name="Despesa" fill={brandSeriesColor(2)} radius={[6, 6, 6, 6]} barSize={18} />
+                <Bar dataKey="receita" name="Receita" fill={BRAND_GRADIENT_STOPS[0]} radius={[6, 6, 6, 6]} barSize={18} />
+                <Bar dataKey="despesa" name="Despesa" fill="#a78bfa" radius={[6, 6, 6, 6]} barSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

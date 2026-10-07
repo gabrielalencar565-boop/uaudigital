@@ -515,3 +515,9 @@ All colors MUST be HSL.
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Recharts paints each tooltip line with the slice/series color, and falls back to black when there isn't one (pie
+   charts): unreadable on the dark card. Always use the theme's text color. */
+.recharts-tooltip-item {
+  color: hsl(var(--foreground)) !important;
+}
