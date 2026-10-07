@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { PmTask, PmComment, PmAttachment, PmProject } from "../pm-types";
 import { PM_TEMPLATE_SUBTASKS } from "../pm-constants";
+import { syncTaskList, fetchAllChildTasks, isLiveChild, isLiveRoot, byCreatedAsc, byCreatedDesc } from "./pm-task-sync";
 
 const sb = supabase as any;
 
@@ -21,20 +22,30 @@ const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_glob
  * — e.g. a task detail dialog kept mounted with `open=false` — skip the fetch entirely until
  * it's actually needed. */
 export function usePmTasks(enabled = true) {
+  const qc = useQueryClient();
   return useQuery<PmTask[]>({
     queryKey: ["pm_tasks"],
     enabled,
     staleTime: 30_000,
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from("pm_tasks")
-        .select(PM_TASK_LIST_COLUMNS)
-        .is("parent_task_id", null)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    // after the first load this only asks for the rows that changed (see pm-task-sync.ts)
+    queryFn: () =>
+      syncTaskList({
+        qc,
+        key: "pm_tasks",
+        columns: PM_TASK_LIST_COLUMNS,
+        accept: isLiveRoot,
+        sort: byCreatedDesc,
+        full: async () => {
+          const { data, error } = await sb
+            .from("pm_tasks")
+            .select(PM_TASK_LIST_COLUMNS)
+            .is("parent_task_id", null)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: false });
+          if (error) throw error;
+          return data ?? [];
+        },
+      }),
   });
 }
 
@@ -111,41 +122,22 @@ export function usePmChildTasks(parentId: string | null) {
  * that never reads the result — skip the ~9k-row company-wide scan when the active view
  * doesn't actually need it. */
 export function usePmAllChildTasks(enabled = true) {
+  const qc = useQueryClient();
   return useQuery<PmTask[]>({
     queryKey: ["pm_child_tasks_all"],
     enabled,
     staleTime: 30_000,
-    queryFn: async () => {
-      const pageSize = 1000;
-      // Postgrest só expõe filtros como `.not()`/`.is()` DEPOIS de `.select()` — chamá-los
-      // direto em `.from()` quebra em runtime ("... .not is not a function"), então o
-      // filtro entra como uma função aplicada por cima de cada `.select()` já construído.
-      const withFilters = (q: any) => q.not("parent_task_id", "is", null).is("deleted_at", null);
-
-      const { count, error: countError } = await withFilters(
-        sb.from("pm_tasks").select("id", { count: "exact", head: true }),
-      );
-      if (countError) throw countError;
-
-      const totalPages = Math.max(1, Math.ceil((count ?? 0) / pageSize));
-      // Uma página de cada vez, não Promise.all — com ~9k subtarefas isso são ~9 páginas;
-      // disparadas todas juntas, é 9 conexões simultâneas só desse hook (e ele é chamado da
-      // Meu Painel, que várias pessoas abrem ao mesmo tempo ao entrar no app) — contribuiu
-      // pra uma fila de conexões travando o banco pra todo mundo (timeouts em cascata,
-      // inclusive em `has_role`, usada em toda checagem de permissão). Sequencial é mais
-      // lento pra esse hook sozinho, mas não amontoa conexões — troca certa pra um dado
-      // secundário (contadores/etiquetas), não a lista principal de tarefas.
-      const allRows: PmTask[] = [];
-      for (let i = 0; i < totalPages; i++) {
-        const from = i * pageSize;
-        const { data, error } = await withFilters(sb.from("pm_tasks").select(PM_TASK_LIST_COLUMNS))
-          .order("created_at", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...((data ?? []) as PmTask[]));
-      }
-      return allRows;
-    },
+    // First load: every subtask, one page at a time (never all pages at once — that piled up connections and blocked the
+    // database for everyone). After that: only the rows that changed, merged into the cached list (see pm-task-sync.ts).
+    queryFn: () =>
+      syncTaskList({
+        qc,
+        key: "pm_child_tasks_all",
+        columns: PM_TASK_LIST_COLUMNS,
+        accept: isLiveChild,
+        sort: byCreatedAsc,
+        full: () => fetchAllChildTasks(PM_TASK_LIST_COLUMNS),
+      }),
   });
 }
 
@@ -506,6 +498,15 @@ export function useUpdatePmTask() {
   });
 }
 
+// Delete/restore flip calendar_publications.deleted_at in the database (trigger), so every Cronograma query has to be reloaded
+const CALENDAR_QUERY_KEYS = [
+  "calendar_publications", "calendar_publications_unscheduled", "calendar_publication", "unscheduled_client_tasks",
+  "publication_calendars", "task_calendar_entry", "task_calendar_entries_for", "today_scheduled_publications",
+];
+function invalidateCalendar(qc: ReturnType<typeof useQueryClient>) {
+  for (const k of CALENDAR_QUERY_KEYS) qc.invalidateQueries({ queryKey: [k] });
+}
+
 export function useDeletePmTask() {
   const qc = useQueryClient();
   return useMutation({
@@ -633,6 +634,7 @@ export function useDeletePmTask() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["performance_scores"] });
       qc.invalidateQueries({ queryKey: ["deleted_pm_tasks"] });
+      invalidateCalendar(qc);
     },
   });
 }
@@ -684,6 +686,7 @@ export function useRestorePmTask() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["deleted_tasks"] });
       qc.invalidateQueries({ queryKey: ["magic2"] });
+      invalidateCalendar(qc);
     },
   });
 }
