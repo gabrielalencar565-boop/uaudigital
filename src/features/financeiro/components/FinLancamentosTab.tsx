@@ -449,7 +449,7 @@ export function FinLancamentosTab() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>

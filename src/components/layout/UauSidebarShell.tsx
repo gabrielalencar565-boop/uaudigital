@@ -1,9 +1,8 @@
 import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
 import {
-  CalendarDays, ChevronDown, CircleHelp, ClipboardList, DollarSign,
-  Eye, FileSpreadsheet, FolderOpen, LayoutGrid, MessagesSquare, Receipt, Settings, Target, TrendingUp, Trophy,
-  UserRound, Users, Workflow, PieChart, PanelLeftClose, ArrowRightLeft, Briefcase } from
+  CalendarDays, ChevronDown, CircleHelp, FileSpreadsheet, Receipt, Target, TrendingUp, Trophy,
+  Users, PanelLeftClose, ArrowRightLeft, House, ListChecks, Sun, ChartPie, Wallet, Handshake, SlidersHorizontal } from
   "lucide-react";
 import { toast } from "sonner";
 import { useAppSettings } from "@/features/data/queries";
@@ -83,20 +82,30 @@ type NavSingle = {
 type NavEntry = NavGroup | NavSingle;
 function isGroup(e: NavEntry): e is NavGroup {return "children" in e;}
 
+// Sidebar icons: thin strokes, and each one has its own small motion on hover / press (see .nav-icon in index.css)
+const NAV_ANIM: Record<string, string> = {
+  meu_painel: "pop", agenda_gestao: "wiggle", pauta_pessoas: "tick", clientes: "pop", visao_do_dia: "blink",
+  magic2: "pulse", desempenho: "bounce", visao_geral_projetos: "spin", financeiro_group: "flip", comercial: "shake",
+  ajuda: "sway", configuracoes: "spin",
+};
+function NavIcon({ icon: Icon, name, className }: { icon: React.ComponentType<any>; name?: string; className?: string }) {
+  return <Icon strokeWidth={1.5} className={cn("nav-icon h-5 w-5 shrink-0", className)} data-anim={(name && NAV_ANIM[name]) || "pop"} />;
+}
+
 const NAV: NavEntry[] = [
-{ key: "meu_painel", label: "Meu Painel", icon: UserRound },
+{ key: "meu_painel", label: "Meu Painel", icon: House },
 
 { key: "agenda_gestao", label: "Agenda", icon: CalendarDays },
-{ key: "pauta_pessoas", label: "Pauta", icon: ClipboardList },
+{ key: "pauta_pessoas", label: "Pauta", icon: ListChecks },
 { key: "clientes", label: "Clientes", icon: Users },
-{ key: "visao_do_dia", label: "Visão do Dia", icon: Eye },
+{ key: "visao_do_dia", label: "Visão do Dia", icon: Sun },
 { key: "magic2", label: "Magic Number", icon: Target },
 { key: "desempenho", label: "The Best", icon: Trophy },
-{ key: "visao_geral_projetos", label: "Painel de Squads", icon: PieChart },
+{ key: "visao_geral_projetos", label: "Painel de Squads", icon: ChartPie },
 {
   key: "financeiro_group",
   label: "Financeiro",
-  icon: DollarSign,
+  icon: Wallet,
   adminOnly: true,
   landingTab: "financeiro",
   children: [
@@ -105,7 +114,7 @@ const NAV: NavEntry[] = [
   { key: "fin_lancamentos", label: "Lançamentos", icon: ArrowRightLeft },
   { key: "metas", label: "Metas", icon: TrendingUp }]
 },
-  { key: "comercial", label: "Comercial", icon: Briefcase, adminOnly: true },
+  { key: "comercial", label: "Comercial", icon: Handshake, adminOnly: true },
   { key: "ajuda", label: "Ajuda", icon: CircleHelp }];
 
 
@@ -249,13 +258,13 @@ export function UauSidebarShell({
                           isActive={active}
                           onClick={() => onTabChange(entry.key)}
                           className={cn(
-                            "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
+                            "nav-btn h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors",
                             active
                               ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                               : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                             collapsed && "justify-center"
                           )}>
-                          <entry.icon className="h-[18px] w-[18px] shrink-0" />
+                          <NavIcon icon={entry.icon} name={entry.key} />
                           {!collapsed && (
                             <span className="text-sm">{entry.label}</span>
                           )}
@@ -281,13 +290,13 @@ export function UauSidebarShell({
                               }
                             }}
                             className={cn(
-                              "h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors flex-1",
+                              "nav-btn h-10 gap-3 rounded-xl text-sidebar-foreground/80 transition-colors flex-1",
                               hasActiveChild
                                 ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                                 : "hover:bg-sidebar-accent hover:text-sidebar-foreground",
                               collapsed && "justify-center"
                             )}>
-                            <entry.icon className="h-[18px] w-[18px] shrink-0" />
+                            <NavIcon icon={entry.icon} name={entry.key} />
                             {!collapsed &&
                             <>
                                 <span className="flex-1 text-sm">{entry.label}</span>
@@ -314,12 +323,12 @@ export function UauSidebarShell({
                                 <button
                                   key={child.key}
                                   onClick={() => onTabChange(child.key)}
-                                  className={cn("flex w-full items-center gap-2.5 px-2.5 py-2 text-sm text-sidebar-foreground/70 transition-colors rounded-xl",
+                                  className={cn("nav-btn flex w-full items-center justify-start gap-2.5 px-2.5 py-2 text-left text-sm text-sidebar-foreground/70 transition-colors rounded-xl",
                                   active
                                     ? "!bg-sidebar-active !text-white !font-medium shadow-glow hover:brightness-90"
                                     : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                                   )}>
-                                    <child.icon className="h-4 w-4 shrink-0" />
+                                    <NavIcon icon={child.icon} name={child.key} className="h-[18px] w-[18px]" />
                                     <span>{child.label}</span>
                                   </button>);
                             })}
@@ -339,14 +348,14 @@ export function UauSidebarShell({
                     type="button"
                     onClick={() => onTabChange("configuracoes")}
                     className={cn(
-                      "inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition",
+                      "nav-btn inline-flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/70 transition",
                       tab === "configuracoes"
                         ? "!bg-sidebar-active !text-white !font-semibold shadow-glow hover:brightness-90"
                         : "hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
                     aria-label="Configurações"
                   >
-                    <Settings className="h-[18px] w-[18px] shrink-0" />
+                    <NavIcon icon={SlidersHorizontal} name="configuracoes" />
                   </button>
                 </div>
               )}

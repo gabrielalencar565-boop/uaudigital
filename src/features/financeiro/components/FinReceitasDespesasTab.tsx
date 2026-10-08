@@ -129,14 +129,14 @@ export function FinReceitasDespesasTab() {
       </div>
 
       {/* Dashboard KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.1s" }}>
         <FinMetricCard title="Faturamento" value={totalFaturamento} tone="success" icon={<DollarSign className="h-4 w-4" />} />
         <FinMetricCard title="Despesas" value={totalDespesas} tone="danger" icon={<TrendingDown className="h-4 w-4" />} />
         <FinMetricCard title="Lucro" value={Math.abs(lucro)} tone={lucro >= 0 ? "success" : "danger"} prefix={lucro < 0 ? "-R$" : "R$"} icon={<TrendingUp className="h-4 w-4" />} />
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid gap-4 sm:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.15s" }}>
         <FinMetricCard title="Ticket Médio" value={ticketMedio} icon={<Receipt className="h-4 w-4" />} />
         <Card className="flex flex-col items-center justify-center p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">Clientes Pagos</span>
@@ -160,7 +160,7 @@ export function FinReceitasDespesasTab() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Receitas */}
         <Card className="opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0.2s" }}>
           <CardHeader className="pb-3">
@@ -175,7 +175,7 @@ export function FinReceitasDespesasTab() {
             </div>
             <Progress value={revProgress} className="h-1.5 mt-2" />
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
@@ -225,7 +225,7 @@ export function FinReceitasDespesasTab() {
             </div>
             <Progress value={expProgress} className="h-1.5 mt-2" />
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">

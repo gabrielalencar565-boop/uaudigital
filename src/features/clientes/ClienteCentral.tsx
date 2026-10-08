@@ -100,7 +100,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
                 </div>
               </div>
 
-              <nav className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-white/15 p-1 backdrop-blur">
+              <nav className="grid max-w-full grid-cols-4 gap-1 rounded-full bg-white/15 p-1 backdrop-blur sm:flex sm:overflow-x-auto">
                 {SECTIONS.map((s) => {
                   const active = s.key === section;
                   return (
@@ -109,7 +109,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
                       type="button"
                       onClick={() => setSection(s.key)}
                       className={cn(
-                        "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                        "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-[10px] font-medium transition-colors sm:shrink-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
                         active ? "bg-white text-violet-700 shadow-sm" : "text-white/80 hover:text-white",
                       )}
                     >

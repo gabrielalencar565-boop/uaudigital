@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinAnnualCharts } from "./FinAnnualCharts";
 import { FinMetricCard } from "./FinMetricCard";
+import { FinMargemPorCliente } from "./FinMargemPorCliente";
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 import { BRAND_GRADIENT_STOPS } from "@/lib/brand-gradient";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Activity, Users } from "lucide-react";
@@ -297,6 +298,8 @@ export function FinVisaoAnualTab({ externalYear }: FinVisaoAnualProps = {}) {
           </CardContent>
         </Card>
       </div>
+
+      <FinMargemPorCliente year={year} />
 
       {/* Annual charts */}
       <FinAnnualCharts transactions={transactions as any} />

@@ -51,7 +51,7 @@ function CascadeCard({ cascade }: { cascade: Cascade }) {
   };
 
   return (
-    <div className="grid gap-8 rounded-3xl border border-border/40 bg-card/40 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]">
+    <div className="grid grid-cols-1 gap-8 rounded-3xl border border-border/40 bg-card/40 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]">
       <div className="space-y-5">
         <div className="space-y-1.5">
           <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Nome</label>

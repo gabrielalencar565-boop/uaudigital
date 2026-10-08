@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DEFAULT_EXCLUDED_CATEGORIES } from "../utils/client-margin";
 
 // ── Types ──
 export type FinClient = {
@@ -159,6 +160,73 @@ export function useFinRevenues(year: number, month: number) {
       if (error) throw error;
       return (data ?? []) as unknown as FinRevenue[];
     },
+  });
+}
+
+/** Completed stages per client and stage type in a month (fin_client_workload); the weights are applied on screen. */
+export function useFinClientWorkload(year: number, month: number) {
+  return useQuery({
+    queryKey: ["fin_client_workload", year, month],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("fin_client_workload", { p_year: year, p_month: month });
+      if (error) throw error;
+      return ((data ?? []) as { client_id: string; stage: string; stages: number }[]).map((r) => ({ ...r, stages: Number(r.stages) }));
+    },
+  });
+}
+
+/** Same for a whole year, grouped by month. */
+export function useFinClientWorkloadYear(year: number) {
+  return useQuery({
+    queryKey: ["fin_client_workload_year", year],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("fin_client_workload_year", { p_year: year });
+      if (error) throw error;
+      const byMonth = new Map<number, { client_id: string; stage: string; stages: number }[]>();
+      for (const r of (data ?? []) as { client_id: string; month: number; stage: string; stages: number }[]) {
+        const list = byMonth.get(r.month) ?? [];
+        list.push({ client_id: r.client_id, stage: r.stage, stages: Number(r.stages) });
+        byMonth.set(r.month, list);
+      }
+      return byMonth;
+    },
+  });
+}
+
+export type FinMarginSettings = { agency_id: string | null; stage_weights: Record<string, number>; excluded_categories: string[] };
+
+/** How the margin per client is calculated for this agency (stage weights, expense categories left out of the split). */
+export function useFinMarginSettings() {
+  return useQuery({
+    queryKey: ["fin_margin_settings"],
+    queryFn: async (): Promise<FinMarginSettings> => {
+      const { data, error } = await (supabase as any).from("fin_margin_settings").select("agency_id, stage_weights, excluded_categories").maybeSingle();
+      if (error) throw error;
+      return {
+        agency_id: data?.agency_id ?? null,
+        stage_weights: (data?.stage_weights ?? {}) as Record<string, number>,
+        excluded_categories: (data?.excluded_categories ?? DEFAULT_EXCLUDED_CATEGORIES) as string[],
+      };
+    },
+  });
+}
+
+export function useSaveFinMarginSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { existingAgencyId: string | null; stage_weights: Record<string, number>; excluded_categories: string[] }) => {
+      const db = supabase as any;
+      const payload = { stage_weights: v.stage_weights, excluded_categories: v.excluded_categories, updated_at: new Date().toISOString() };
+      const { error } = v.existingAgencyId
+        ? await db.from("fin_margin_settings").update(payload).eq("agency_id", v.existingAgencyId)
+        : await db.from("fin_margin_settings").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin_margin_settings"] });
+      toast.success("Cálculo da margem atualizado");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar"),
   });
 }
 
