@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send } from "lucide-react";
 import { TAG_COLORS, stageLabel } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -313,6 +314,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     onFocusHandled?.();
   }, [focusRequest, onFocusHandled]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const isMobile = useIsMobile();
 
   const clientsQ = useClients();
   const clientsWithEndedQ = useClientsIncludingEnded();
@@ -881,7 +883,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       )}
 
       {!clientId && (
-        <div className="grid grid-cols-5 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
           <MetricSparkCard
             label="Meus"
             value={clientCountsByOwner}
@@ -1227,7 +1229,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           renderiza fora do "{calendar && ...}" abaixo — senão ela some assim que você navega
           pra um mês que ainda não tem calendário próprio (ex.: outubro antes de qualquer post
           ser mandado pra lá), que é exatamente onde você quer poder escolher uma data. */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <MetricSparkCard
           label="Publicações"
           value={counts.total}
@@ -1288,7 +1290,73 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
           {calendar && (
             <>
-              {view === "calendario" ? (
+              {view === "calendario" && isMobile ? (
+                // Seven columns are too narrow for a post on a phone: one row per day instead, posts side by side.
+                <div className="space-y-2">
+                  {(() => {
+                    const days = weeks.flat().filter((d) => {
+                      const key = format(d, "yyyy-MM-dd");
+                      const inCycle = d >= cycleStart(cursor, magicDay) && d <= cycleEnd(cursor, magicDay);
+                      return inCycle || (byDay.get(key) ?? []).length > 0;
+                    });
+                    return days.map((d) => {
+                      const key = format(d, "yyyy-MM-dd");
+                      const isToday = key === todayKey;
+                      const dayPubs = byDay.get(key) ?? [];
+                      const addButton = (
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          onClick={() => { setQuickAddDate(key); setQuickAddOpen(true); }}
+                          title="Nova publicação"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      );
+                      // Every day of the cycle is listed so a post can be dropped on any of them; empty days stay slim.
+                      if (dayPubs.length === 0) {
+                        return (
+                          <DropZone
+                            key={key}
+                            id={key}
+                            className={cn("flex items-center gap-3 rounded-xl border border-border/30 bg-card/10 px-3 py-2", isToday && "border-primary/40")}
+                          >
+                            <span className={cn("flex w-20 shrink-0 items-baseline gap-1.5 text-xs", isToday ? "text-primary" : "text-muted-foreground")}>
+                              <span className="font-semibold uppercase">{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()]}</span>
+                              <span>{format(d, "d")} {format(d, "MMM", { locale: ptBR }).replace(".", "")}</span>
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/50">Solte um post aqui</span>
+                            {addButton}
+                          </DropZone>
+                        );
+                      }
+                      return (
+                        <DropZone
+                          key={key}
+                          id={key}
+                          className={cn("flex gap-3 rounded-2xl border border-border/40 bg-card/20 p-3", isToday && "border-primary/40")}
+                        >
+                          <div className="flex w-11 shrink-0 flex-col items-center gap-0.5">
+                            <span className="text-[10px] font-semibold uppercase text-muted-foreground">{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()]}</span>
+                            <span className={cn("flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/60 text-sm font-semibold", isToday ? "border-primary/50 text-primary" : "text-foreground")}>
+                              {format(d, "d")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{format(d, "MMM", { locale: ptBR }).replace(".", "")}</span>
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
+                            {dayPubs.map((p) => (
+                              <div key={p.id} className="w-28">
+                                <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                              </div>
+                            ))}
+                          </div>
+                          {addButton}
+                        </DropZone>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : view === "calendario" ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-muted-foreground">
                     {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (

@@ -521,3 +521,38 @@ All colors MUST be HSL.
 .recharts-tooltip-item {
   color: hsl(var(--foreground)) !important;
 }
+
+/* horizontally scrollable rows (tabs, mobile sub-bar) without the scrollbar line */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sidebar icons: each has its own short motion on hover / keyboard focus, and a press effect on click */
+.nav-icon { transform-origin: center; transition: transform 0.18s ease; }
+.nav-btn:active .nav-icon { transform: scale(0.8); }
+@media (prefers-reduced-motion: no-preference) {
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="pop"] { animation: nav-pop 0.45s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="wiggle"] { animation: nav-wiggle 0.6s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="tick"] { animation: nav-tick 0.5s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="blink"] { animation: nav-blink 0.5s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="pulse"] { animation: nav-pulse 0.7s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="bounce"] { animation: nav-bounce 0.55s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="spin"] { animation: nav-spin 0.7s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="flip"] { animation: nav-flip 0.6s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="shake"] { animation: nav-shake 0.5s ease; }
+  .nav-btn:is(:hover, :focus-visible) .nav-icon[data-anim="sway"] { animation: nav-sway 0.7s ease; }
+}
+@keyframes nav-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
+@keyframes nav-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-6deg); } }
+@keyframes nav-tick { 0% { transform: translateX(0); } 40% { transform: translateX(3px); } 70% { transform: translateX(-1px); } 100% { transform: translateX(0); } }
+@keyframes nav-blink { 0%, 100% { transform: scaleY(1); } 45% { transform: scaleY(0.1); } }
+@keyframes nav-pulse { 0% { transform: scale(1); } 30% { transform: scale(0.8); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes nav-bounce { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-4px); } 65% { transform: translateY(1px); } }
+@keyframes nav-spin { from { transform: rotate(0); } to { transform: rotate(180deg); } }
+@keyframes nav-flip { 0% { transform: rotateY(0); } 100% { transform: rotateY(360deg); } }
+@keyframes nav-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-2px) rotate(-4deg); } 40% { transform: translateX(2px) rotate(4deg); } 60% { transform: translateX(-1px); } 80% { transform: translateX(1px); } }
+@keyframes nav-sway { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(14deg); } 60% { transform: rotate(-10deg); } }

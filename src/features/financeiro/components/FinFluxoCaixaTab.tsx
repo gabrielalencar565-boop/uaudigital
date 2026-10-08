@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
+import { FinMargemPorCliente } from "./FinMargemPorCliente";
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 import { BRAND_GRADIENT_STOPS, brandSeriesColor } from "@/lib/brand-gradient";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Users } from "lucide-react";
@@ -321,6 +322,8 @@ export function FinFluxoCaixaTab({ externalMonth, externalYear }: FinFluxoCaixaP
           </CardContent>
         </Card>
       </div>
+
+      <FinMargemPorCliente year={year} month={month} />
     </div>
   );
 }

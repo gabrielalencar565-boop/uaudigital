@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import type { Magic2CycleRow, Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { cn } from "@/lib/utils";
@@ -112,79 +112,60 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className={cn(isMobile && "px-4 pb-3")}>
         <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Checklist</CardTitle>
-        <CardDescription>Clique no cliente e use ← → para navegar entre etapas. Enter para marcar/desmarcar.</CardDescription>
+        <CardDescription>{isMobile ? "Toque numa etapa para marcar ou desmarcar." : "Clique no cliente e use ← → para navegar entre etapas. Enter para marcar/desmarcar."}</CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className={cn("space-y-4", isMobile && "px-3 pb-3")}>
         <div ref={containerRef} tabIndex={0} className="outline-none">
         {isMobile ? (
-          <div className="space-y-3">
+          // One tap toggles a stage (no "select the client first" step); stages wrap as pills under the client's name.
+          <div className="space-y-2.5">
             {sortedCycles.map((c) => {
               const stageMap = byCycleStage.get(c.id) ?? new Map();
               const progress = clientProgress.find((p) => p.cycleId === c.id);
-              const isSelected = selectedCycleId === c.id;
+              const complete = progress?.pct === 100;
               return (
-                <div key={c.id} className={cn(
-                  "space-y-3 rounded-lg border bg-card/10 p-4 transition-colors",
-                  isSelected ? "border-primary/60 bg-primary/5" : "border-border/60",
-                )}>
-                  <button
-                    type="button"
-                    onClick={() => selectCycle(isSelected ? null : c.id)}
-                    className="flex w-full items-center justify-between gap-3"
-                  >
-                    <p className={cn("text-sm font-semibold text-left", isSelected && "text-primary")}>{c.magic2_clients?.name ?? "—"}</p>
-                    <Badge variant={progress?.pct === 100 ? "success" : "secondary"} className="text-xs">
-                      {progress?.done}/{progress?.total}
-                    </Badge>
-                  </button>
+                <div key={c.id} className="space-y-3 rounded-2xl border border-border/50 bg-card/20 p-3.5">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="min-w-0 truncate text-sm font-semibold">{c.magic2_clients?.name ?? "—"}</p>
+                      <span className={cn("shrink-0 text-xs font-semibold tabular-nums", complete ? "text-success" : "text-muted-foreground")}>
+                        {progress?.done}/{progress?.total}
+                      </span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-muted/60">
+                      <div
+                        className={cn("h-full rounded-full transition-all duration-300", complete ? "bg-success" : "bg-primary")}
+                        style={{ width: `${progress?.pct ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {MAGIC2_STAGES.map((st, stIdx) => {
+                  <div className="flex flex-wrap gap-1.5">
+                    {MAGIC2_STAGES.map((st) => {
                       const cell = stageMap.get(st.key);
                       const completed = !!cell?.completed;
-                      const isFocused = isSelected && selectedStageIdx === stIdx;
-                      const handleClick = () => {
-                        if (!isSelected) {
-                          selectCycle(c.id);
-                          setSelectedStageIdx(stIdx);
-                          return;
-                        }
-                        if (selectedStageIdx === stIdx) {
-                          if (cell) onToggleStage(cell.id, completed);
-                          else if (onCreateStage) onCreateStage(c.id, st.key);
-                        } else {
-                          setSelectedStageIdx(stIdx);
-                        }
-                      };
                       return (
                         <button
                           key={st.key}
                           type="button"
-                          onClick={handleClick}
                           disabled={isBusy}
+                          aria-pressed={completed}
+                          onClick={() => {
+                            if (cell) onToggleStage(cell.id, completed);
+                            else if (onCreateStage) onCreateStage(c.id, st.key);
+                          }}
                           className={cn(
-                            "flex items-center gap-2 rounded-md border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                            isFocused
-                              ? "border-primary bg-primary/15 ring-2 ring-primary/30"
-                              : isSelected
-                                ? "border-primary/30 bg-primary/5 hover:bg-primary/10"
-                                : "border-border/60 bg-card/20 hover:bg-card/30",
+                            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
+                            completed
+                              ? "border-success/40 bg-success/15 text-success"
+                              : "border-border/60 bg-transparent text-muted-foreground hover:bg-card/30",
                           )}
                         >
-                          <Checkbox
-                            checked={completed}
-                            aria-hidden
-                            className={cn(
-                              "shrink-0",
-                              completed
-                                ? "border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground"
-                                : undefined,
-                            )}
-                          />
-                          <span className={cn("text-xs font-medium", isFocused && "text-primary font-bold")}>{st.label}</span>
+                          {completed ? <Check className="h-3 w-3" strokeWidth={3} /> : <span className="h-3 w-3 rounded-full border border-current opacity-50" />}
+                          {st.label}
                         </button>
                       );
                     })}
