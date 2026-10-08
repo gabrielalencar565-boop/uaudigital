@@ -123,6 +123,7 @@ export interface TodayScheduledPublication {
   clientId: string;
   clientName: string;
   clientLogoUrl: string | null;
+  clientEnded: boolean;
   caption: string | null;
   publishTime: string | null;
   contentType: CalendarPublication["content_type"];
@@ -176,17 +177,15 @@ export function useTodayScheduledPublications(todayKey: string) {
       );
 
       const clientIds = [...new Set(Array.from(clientIdByCalendarId.values()))];
-      // `is_active` filter here is what makes a disabled client's posts drop out below —
-      // a publication whose client isn't in `clientById` gets filtered out by the existing
-      // `client` null-check in the map/filter, no extra logic needed.
+      // A client whose contract ended keeps its already-scheduled posts: they still go out on their date,
+      // so they stay in the lineup (flagged) instead of silently disappearing.
       const { data: clients, error: clientsErr } = await sb
         .from("clients")
-        .select("id, name, logo_url")
-        .eq("is_active", true)
+        .select("id, name, logo_url, is_active")
         .in("id", clientIds);
       if (clientsErr) throw clientsErr;
-      const clientById = new Map<string, { name: string; logo_url: string | null }>(
-        ((clients ?? []) as { id: string; name: string; logo_url: string | null }[]).map((c) => [c.id, c]),
+      const clientById = new Map<string, { name: string; logo_url: string | null; is_active: boolean }>(
+        ((clients ?? []) as { id: string; name: string; logo_url: string | null; is_active: boolean }[]).map((c) => [c.id, c]),
       );
 
       return rows
@@ -200,6 +199,7 @@ export function useTodayScheduledPublications(todayKey: string) {
             clientId,
             clientName: client.name,
             clientLogoUrl: client.logo_url,
+            clientEnded: !client.is_active,
             caption: r.caption,
             publishTime: r.publish_time,
             contentType: r.content_type,

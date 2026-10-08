@@ -244,6 +244,34 @@ export function AdminClientesPanel({
   const [endDate, setEndDate] = useState<string>("");
   const [endReason, setEndReason] = useState<string>("");
   const [endSubmitting, setEndSubmitting] = useState(false);
+  const [endScheduledChoice, setEndScheduledChoice] = useState<"keep" | "cancel">("keep");
+
+  // Posts already scheduled for Instagram: ending the contract must not make them vanish or leave without a decision
+  const endScheduledQ = useQuery({
+    enabled: !!endContract,
+    queryKey: ["end_contract_scheduled_posts", endContract?.id],
+    queryFn: async (): Promise<{ id: string; publish_date: string }[]> => {
+      const db = supabase as any;
+      const { data: calendars, error: calErr } = await db.from("publication_calendars").select("id").eq("client_id", endContract!.id);
+      if (calErr) throw calErr;
+      const calendarIds = (calendars ?? []).map((c: { id: string }) => c.id);
+      if (calendarIds.length === 0) return [];
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+      const { data, error } = await db
+        .from("calendar_publications")
+        .select("id, publish_date")
+        .in("calendar_id", calendarIds)
+        .eq("instagram_scheduled", true)
+        .neq("instagram_status", "published")
+        .is("deleted_at", null)
+        .gte("publish_date", today)
+        .order("publish_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const endScheduled = endScheduledQ.data ?? [];
+  const fmtDay = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   const [showInactive, setShowInactive] = useState(false);
   const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
 
@@ -786,7 +814,7 @@ export function AdminClientesPanel({
         submitLabel="Salvar"
       />
 
-      <Dialog open={!!endContract} onOpenChange={(open) => { if (!open) { setEndContract(null); setEndReason(""); } }}>
+      <Dialog open={!!endContract} onOpenChange={(open) => { if (!open) { setEndContract(null); setEndReason(""); setEndScheduledChoice("keep"); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Encerrar contrato</DialogTitle>
@@ -799,6 +827,43 @@ export function AdminClientesPanel({
               <Label>Data de encerramento</Label>
               <Input type="month" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
+            {endScheduled.length > 0 && (
+              <div className="space-y-3">
+                <div className="space-y-0.5">
+                  <Label>Posts agendados no Instagram</Label>
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="font-semibold text-foreground">{endScheduled.length} {endScheduled.length === 1 ? "post" : "posts"}</strong>
+                    {" "}de {fmtDay(endScheduled[0].publish_date)} até {fmtDay(endScheduled[endScheduled.length - 1].publish_date)}. O que fazer com {endScheduled.length === 1 ? "ele" : "eles"}?
+                  </p>
+                </div>
+                <div role="radiogroup" className="grid gap-2">
+                  {([
+                    ["keep", "Deixar sair normalmente", "Publicados nas datas marcadas e visíveis em Clientes → Encerrados."],
+                    ["cancel", "Cancelar os agendamentos", "Continuam salvos, mas não saem. Dá para reagendar depois."],
+                  ] as const).map(([value, title, hint]) => {
+                    const selected = endScheduledChoice === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setEndScheduledChoice(value)}
+                        className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${selected ? "border-primary/60 bg-primary/5" : "border-border/50 hover:bg-accent/30"}`}
+                      >
+                        <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${selected ? "border-primary" : "border-muted-foreground/40"}`}>
+                          {selected && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium leading-tight">{title}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Motivo do encerramento</Label>
               <Textarea
@@ -810,7 +875,7 @@ export function AdminClientesPanel({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => { setEndContract(null); setEndReason(""); }}>
+            <Button variant="secondary" onClick={() => { setEndContract(null); setEndReason(""); setEndScheduledChoice("keep"); }}>
               Cancelar
             </Button>
             <Button
@@ -830,6 +895,15 @@ export function AdminClientesPanel({
                     } as any)
                     .eq("id", endContract.id);
                   if (error) throw error;
+                  if (endScheduledChoice === "cancel" && endScheduled.length > 0) {
+                    const { error: unschedErr } = await (supabase as any)
+                      .from("calendar_publications")
+                      .update({ instagram_scheduled: false })
+                      .in("id", endScheduled.map((p) => p.id));
+                    if (unschedErr) throw unschedErr;
+                    qc.invalidateQueries({ queryKey: ["calendar_publications"] });
+                    qc.invalidateQueries({ queryKey: ["pm_tasks"] });
+                  }
                   await supabase
                     .from("financial_clients")
                     .update({ ended_at: endedDate, end_reason: endReason.trim(), is_active: false } as any)
@@ -842,12 +916,14 @@ export function AdminClientesPanel({
                     .eq("client_id", endContract.id)
                     .or(`year.gt.${ey},and(year.eq.${ey},month.gt.${em})`);
                   qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+                  qc.invalidateQueries({ queryKey: ["clients"] });
                   qc.invalidateQueries({ queryKey: ["financial_clients"] });
                   qc.invalidateQueries({ queryKey: ["fin-clients"] });
                   qc.invalidateQueries({ queryKey: ["financial_revenues"] });
                   toast.success(`Contrato encerrado em ${new Date(endedDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}`);
                   setEndContract(null);
                   setEndReason("");
+                  setEndScheduledChoice("keep");
                 } catch (e: any) {
                   toast.error(e?.message ?? "Erro ao encerrar contrato");
                 } finally {

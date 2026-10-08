@@ -336,6 +336,23 @@ export function useClients() {
   });
 }
 
+// Clientes ativos + encerrados (exceto sentinela freelancer): o que o cliente encerrado deixou (Cronograma, posts
+// agendados, resultados, documentos) continua consultável. As demais telas seguem com useClients (só ativos).
+export function useClientsIncludingEnded() {
+  return useQuery({
+    queryKey: ["clients", "including_ended"],
+    queryFn: async (): Promise<ClientRow[]> => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, magic_due_date, notes, is_active, is_freelancer_sentinel, logo_url, plan_name, ended_at")
+        .eq("is_freelancer_sentinel", false)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as ClientRow[];
+    },
+  });
+}
+
 // Hook para admin ver TODOS os clientes (ativos e inativos), exceto sentinela freelancer
 export function useAllClients() {
   return useQuery({

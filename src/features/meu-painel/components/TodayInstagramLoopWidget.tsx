@@ -270,6 +270,7 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
                           {p.clientLogoUrl && <img src={toStorageRenderUrl(p.clientLogoUrl)} alt="" className="h-full w-full object-cover" draggable={false} />}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-white">{p.clientName}</span>
+                        {p.clientEnded && <span className="shrink-0 rounded-full bg-white/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-white">encerrado</span>}
                       </div>
                       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5">
                         <span className="flex items-center gap-1 text-[10px] text-white/80">
