@@ -310,7 +310,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     const cycleStartDate = parseISO(focusRequest.cycleStart);
     setClientId(focusRequest.clientId);
     setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth() + 1, 1));
-    setSelectedId(focusRequest.publicationId);
+    setSelectedId(focusRequest.publicationId ?? null);
     onFocusHandled?.();
   }, [focusRequest, onFocusHandled]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));

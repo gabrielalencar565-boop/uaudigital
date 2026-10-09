@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, CheckCircle2, MessageSquareWarning, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
@@ -29,6 +29,7 @@ type NotificationItem = {
   key: string; // unique key for read tracking
   type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested";
   title: string;
+  kicker?: string; // small label above the title (client responses)
   subtitle: string;
   timestamp: string;
   taskId?: string;
@@ -325,7 +326,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           id: `cal-approved-${cp.id}`,
           key: `cal-approved-${cp.id}`,
           type: "calendar_approved",
-          title: `Cliente aprovou: ${taskTitle}`,
+          kicker: "Cliente aprovou",
+          title: taskTitle,
           subtitle: "Publicação aprovada no Cronograma",
           timestamp: cp.client_responded_at,
           taskId: cp.task_id,
@@ -335,7 +337,8 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
           id: `cal-change-${cp.id}`,
           key: `cal-change-${cp.id}`,
           type: "calendar_change_requested",
-          title: `Cliente pediu alteração: ${taskTitle}`,
+          kicker: "Cliente pediu alteração",
+          title: taskTitle,
           subtitle: (cp.client_feedback ?? "").substring(0, 100),
           timestamp: cp.client_responded_at,
           taskId: cp.task_id,
@@ -345,10 +348,13 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
 
     // Não lidas primeiro (como grupo), lidas ficam atrás -- dentro de cada grupo, mais
     // recente primeiro.
+    // What a client answered comes first among the unread: it is what the team is waiting for.
+    const isClientReply = (n: NotificationItem) => n.type === "calendar_approved" || n.type === "calendar_change_requested";
     items.sort((a, b) => {
       const aRead = readKeys.has(a.key);
       const bRead = readKeys.has(b.key);
       if (aRead !== bRead) return aRead ? 1 : -1;
+      if (!aRead && isClientReply(a) !== isClientReply(b)) return isClientReply(a) ? -1 : 1;
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
@@ -436,6 +442,39 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
             <div className="divide-y divide-border/30">
               {notifications.map(n => {
                 const isUnread = !readKeys.has(n.key);
+                const approved = n.type === "calendar_approved";
+                const clientReply = approved || n.type === "calendar_change_requested";
+                if (clientReply) {
+                  // Client answers get their own look (colored badge and edge) and keep it after being read
+                  const Icon = approved ? CheckCircle2 : MessageSquareWarning;
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => handleClickNotification(n)}
+                      className={cn(
+                        "flex w-full cursor-pointer items-start gap-3 border-l-[3px] px-4 py-3 text-left transition hover:bg-accent/30",
+                        approved ? "border-l-emerald-500" : "border-l-amber-500",
+                        isUnread ? (approved ? "bg-emerald-500/10" : "bg-amber-500/10") : "bg-transparent",
+                      )}
+                    >
+                      <span className={cn(
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        approved ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500",
+                        !isUnread && "opacity-70",
+                      )}>
+                        <Icon className="h-[18px] w-[18px]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", approved ? "text-emerald-500" : "text-amber-500", !isUnread && "opacity-70")}>{n.kicker}</p>
+                        <p className={cn("mt-0.5 text-[13px] font-semibold leading-snug", isUnread ? "text-foreground" : "text-foreground/70")}>{n.title}</p>
+                        {n.subtitle && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{n.subtitle}</p>}
+                        <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo(n.timestamp)}</p>
+                      </div>
+                      {isUnread && <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", approved ? "bg-emerald-500" : "bg-amber-500")} />}
+                    </button>
+                  );
+                }
                 return (
                   <button
                     key={n.id}

@@ -21,6 +21,7 @@ import { MeuPainelMagicNumberCard } from "@/features/meu-painel/components/MeuPa
 import { useNow } from "@/hooks/use-now";
 import { NotesWidget } from "@/features/meu-painel/components/NotesWidget";
 import { TodayInstagramLoopWidget } from "@/features/meu-painel/components/TodayInstagramLoopWidget";
+import { ClientCronogramaWidget } from "@/features/meu-painel/components/ClientCronogramaWidget";
 import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
@@ -490,6 +491,8 @@ export function MeuPainelPanel() {
         return <MyPmTasksWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />;
       case "instagram":
         return <TodayInstagramLoopWidget onOpenTask={(taskId) => setSelectedPmTaskId(taskId)} />;
+      case "client_cronograma":
+        return <ClientCronogramaWidget />;
       case "notes":
         return <NotesWidget />;
       case "productivity_breakdown":
