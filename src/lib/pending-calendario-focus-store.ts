@@ -5,7 +5,7 @@
 // fire-and-forget CustomEvent alone isn't enough. Consumers read the pending
 // value on mount and subscribe for later updates.
 
-export type CalendarioFocusRequest = { clientId: string; cycleStart: string; publicationId: string };
+export type CalendarioFocusRequest = { clientId: string; cycleStart: string; publicationId: string | null };
 
 let pending: CalendarioFocusRequest | null = null;
 const listeners = new Set<(value: CalendarioFocusRequest | null) => void>();

@@ -10,6 +10,7 @@ export const DASHBOARD_BLOCKS = [
   { key: "metrics", label: "Métricas do mês", description: "Tarefas, concluídas, pendentes e atrasadas do mês", defaultWidth: "full" as BlockWidth },
   { key: "tasks", label: "Atribuídas a mim", description: "Suas tarefas atribuídas, organizadas por prazo", defaultWidth: "half" as BlockWidth },
   { key: "instagram", label: "Publicações no Instagram", description: "O que vai ao ar hoje no Instagram", defaultWidth: "half" as BlockWidth },
+  { key: "client_cronograma", label: "Cronograma dos clientes", description: "Andamento do Cronograma de cada cliente no mês: aprovadas, alterações e aguardando", defaultWidth: "full" as BlockWidth },
   { key: "notes", label: "Notas", description: "Suas anotações pessoais da semana", defaultWidth: "full" as BlockWidth },
   { key: "productivity_breakdown", label: "Sua produtividade", description: "Gráfico de entregas e distribuição por tipo", defaultWidth: "full" as BlockWidth },
 ] as const;
@@ -42,8 +43,13 @@ function sanitizeLayout(raw: StoredLayout | null | undefined): {
   const storedWidths = raw?.widths && typeof raw.widths === "object" ? (raw!.widths as Record<string, unknown>) : null;
 
   const order = storedOrder.filter((k): k is DashboardBlockKey => DEFAULT_BLOCK_ORDER.includes(k as DashboardBlockKey));
-  // garante que blocos novos (adicionados depois que o usuário já salvou um layout) apareçam no fim, visíveis
-  for (const k of DEFAULT_BLOCK_ORDER) if (!order.includes(k)) order.push(k);
+  // garante que blocos novos (adicionados depois que o usuário já salvou um layout) apareçam visíveis, logo depois do
+  // bloco que vem antes deles na ordem padrão (e não largados no fim da página)
+  DEFAULT_BLOCK_ORDER.forEach((k, i) => {
+    if (order.includes(k)) return;
+    const prev = i > 0 ? order.indexOf(DEFAULT_BLOCK_ORDER[i - 1]) : -1;
+    order.splice(prev + 1, 0, k);
+  });
 
   const hidden = new Set(storedHidden.filter((k): k is DashboardBlockKey => DEFAULT_BLOCK_ORDER.includes(k as DashboardBlockKey)));
 
@@ -51,7 +57,8 @@ function sanitizeLayout(raw: StoredLayout | null | undefined): {
   if (storedWidths) {
     for (const k of DEFAULT_BLOCK_ORDER) {
       const v = storedWidths[k];
-      widths[k] = typeof v === "string" && VALID_WIDTHS.includes(v as BlockWidth) ? (v as BlockWidth) : "full";
+      // bloco criado depois que o usuário salvou o layout: usa a largura padrão dele, não "full"
+      widths[k] = typeof v === "string" && VALID_WIDTHS.includes(v as BlockWidth) ? (v as BlockWidth) : k in storedWidths ? "full" : DEFAULT_WIDTHS[k];
     }
   }
 
