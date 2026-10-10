@@ -62,7 +62,9 @@ if(filters){
   setInterval(()=>{
     const cur=words[i], nxt=words[(i+1)%words.length];
     cur.className='out';
-    nxt.className='in'; void nxt.offsetWidth; nxt.className=''; fit(nxt);
+    nxt.className='in'; void nxt.offsetWidth; nxt.className='';
+    // abre logo para a palavra maior; só fecha depois que a anterior saiu
+    rot.style.width=Math.max(cur.offsetWidth,nxt.offsetWidth)+'px'; setTimeout(()=>fit(nxt),750);
     setTimeout(()=>{ if(cur.className==='out') cur.className='in'; },750);
     i=(i+1)%words.length;
     steps.forEach((b,k)=>b.classList.toggle('on',k===i));

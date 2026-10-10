@@ -134,7 +134,7 @@ footer .logo img{height:44px}
 .chip-float b{font-size:16px;font-weight:700;color:var(--fg);letter-spacing:-.01em}
 .chip-float.c1{left:4%;top:0;rotate:-4deg}
 .chip-float.c1 b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.chip-float.c2{right:6%;top:30%;rotate:3deg;animation-delay:-2s;background:var(--grad);border-color:transparent;color:rgba(255,255,255,.88)}
+.chip-float.c2{right:2%;top:60%;rotate:3deg;animation-delay:-2s;background:var(--grad);border-color:transparent;color:rgba(255,255,255,.88)}
 .chip-float.c2 b{color:#fff}
 .chip-float.c3{left:10%;bottom:-4px;rotate:2deg;animation-delay:-4s}
 @keyframes bob{50%{translate:0 -10px}}
