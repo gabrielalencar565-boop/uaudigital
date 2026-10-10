@@ -419,6 +419,10 @@ body.locked{overflow:hidden}
   .port .img{width:180px;height:230px}.port .img.w{width:300px}
 }
 @media (max-width:520px){
+  .band{padding-block:14px}
+  .band .track{animation-duration:28s}
+  .band span{font-size:11px;letter-spacing:.12em;padding-inline:14px;gap:14px}
+  .band span::after{width:4px;height:4px}
   .bento{gap:12px}
   .cl{padding-block:80px}
   .cl-line{flex-direction:column;gap:.2em}
