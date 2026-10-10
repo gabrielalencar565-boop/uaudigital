@@ -79,8 +79,8 @@ footer .logo img{height:44px}
 /* palavra que troca */
 .rotator{display:inline-grid;vertical-align:bottom;overflow:hidden;padding-bottom:.08em}
 .rotator span{grid-area:1/1;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
-.rotator span.out{transform:translateY(-105%);opacity:0}
-.rotator span.in{transform:translateY(105%);opacity:0}
+.rotator span.out{transform:translateY(-125%);opacity:0}
+.rotator span.in{transform:translateY(125%);opacity:0}
 /* colagem de fotos */
 .collage{position:relative;height:600px;min-width:0}
 .hero-copy{display:flex;flex-direction:column;gap:28px;min-width:0}
@@ -121,13 +121,8 @@ footer .logo img{height:44px}
 .hx .btn{padding:11px 20px;font-size:13.5px}
 .hx .hero-meta{border:0;padding:0}
 
-/* números numa barra discreta abaixo dos botões */
 .hx-head{position:relative}
 .hx-mark{display:block;align-self:center;height:44px;width:auto;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
-.hx-stats{list-style:none;margin:2px 0 0;padding:0;display:flex;justify-content:center;flex-wrap:wrap;gap:6px 0}
-.hx-stats li{display:flex;align-items:center;font-size:13px;color:var(--dim);white-space:nowrap}
-.hx-stats li+li::before{content:"";width:3px;height:3px;border-radius:50%;background:var(--dim);margin-inline:14px;opacity:.7}
-.hx-stats b{font-weight:600;color:var(--fg);margin-right:5px}
 
 /* fundo do hero: uma foto por vez, trocando em loop com um zoom lento */
 .hero-slides{position:absolute;inset:0}
@@ -362,17 +357,10 @@ body.locked{overflow:hidden}
   .hero .hx-title{font-size:clamp(40px,14vw,96px)}
   .hx-line{flex-wrap:wrap}
   .hx-line2{flex-wrap:nowrap}
-  .hx-stats li{font-size:11px}
-  .hx-stats b{margin-right:3px}
-  .hx-stats li+li::before{margin-inline:7px}
   .pill{width:1.35em}
   .hero-meta{gap:24px}
   .track .img{width:200px;height:150px}
   .port .img{width:180px;height:230px}.port .img.w{width:300px}
-}
-@media (max-width:380px){
-  .hx-stats li{font-size:10px}
-  .hx-stats li+li::before{margin-inline:5px}
 }
 @media (max-width:520px){
   .stats{grid-template-columns:1fr 1fr;gap:12px}
