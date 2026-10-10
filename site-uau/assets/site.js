@@ -5,6 +5,18 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
+// método: a etapa ativa avança sozinha; passar o mouse ou clicar escolhe a etapa
+(function(){
+  const flow=document.getElementById('vleflow'); if(!flow) return;
+  const steps=[...flow.querySelectorAll('.vf-step')], fill=flow.querySelector('.vf-fill');
+  let i=0, hold=0;
+  const go=k=>{ i=k; steps.forEach((s,j)=>{ s.classList.toggle('on',j===k); s.classList.toggle('done',j<k); s.setAttribute('aria-pressed',j===k); }); fill.style.width=((k+1)/steps.length*100)+'%'; };
+  steps.forEach((s,k)=>{ s.addEventListener('mouseenter',()=>{ hold=Date.now(); go(k); }); s.addEventListener('click',()=>{ hold=Date.now(); go(k); }); });
+  go(0);
+  if(reduce) return;
+  setInterval(()=>{ if(Date.now()-hold<6000) return; const r=flow.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },2800);
+})();
+
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
 (function(){
   const slot=document.getElementById('clslot'); if(!slot) return;
