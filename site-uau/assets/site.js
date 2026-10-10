@@ -5,9 +5,11 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
-const logoTile=i=>`<div class="logo-tile">LOGO ${String(i).padStart(2,'0')}</div>`;
-loop('logos', Array.from({length:8},(_,i)=>logoTile(i+1)).join(''));
-loop('logos2', Array.from({length:8},(_,i)=>logoTile(i+9)).join(''));
+// logos dos clientes (abre com marcas de fora da saúde)
+// [arquivo, nome, altura em px]: cada logo com a altura que equilibra o formato dele
+const clientLogos=[['diferro','Diferro',44],['doce-rio','Doce Rio Gelato & Açaí',50],['arco-iris-da-gi','Arco-íris da Gi',80],['bucall-center','Clínica Bucall Center',62],['dra-luanna-cutrim','Dra. Luanna Cutrim',30]];
+const logoTile=([f,n,h])=>`<div class="logo-tile real"><img src="img/clientes/${f}.png" alt="${n}" style="--h:${h}px" loading="lazy"></div>`;
+loop('logos', clientLogos.map(logoTile).join('').repeat(2));
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
 loop('quotes', q.repeat(5));
 const quoteGrid=document.getElementById('quote-grid'); if(quoteGrid) quoteGrid.innerHTML=q.repeat(6);

@@ -181,9 +181,14 @@ footer .logo img{height:44px}
 .chip{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--muted);background:var(--bg3);transition:border-color .2s,color .2s}
 .chip:hover{border-color:var(--lilac);color:var(--lilac)}
 .cl-logos{display:flex;flex-direction:column;gap:14px;padding-block:28px}
-.logos .track{animation-duration:40s;gap:14px}
-.logos .track.rev{animation-duration:48s}
+.logos .track{animation-duration:45s;gap:14px}
+.logos:hover .track{animation-play-state:paused}
 .logo-tile{width:180px;height:84px;flex:none;border:1px dashed #4A4552;border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;font-weight:600;letter-spacing:.1em;background:var(--bg)}
+/* logos reais: todos no mesmo tom claro; a cor original aparece ao passar o mouse */
+.logo-tile.real{width:auto;min-width:200px;height:110px;border:1px solid var(--line);padding:0 32px}
+.logo-tile.real img{height:var(--h);width:auto;max-width:280px;object-fit:contain;filter:grayscale(1) brightness(1.7) contrast(.85);opacity:.72;transition:filter .3s,opacity .3s}
+.logo-tile.real:hover{border-color:#4B3A66}
+.logo-tile.real:hover img{filter:none;opacity:1}
 
 /* DEPOIMENTOS */
 .dep-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:40px}
@@ -333,9 +338,11 @@ body.locked{overflow:hidden}
 .filters button:hover{border-color:var(--lilac);color:var(--lilac)}
 .filters button[aria-pressed=true]{background:var(--grad);border-color:transparent;color:#fff}
 .logo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.logo-grid .logo-tile{width:auto;flex-direction:column;gap:4px;height:110px;text-align:center;padding:12px}
+.logo-grid .logo-tile{width:auto;flex-direction:column;gap:4px;height:130px;text-align:center;padding:12px}
 .logo-grid .logo-tile small{font-size:11px;font-weight:500;letter-spacing:.04em;color:#6E6878}
 .logo-grid .logo-tile[hidden]{display:none}
+.logo-grid .logo-tile.real{min-width:0;height:130px;padding:16px;gap:10px;flex-direction:column}
+.logo-grid .logo-tile.real img{height:calc(var(--h) * .8);max-width:100%}
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
 .video-grid .video{width:auto}
 .quote-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
@@ -398,6 +405,8 @@ body.locked{overflow:hidden}
   .cl-top{padding:18px 20px;gap:12px}
   .chip{font-size:12px;padding:5px 11px}
   .logo-tile{width:140px;height:68px;font-size:11px}
+  .logo-tile.real{min-width:150px;height:88px;padding:0 22px}
+  .logo-tile.real img{height:calc(var(--h) * .78)}
   .tile{padding:22px;border-radius:22px;min-height:180px}
   .t-views{min-height:290px}
   .tile-tag{top:22px;left:22px}
