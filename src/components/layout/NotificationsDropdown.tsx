@@ -1,8 +1,9 @@
 import { useMemo, useCallback, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, CalendarClock, CheckCircle2, MessageSquareWarning, Trash2 } from "lucide-react";
+import { Bell, CalendarClock, CheckCircle2, Clapperboard, MessageSquareWarning, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUnscheduledPosts } from "@/features/clientes/hooks/use-unscheduled-posts";
+import { useMyNotificationAudience, useMyNotificationPrefs, useNotificationSettings } from "@/features/configuracoes/hooks/use-notification-settings";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
@@ -29,7 +30,7 @@ function timeAgo(timestamp: string): string {
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested" | "unscheduled_posts";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested" | "unscheduled_posts" | "capture_request" | "task_assigned";
   title: string;
   kicker?: string; // small label above the title (client responses)
   subtitle: string;
@@ -37,6 +38,7 @@ type NotificationItem = {
   taskId?: string;
   appealUserId?: string;
   clientId?: string;
+  path?: string;
 };
 
 interface NotificationsDropdownProps {
@@ -55,6 +57,58 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   // admins when nobody is set). It reappears unread every 12 hours, like the push reminder, until it is scheduled.
   // Admins also get one summary of every client with posts waiting, even where someone else is the responsible
   const allUnscheduledQ = useUnscheduledPosts();
+  const agencyOn = useNotificationSettings().data;
+  const myPrefs = useMyNotificationPrefs().data;
+  const audience = useMyNotificationAudience().data;
+  // A type shows in the bell only when the agency has it on and the person did not turn it off for themselves
+  const notifOn = agencyOn && {
+    unscheduled_posts: agencyOn.unscheduled_posts && (myPrefs?.unscheduled_posts ?? true) && (audience?.unscheduled_posts ?? true),
+    client_reply: agencyOn.client_reply && (myPrefs?.client_reply ?? true) && (audience?.client_reply ?? true),
+    capture_request: agencyOn.capture_request && (myPrefs?.capture_request ?? true) && (audience?.capture_request ?? true),
+    mention: agencyOn.mention && (myPrefs?.mention ?? true) && (audience?.mention ?? true),
+    task_assigned: agencyOn.task_assigned && (myPrefs?.task_assigned ?? true) && (audience?.task_assigned ?? true),
+  };
+  const bellAlertsOn = notifOn?.unscheduled_posts ?? true;
+
+  // Tasks that became mine in the last 2 days (same event the push announces)
+  const newlyAssignedQ = useQuery({
+    queryKey: ["notifications_newly_assigned", user?.id],
+    enabled: !!user?.id,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString();
+      const { data } = await (supabase as any)
+        .from("pm_tasks")
+        .select("id, title, assigned_at")
+        .eq("assignee_id", user!.id)
+        .is("parent_task_id", null)
+        .is("deleted_at", null)
+        .not("is_draft", "is", true)
+        .not("status_global", "in", "(concluido,cancelado)")
+        .gte("assigned_at", since)
+        .order("assigned_at", { ascending: false })
+        .limit(10);
+      return (data ?? []) as { id: string; title: string; assigned_at: string }[];
+    },
+  });
+
+  // Recording days clients asked for through the public link, waiting for an answer (admins; stays until it is answered)
+  const captureRequestsQ = useQuery({
+    queryKey: ["notifications_capture_requests", user?.id],
+    enabled: !!user?.id && isAdmin && (notifOn?.capture_request ?? true),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("capture_bookings")
+        .select("id, company_name, booking_date, start_time, created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      return (data ?? []) as { id: string; company_name: string; booking_date: string; start_time: string; created_at: string }[];
+    },
+  });
   const unscheduledQ = useQuery({
     queryKey: ["notifications_unscheduled_posts", user?.id],
     enabled: !!user?.id,
@@ -263,7 +317,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
     const seenMentions = new Set<string>();
-    mentionsSorted.forEach((c: any) => {
+    (notifOn?.mention ?? true) && mentionsSorted.forEach((c: any) => {
       const dedupeKey = `${c.author_id}::${(c.content ?? "").trim()}`;
       if (seenMentions.has(dedupeKey)) return;
       seenMentions.add(dedupeKey);
@@ -338,7 +392,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       });
     }
 
-    (calendarFeedbackQ.data ?? []).forEach((cp: any) => {
+    (notifOn?.client_reply ?? true) && (calendarFeedbackQ.data ?? []).forEach((cp: any) => {
       const taskTitle = cp.pm_tasks?.title ?? "Publicação";
       if (cp.status === "aprovada") {
         items.push({
@@ -385,7 +439,32 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       });
     });
 
-    if (isAdmin) {
+    (notifOn?.task_assigned ?? true) && (newlyAssignedQ.data ?? []).forEach((t) => {
+      items.push({
+        id: `assigned-new-${t.id}-${t.assigned_at}`,
+        key: `assigned-new-${t.id}-${t.assigned_at}`,
+        type: "task_assigned",
+        title: `Tarefa atribuída a você: ${t.title}`,
+        subtitle: "Passou a ser sua",
+        timestamp: t.assigned_at,
+        taskId: t.id,
+      });
+    });
+
+    (captureRequestsQ.data ?? []).forEach((b) => {
+      items.push({
+        id: `capture-${b.id}`,
+        key: `capture-${b.id}`,
+        type: "capture_request",
+        kicker: "Pedido de gravação",
+        title: b.company_name,
+        subtitle: `${b.booking_date.slice(8, 10)}/${b.booking_date.slice(5, 7)} às ${b.start_time.slice(0, 5)} · aguardando confirmação`,
+        timestamp: b.created_at,
+        path: "/agenda?secao=capturas",
+      });
+    });
+
+    if (isAdmin && bellAlertsOn) {
       const mine = new Set((unscheduledQ.data ?? []).map((u) => u.client_id));
       const others = [...(allUnscheduledQ.data?.values() ?? [])].filter((u) => !mine.has(u.client_id));
       if (others.length > 0) {
@@ -407,7 +486,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
     // Não lidas primeiro (como grupo), lidas ficam atrás -- dentro de cada grupo, mais
     // recente primeiro.
     // What a client answered comes first among the unread: it is what the team is waiting for.
-    const isClientReply = (n: NotificationItem) => n.type === "calendar_approved" || n.type === "calendar_change_requested" || n.type === "unscheduled_posts";
+    const isClientReply = (n: NotificationItem) => n.type === "calendar_approved" || n.type === "calendar_change_requested" || n.type === "unscheduled_posts" || n.type === "capture_request";
     items.sort((a, b) => {
       const aRead = readKeys.has(a.key);
       const bRead = readKeys.has(b.key);
@@ -416,7 +495,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, unscheduledQ.data, allUnscheduledQ.data, membersMap, today, formatMentionContent, dismissedKeys, readKeys]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, unscheduledQ.data, allUnscheduledQ.data, bellAlertsOn, captureRequestsQ.data, newlyAssignedQ.data, notifOn, membersMap, today, formatMentionContent, dismissedKeys, readKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -430,6 +509,11 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       window.dispatchEvent(new CustomEvent("open-appeal-review", {
         detail: { pmTaskId: n.taskId, userId: n.appealUserId },
       }));
+      return;
+    }
+    if (n.type === "capture_request" && n.path) {
+      setPopoverOpen(false);
+      navigate(n.path);
       return;
     }
     if (n.type === "unscheduled_posts" && n.clientId) {
@@ -507,10 +591,11 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                 const isUnread = !readKeys.has(n.key);
                 const approved = n.type === "calendar_approved";
                 const unsched = n.type === "unscheduled_posts";
-                const clientReply = approved || unsched || n.type === "calendar_change_requested";
+                const capture = n.type === "capture_request";
+                const clientReply = approved || unsched || capture || n.type === "calendar_change_requested";
                 if (clientReply) {
                   // Client answers get their own look (colored badge and edge) and keep it after being read
-                  const Icon = approved ? CheckCircle2 : unsched ? CalendarClock : MessageSquareWarning;
+                  const Icon = approved ? CheckCircle2 : unsched ? CalendarClock : capture ? Clapperboard : MessageSquareWarning;
                   return (
                     <button
                       key={n.id}
@@ -518,24 +603,24 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                       onClick={() => handleClickNotification(n)}
                       className={cn(
                         "flex w-full cursor-pointer items-start gap-3 border-l-[3px] px-4 py-3 text-left transition hover:bg-accent/30",
-                        approved ? "border-l-emerald-500" : unsched ? "border-l-rose-500" : "border-l-amber-500",
-                        isUnread ? (approved ? "bg-emerald-500/10" : unsched ? "bg-rose-500/10" : "bg-amber-500/10") : "bg-transparent",
+                        approved ? "border-l-emerald-500" : unsched ? "border-l-rose-500" : capture ? "border-l-violet-500" : "border-l-amber-500",
+                        isUnread ? (approved ? "bg-emerald-500/10" : unsched ? "bg-rose-500/10" : capture ? "bg-violet-500/10" : "bg-amber-500/10") : "bg-transparent",
                       )}
                     >
                       <span className={cn(
                         "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                        approved ? "bg-emerald-500/15 text-emerald-500" : unsched ? "bg-rose-500/15 text-rose-500" : "bg-amber-500/15 text-amber-500",
+                        approved ? "bg-emerald-500/15 text-emerald-500" : unsched ? "bg-rose-500/15 text-rose-500" : capture ? "bg-violet-500/15 text-violet-500" : "bg-amber-500/15 text-amber-500",
                         !isUnread && "opacity-70",
                       )}>
                         <Icon className="h-[18px] w-[18px]" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", approved ? "text-emerald-500" : unsched ? "text-rose-500" : "text-amber-500", !isUnread && "opacity-70")}>{n.kicker}</p>
+                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", approved ? "text-emerald-500" : unsched ? "text-rose-500" : capture ? "text-violet-500" : "text-amber-500", !isUnread && "opacity-70")}>{n.kicker}</p>
                         <p className={cn("mt-0.5 text-[13px] font-semibold leading-snug", isUnread ? "text-foreground" : "text-foreground/70")}>{n.title}</p>
                         {n.subtitle && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{n.subtitle}</p>}
                         <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo(n.timestamp)}</p>
                       </div>
-                      {isUnread && <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", approved ? "bg-emerald-500" : unsched ? "bg-rose-500" : "bg-amber-500")} />}
+                      {isUnread && <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", approved ? "bg-emerald-500" : unsched ? "bg-rose-500" : capture ? "bg-violet-500" : "bg-amber-500")} />}
                     </button>
                   );
                 }

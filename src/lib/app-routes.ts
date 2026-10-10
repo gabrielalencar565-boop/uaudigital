@@ -147,6 +147,7 @@ export const APP_TAB_ROUTES: string[] = [
   "configuracoes/cargos",
   "configuracoes/clientes",
   "configuracoes/clientes/:clienteId",
+  "configuracoes/notificacoes",
   "configuracoes/datas-internas",
   "configuracoes/limpeza",
   "configuracoes/pontuacao",

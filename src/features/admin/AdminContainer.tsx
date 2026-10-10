@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Users, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, Briefcase } from "lucide-react";
+import { Users, Bell, Building2, SprayCan, Trophy, Palette, CalendarPlus, Workflow, ChevronRight, ArrowLeft, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminNotificacoesPanel } from "./AdminNotificacoesPanel";
 import { AdminPanel } from "./AdminPanel";
 import { AdminClientesPanel } from "./AdminClientesPanel";
 import { AdminLimpezaPanel } from "./AdminLimpezaPanel";
@@ -11,7 +12,7 @@ import { AdminDatasInternasPanel } from "./AdminDatasInternasPanel";
 import { AdminWhatsAppPanel } from "./AdminWhatsAppPanel";
 import { AdminCargosPanel } from "./AdminCargosPanel";
 
-export type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "cargos";
+export type AdminSubTab = "usuarios" | "clientes" | "limpeza" | "pontuacao" | "aparencia" | "datas" | "whatsapp" | "cargos" | "notificacoes";
 
 type CardDef = {
   key: AdminSubTab | "fluxos";
@@ -25,6 +26,7 @@ const CARDS: CardDef[] = [
   { key: "usuarios", title: "Usuários", description: "Gerencie os usuários do sistema, papéis de acesso e permissões da equipe.", icon: Users },
   { key: "cargos", title: "Cargos", description: "Crie, renomeie, reordene ou desative os cargos da equipe, e escolha quais papéis e cargos acessam cada aba/ação.", icon: Briefcase },
   { key: "clientes", title: "Clientes", description: "Cadastre e edite os clientes ativos, expirados e encerrados da operação.", icon: Building2 },
+  { key: "notificacoes", title: "Notificações", description: "Ligue ou desligue cada tipo de aviso: posts sem agendar, respostas de clientes, pedidos de gravação e mais.", icon: Bell },
   { key: "datas", title: "Datas internas", description: "Configure feriados, datas comemorativas e eventos internos do calendário.", icon: CalendarPlus },
   { key: "limpeza", title: "Limpeza", description: "Defina as tarefas recorrentes de limpeza, horários e responsáveis.", icon: SprayCan },
   { key: "pontuacao", title: "Pontuação", description: "Ajuste regras de pontos, pesos por etapa e penalidades de desempenho.", icon: Trophy },
@@ -127,6 +129,7 @@ export function AdminContainer({
               onClientDialogChange={(id) => onClienteIdChange?.(id)}
             />
           )}
+          {subTab === "notificacoes" && <AdminNotificacoesPanel />}
           {subTab === "datas" && <AdminDatasInternasPanel />}
           {subTab === "limpeza" && <AdminLimpezaPanel />}
           {subTab === "pontuacao" && <AdminPontuacaoPanel />}

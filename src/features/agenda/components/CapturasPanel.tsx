@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { addMonths, format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
-import { Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Link2, MapPin, MessageCircle, RefreshCw, Settings2, Sun, Sunset, X } from "lucide-react";
+import { Ban, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Link2, MapPin, MessageCircle, RefreshCw, Settings2, Clock, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -23,11 +23,10 @@ import { useClients, useTeamMembers } from "@/features/data/queries";
 import { useAddTaskAssignees } from "@/features/data/task-assignees-queries";
 import { useStageFlows } from "@/features/gestao/components/PmStageFlowConfig";
 import {
-  CAPTURE_DEFAULTS, captureLink, useCaptureBlocks, useCaptureBookings, useCaptureSettings, useSaveCaptureSettings, useToggleCaptureBlock, useUpdateCaptureBooking,
+  CAPTURE_DEFAULTS, captureLink, hhmm, hoursOfWeekday, timeRange, useCaptureBlocks, useCaptureBookings, useCaptureSettings, useSaveCaptureSettings, useToggleCaptureBlock, useUpdateCaptureBooking,
   type CaptureBooking, type CaptureSettings,
 } from "../hooks/use-capture";
 
-const PERIOD_LABEL = { manha: "Manhã", tarde: "Tarde" } as const;
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const WEEKDAY_HEAD = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -57,15 +56,35 @@ function RulesCard({ settings }: { settings: CaptureSettings | null }) {
   const [confirmRegen, setConfirmRegen] = useState(false);
   useEffect(() => { setDraft({ ...CAPTURE_DEFAULTS, ...(settings ?? {}) }); }, [settings]);
 
+  // The hours of every chosen weekday, as one comparable string
+  const hoursKey = (x: typeof draft) => [...x.weekdays].sort().map((d) => `${d}:${hoursOfWeekday(x, d).start}-${hoursOfWeekday(x, d).end}`).join("|");
+  const setDayHours = (d: number, patch: Partial<{ start: number; end: number }>) => {
+    const cur = hoursOfWeekday(draft, d);
+    const next = { ...cur, ...patch };
+    if (next.end <= next.start) next.end = Math.min(24, next.start + 1);
+    setDraft({ ...draft, weekday_hours: { ...draft.weekday_hours, [String(d)]: next } });
+  };
   const dirty = useMemo(() => {
     const base = { ...CAPTURE_DEFAULTS, ...(settings ?? {}) };
     return (
       base.capacity_per_day !== draft.capacity_per_day ||
       base.min_lead_days !== draft.min_lead_days ||
+      hoursKey(base) !== hoursKey(draft) ||
+      base.duration_minutes !== draft.duration_minutes ||
+      base.slot_step_minutes !== draft.slot_step_minutes ||
       [...base.weekdays].sort().join() !== [...draft.weekdays].sort().join() ||
       [...base.open_months].sort().join() !== [...draft.open_months].sort().join()
     );
   }, [settings, draft]);
+
+  // What goes to the database: each chosen weekday with its hours; the first chosen day also gives the fallback hours
+  const savedHours = () => {
+    const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => draft.weekdays.includes(d));
+    const map: Record<string, { start: number; end: number }> = {};
+    for (const d of days) map[String(d)] = hoursOfWeekday(draft, d);
+    const first = days.length ? map[String(days[0])] : { start: draft.day_start_hour, end: draft.day_end_hour };
+    return { weekday_hours: map, day_start_hour: first.start, day_end_hour: first.end };
+  };
 
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => addMonths(startOfMonth(new Date()), i)), []);
   const run = (patch: Parameters<typeof save.mutate>[0], okMessage: string) =>
@@ -82,18 +101,17 @@ function RulesCard({ settings }: { settings: CaptureSettings | null }) {
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="space-y-5 border-t border-border/30 px-5 py-5">
-          <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/30 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Receber pedidos pelo link</p>
-              <p className="text-xs text-muted-foreground">Desligado, o link mostra "indisponível" para quem abrir.</p>
+        <div className="divide-y divide-border/30 border-t border-border/30">
+          {/* 1 · Link */}
+          <div className="space-y-3 px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Link para os clientes</p>
+                <p className="text-xs text-muted-foreground">Desligado, o link mostra "indisponível" para quem abrir.</p>
+              </div>
+              <Switch checked={!!settings?.enabled} disabled={save.isPending} onCheckedChange={(v) => run({ enabled: v }, v ? "Link ativado" : "Link desligado")} />
             </div>
-            <Switch checked={!!settings?.enabled} disabled={save.isPending} onCheckedChange={(v) => run({ enabled: v }, v ? "Link ativado" : "Link desligado")} />
-          </div>
-
-          {settings && (
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Link para enviar aos clientes</Label>
+            {settings && (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border/50 bg-background px-3 py-2 text-sm">
                   <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -106,39 +124,83 @@ function RulesCard({ settings }: { settings: CaptureSettings | null }) {
                   <RefreshCw className="h-3.5 w-3.5" /> Gerar novo
                 </Button>
               </div>
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="cap-capacity">Captações por dia</Label>
-              <Input id="cap-capacity" type="number" min={1} max={20} value={draft.capacity_per_day} onChange={(e) => setDraft({ ...draft, capacity_per_day: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })} />
-              <p className="text-[11px] text-muted-foreground">Quando chega nesse número, o dia aparece lotado para todos.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cap-lead">Antecedência mínima (dias)</Label>
-              <Input id="cap-lead" type="number" min={0} max={60} value={draft.min_lead_days} onChange={(e) => setDraft({ ...draft, min_lead_days: Math.max(0, Math.min(60, Number(e.target.value) || 0)) })} />
-              <p className="text-[11px] text-muted-foreground">Hoje e os próximos dias dentro desse prazo ficam fechados.</p>
-            </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Dias da semana atendidos</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {WEEKDAY_LABELS.map((label, d) => {
+          {/* 2 · Days and hours */}
+          <div className="space-y-3 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold">Dias e horários de atendimento</p>
+              <p className="text-xs text-muted-foreground">Ligue os dias em que você grava e defina o horário de cada um. Por exemplo, sábado só até 12:00.</p>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-border/40">
+              {[1, 2, 3, 4, 5, 6, 0].map((d) => {
                 const on = draft.weekdays.includes(d);
+                const h = hoursOfWeekday(draft, d);
                 return (
-                  <button key={d} type="button" aria-pressed={on} onClick={() => setDraft({ ...draft, weekdays: on ? draft.weekdays.filter((x) => x !== d) : [...draft.weekdays, d] })}
-                    className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition", on ? "border-primary/60 bg-primary/10 text-primary" : "border-border/50 text-muted-foreground hover:bg-accent/40")}>
-                    {label}
-                  </button>
+                  <div key={d} className={cn("flex items-center gap-3 border-b border-border/30 px-3 py-2 last:border-b-0", !on && "bg-muted/20")}>
+                    <Switch checked={on} onCheckedChange={(v) => setDraft({ ...draft, weekdays: v ? [...draft.weekdays, d] : draft.weekdays.filter((x) => x !== d) })} aria-label={`Atender ${WEEKDAY_LABELS[d]}`} />
+                    <span className={cn("w-10 shrink-0 text-sm font-medium", !on && "text-muted-foreground")}>{WEEKDAY_LABELS[d]}</span>
+                    {on ? (
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                        <Select value={String(h.start)} onValueChange={(v) => setDayHours(d, { start: Number(v) })}>
+                          <SelectTrigger className="h-8 w-[5.5rem] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{Array.from({ length: 23 }, (_, i) => i).map((x) => <SelectItem key={x} value={String(x)}>{String(x).padStart(2, "0")}:00</SelectItem>)}</SelectContent>
+                        </Select>
+                        <span className="text-xs text-muted-foreground">até</span>
+                        <Select value={String(h.end)} onValueChange={(v) => setDayHours(d, { end: Number(v) })}>
+                          <SelectTrigger className="h-8 w-[5.5rem] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{Array.from({ length: 24 }, (_, i) => i + 1).filter((x) => x > h.start).map((x) => <SelectItem key={x} value={String(x)}>{String(x).padStart(2, "0")}:00</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Fechado</span>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Meses abertos para agendamento</Label>
+          {/* 3 · Each recording */}
+          <div className="space-y-3 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold">Cada gravação</p>
+              <p className="text-xs text-muted-foreground">O cliente escolhe o horário de início entre os que ainda estão livres. Duas gravações nunca ficam no mesmo horário.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Duração</Label>
+                <Select value={String(draft.duration_minutes)} onValueChange={(v) => setDraft({ ...draft, duration_minutes: Number(v) })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>{[60, 90, 120, 150, 180, 240, 300, 360].map((m) => <SelectItem key={m} value={String(m)}>{m % 60 === 0 ? `${m / 60}h` : `${Math.floor(m / 60)}h30`}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Horários de</Label>
+                <Select value={String(draft.slot_step_minutes)} onValueChange={(v) => setDraft({ ...draft, slot_step_minutes: Number(v) })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>{[30, 60, 120].map((m) => <SelectItem key={m} value={String(m)}>{m === 30 ? "30 em 30 min" : m === 60 ? "1 em 1 hora" : "2 em 2 horas"}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cap-capacity" className="text-xs">Máximo por dia</Label>
+                <Input id="cap-capacity" className="h-9" type="number" min={1} max={20} value={draft.capacity_per_day} onChange={(e) => setDraft({ ...draft, capacity_per_day: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cap-lead" className="text-xs">Antecedência (dias)</Label>
+                <Input id="cap-lead" className="h-9" type="number" min={0} max={60} value={draft.min_lead_days} onChange={(e) => setDraft({ ...draft, min_lead_days: Math.max(0, Math.min(60, Number(e.target.value) || 0)) })} />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ao chegar no máximo por dia, o dia aparece lotado. Dias dentro da antecedência ficam fechados.</p>
+          </div>
+
+          {/* 4 · Open months */}
+          <div className="space-y-3 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold">Meses abertos para agendamento</p>
+              <p className="text-xs text-muted-foreground">O cliente só vê e agenda nos meses marcados.</p>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {months.map((m) => {
                 const key = format(m, "yyyy-MM");
@@ -151,14 +213,15 @@ function RulesCard({ settings }: { settings: CaptureSettings | null }) {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground">O cliente só vê e agenda nos meses marcados aqui.</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button size="sm" className="rounded-full" disabled={!dirty || save.isPending} onClick={() => run({ capacity_per_day: draft.capacity_per_day, min_lead_days: draft.min_lead_days, weekdays: draft.weekdays, open_months: draft.open_months }, "Regras salvas")}>
+          {/* Save */}
+          <div className="flex items-center gap-2 bg-muted/10 px-5 py-3">
+            <Button size="sm" className="rounded-full" disabled={!dirty || save.isPending} onClick={() => run({ capacity_per_day: draft.capacity_per_day, min_lead_days: draft.min_lead_days, weekdays: draft.weekdays, open_months: draft.open_months, ...savedHours(), duration_minutes: draft.duration_minutes, slot_step_minutes: draft.slot_step_minutes }, "Regras salvas")}>
               {save.isPending ? "Salvando…" : "Salvar regras"}
             </Button>
             {dirty && !save.isPending && <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => setDraft({ ...CAPTURE_DEFAULTS, ...(settings ?? {}) })}>Descartar</Button>}
+            {dirty && <span className="text-xs text-amber-500">Alterações não salvas</span>}
           </div>
         </div>
       )}
@@ -279,7 +342,6 @@ function MonthOverview({ settings, bookings, isAdmin }: { settings: CaptureSetti
 // ───────────────────────── Booking cards ─────────────────────────
 
 function BookingCard({ b, onConfirm, onRefuse, onCancel }: { b: CaptureBooking; onConfirm?: () => void; onRefuse?: () => void; onCancel?: () => void }) {
-  const PeriodIcon = b.period === "manha" ? Sun : Sunset;
   return (
     <article className="space-y-3 rounded-2xl border border-border/40 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
@@ -288,7 +350,7 @@ function BookingCard({ b, onConfirm, onRefuse, onCancel }: { b: CaptureBooking; 
           <p className="text-xs text-muted-foreground first-letter:uppercase">{fmtLong(b.booking_date)}</p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-          <PeriodIcon className="h-3 w-3" /> {PERIOD_LABEL[b.period]}
+          <Clock className="h-3 w-3" /> {timeRange(b.start_time, b.duration_minutes)}
         </span>
       </div>
       <div className="space-y-1 text-sm text-muted-foreground">
@@ -367,6 +429,7 @@ export function CapturasPanel() {
       const b = confirming;
       const lines = [
         `Pedido feito pelo link de agendamento.`,
+        `Horário: ${timeRange(b.start_time, b.duration_minutes)}`,
         b.contact_name ? `Contato: ${b.contact_name}` : null,
         `WhatsApp: ${b.whatsapp}`,
         b.location ? `Local: ${b.location}` : null,
@@ -379,7 +442,8 @@ export function CapturasPanel() {
           stage: "captacao",
           assigned_user_id: assigneeId,
           due_date: b.booking_date,
-          title: `Captação (${PERIOD_LABEL[b.period].toLowerCase()}) — ${b.company_name}`,
+          due_at: `${b.booking_date}T${hhmm(b.start_time)}:00-03:00`,
+          title: `Captação (${hhmm(b.start_time)}) — ${b.company_name}`,
           description: lines.join("\n"),
           created_by: user.id,
         } as any)
@@ -390,7 +454,7 @@ export function CapturasPanel() {
       await update.mutateAsync({ id: b.id, patch: { status: "confirmed", client_id: clientId, task_id: task.id, decided_at: new Date().toISOString(), decided_by: user.id } });
       await qc.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("Captação confirmada e criada na Agenda.", {
-        action: notifyWhatsapp(b, `Olá! Sua captação está confirmada para ${format(new Date(`${b.booking_date}T12:00:00`), "dd/MM")} (${PERIOD_LABEL[b.period].toLowerCase()}). Qualquer ajuste, é só falar com a gente!`),
+        action: notifyWhatsapp(b, `Olá! Sua captação está confirmada para ${format(new Date(`${b.booking_date}T12:00:00`), "dd/MM")} às ${hhmm(b.start_time)}. Qualquer ajuste, é só falar com a gente!`),
         duration: 12000,
       });
       setConfirming(null);
@@ -464,7 +528,7 @@ export function CapturasPanel() {
               {history.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                   <span className="min-w-0 flex-1 truncate font-medium">{b.company_name}</span>
-                  <span className="text-xs text-muted-foreground">{fmtShort(b.booking_date)} · {PERIOD_LABEL[b.period]}</span>
+                  <span className="text-xs text-muted-foreground">{fmtShort(b.booking_date)} · {hhmm(b.start_time)}</span>
                   <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", b.status === "confirmed" ? "bg-emerald-500/15 text-emerald-500" : "bg-muted text-muted-foreground")}>
                     {b.status === "confirmed" ? "Realizada" : b.status === "refused" ? "Recusada" : "Cancelada"}
                   </span>
@@ -480,7 +544,7 @@ export function CapturasPanel() {
           <DialogHeader>
             <DialogTitle>Confirmar captação</DialogTitle>
             <DialogDescription>
-              {confirming && <span>{fmtLong(confirming.booking_date)} · {PERIOD_LABEL[confirming.period]}</span>}
+              {confirming && <span>{fmtLong(confirming.booking_date)} · {timeRange(confirming.start_time, confirming.duration_minutes)}</span>}
               {" "}— vira uma tarefa de Captação na Agenda.
             </DialogDescription>
           </DialogHeader>

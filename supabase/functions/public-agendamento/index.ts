@@ -2,7 +2,8 @@
 // (capture_settings.share_token); no login. The page only ever learns whether a day is free, full or closed —
 // never who booked it. Actions (POST JSON, all carry the link's `token`):
 //   load   { month: "YYYY-MM" }                       → agency name + the status of each day of the month
-//   book   { date, period, company_name, whatsapp, … } → creates a pending booking (capacity is enforced by the DB)
+//   slots  { date: "YYYY-MM-DD" }                     → the start times still free that day ("HH:MM")
+//   book   { date, start_time, company_name, whatsapp, … } → creates a pending booking (capacity and overlaps are enforced by the DB)
 //   get    { cancel_token }                           → status of one booking, for the person who made it
 //   cancel { cancel_token }                           → cancels that booking
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -16,7 +17,9 @@ const corsHeaders = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const PERIODS = ["manha", "tarde"];
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const fromMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 // Free text is trimmed and capped; control characters never reach the team's screens
 const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
 
@@ -54,7 +57,7 @@ Deno.serve(async (req) => {
   // Same answer whether the link doesn't exist or was turned off
   const { data: settings } = await db
     .from("capture_settings")
-    .select("agency_id, weekdays, capacity_per_day, min_lead_days, open_months")
+    .select("agency_id, weekdays, capacity_per_day, min_lead_days, open_months, day_start_hour, day_end_hour, weekday_hours, duration_minutes, slot_step_minutes")
     .eq("share_token", token)
     .eq("enabled", true)
     .maybeSingle();
@@ -65,13 +68,18 @@ Deno.serve(async (req) => {
   // Active load per date (bookings waiting for an answer count, so a pending request already holds its spot)
   async function loadByDate(from: string, to: string) {
     const [{ data: bookings }, { data: blocks }] = await Promise.all([
-      db.from("capture_bookings").select("booking_date").eq("agency_id", agencyId).in("status", ["pending", "confirmed"]).gte("booking_date", from).lte("booking_date", to),
+      db.from("capture_bookings").select("booking_date, start_time, duration_minutes").eq("agency_id", agencyId).in("status", ["pending", "confirmed"]).gte("booking_date", from).lte("booking_date", to),
       db.from("capture_blocks").select("block_date").eq("agency_id", agencyId).gte("block_date", from).lte("block_date", to),
     ]);
     const taken = new Map<string, number>();
-    for (const b of bookings ?? []) taken.set(b.booking_date, (taken.get(b.booking_date) ?? 0) + 1);
+    const ranges = new Map<string, { start: number; end: number }[]>();
+    for (const b of bookings ?? []) {
+      taken.set(b.booking_date, (taken.get(b.booking_date) ?? 0) + 1);
+      const start = toMin(String(b.start_time).slice(0, 5));
+      ranges.set(b.booking_date, [...(ranges.get(b.booking_date) ?? []), { start, end: start + Number(b.duration_minutes) }]);
+    }
     const blocked = new Set((blocks ?? []).map((b: any) => b.block_date as string));
-    return { taken, blocked };
+    return { taken, blocked, ranges };
   }
 
   function dayStatus(ymd: string, taken: Map<string, number>, blocked: Set<string>): "free" | "full" | "closed" {
@@ -84,7 +92,34 @@ Deno.serve(async (req) => {
     return "free";
   }
 
+  // Start times of a day that still fit: inside the working hours, not overlapping another recording
+  function freeSlots(date: string, ranges: { start: number; end: number }[]): string[] {
+    const duration = Number(settings!.duration_minutes);
+    const step = Number(settings!.slot_step_minutes);
+    // each weekday can have its own hours (Saturday until noon, say); the others use the default ones
+    const wh = (settings!.weekday_hours as Record<string, { start?: number; end?: number }> | null)?.[String(weekdayOf(date))];
+    const first = Number(wh?.start ?? settings!.day_start_hour) * 60;
+    const last = Number(wh?.end ?? settings!.day_end_hour) * 60 - duration;
+    // today (when the lead time allows it): only what is still ahead, with an hour of margin
+    const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const earliest = date === todayBR() ? nowBR.getHours() * 60 + nowBR.getMinutes() + 60 : 0;
+    const out: string[] = [];
+    for (let t = first; t <= last; t += step) {
+      if (t < earliest) continue;
+      if (!ranges.some((r) => r.start < t + duration && r.end > t)) out.push(fromMin(t));
+    }
+    return out;
+  }
+
   try {
+    if (action === "slots") {
+      const date = String(payload?.date ?? "");
+      if (!DATE_RE.test(date)) return json({ error: "invalid_request" }, 400);
+      const { taken, blocked, ranges } = await loadByDate(date, date);
+      if (dayStatus(date, taken, blocked) !== "free") return json({ slots: [], duration_minutes: Number(settings.duration_minutes) });
+      return json({ slots: freeSlots(date, ranges.get(date) ?? []), duration_minutes: Number(settings.duration_minutes) });
+    }
+
     if (action === "load") {
       const month = String(payload?.month ?? "");
       if (!MONTH_RE.test(month)) return json({ error: "invalid_month" }, 400);
@@ -99,7 +134,7 @@ Deno.serve(async (req) => {
         const ymd = `${month}-${String(d).padStart(2, "0")}`;
         days[ymd] = dayStatus(ymd, taken, blocked);
       }
-      return json({ agency_name: agency?.name ?? "", open_months: settings.open_months, days });
+      return json({ agency_name: agency?.name ?? "", open_months: settings.open_months, duration_minutes: Number(settings.duration_minutes), days });
     }
 
     if (action === "book") {
@@ -107,21 +142,25 @@ Deno.serve(async (req) => {
       if (clean(payload?.website, 50)) return json({ ok: true });
 
       const date = String(payload?.date ?? "");
-      const period = String(payload?.period ?? "");
+      // older pages sent only morning/afternoon: map it to a start time
+      const legacy = String(payload?.period ?? "");
+      const startTime = TIME_RE.test(String(payload?.start_time ?? "")) ? String(payload.start_time) : legacy === "tarde" ? "14:00" : legacy === "manha" ? "09:00" : "";
       const company = clean(payload?.company_name, 120);
       const contact = clean(payload?.contact_name, 120);
       const whatsapp = String(payload?.whatsapp ?? "").replace(/\D/g, "");
       const location = clean(payload?.location, 300);
       const notes = clean(payload?.notes, 1000);
 
-      if (!DATE_RE.test(date) || !PERIODS.includes(period)) return json({ error: "invalid_request" }, 400);
+      if (!DATE_RE.test(date) || !startTime) return json({ error: "invalid_request" }, 400);
       if (!company) return json({ error: "company_required" }, 400);
       if (whatsapp.length < 10 || whatsapp.length > 13) return json({ error: "invalid_whatsapp" }, 400);
 
-      const { taken, blocked } = await loadByDate(date, date);
+      const { taken, blocked, ranges } = await loadByDate(date, date);
       const status = dayStatus(date, taken, blocked);
       if (status === "closed") return json({ error: "day_closed" }, 409);
       if (status === "full") return json({ error: "day_full" }, 409);
+      if (!freeSlots(date, ranges.get(date) ?? []).includes(startTime)) return json({ error: "slot_taken" }, 409);
+      const period = toMin(startTime) < 12 * 60 ? "manha" : "tarde";
 
       // Gentle limit: one phone can't hold more than 3 open requests at once
       const { count } = await db
@@ -135,11 +174,12 @@ Deno.serve(async (req) => {
 
       const { data: created, error } = await db
         .from("capture_bookings")
-        .insert({ agency_id: agencyId, booking_date: date, period, company_name: company, contact_name: contact || null, whatsapp, location: location || null, notes: notes || null })
+        .insert({ agency_id: agencyId, booking_date: date, period, start_time: startTime, duration_minutes: Number(settings.duration_minutes), company_name: company, contact_name: contact || null, whatsapp, location: location || null, notes: notes || null })
         .select("cancel_token")
         .single();
       if (error) {
         if (error.message?.includes("day_full")) return json({ error: "day_full" }, 409);
+        if (error.message?.includes("slot_taken")) return json({ error: "slot_taken" }, 409);
         if (error.message?.includes("day_blocked")) return json({ error: "day_closed" }, 409);
         console.error("public-agendamento insert error:", error.message);
         return json({ error: "server_error" }, 500);
@@ -152,7 +192,7 @@ Deno.serve(async (req) => {
       if (!UUID_RE.test(cancelToken)) return json({ error: "not_found" }, 404);
       const { data: booking } = await db
         .from("capture_bookings")
-        .select("id, booking_date, period, company_name, status")
+        .select("id, booking_date, period, start_time, duration_minutes, company_name, location, status")
         .eq("agency_id", agencyId)
         .eq("cancel_token", cancelToken)
         .maybeSingle();

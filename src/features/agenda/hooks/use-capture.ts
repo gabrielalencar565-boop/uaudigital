@@ -12,12 +12,21 @@ export type CaptureSettings = {
   capacity_per_day: number;
   min_lead_days: number;
   open_months: string[];
+  day_start_hour: number;
+  day_end_hour: number;
+  /** per weekday (0 = Sunday): its own start/end hours; a day not listed uses day_start_hour / day_end_hour */
+  weekday_hours: Record<string, { start: number; end: number }>;
+  duration_minutes: number;
+  slot_step_minutes: number;
 };
 
 export type CaptureBooking = {
   id: string;
   booking_date: string;
   period: "manha" | "tarde";
+  /** HH:MM(:SS) */
+  start_time: string;
+  duration_minutes: number;
   company_name: string;
   contact_name: string | null;
   whatsapp: string;
@@ -32,7 +41,12 @@ export type CaptureBooking = {
 
 export type CaptureBlock = { id: string; block_date: string; reason: string | null };
 
-export const CAPTURE_DEFAULTS = { enabled: false, weekdays: [1, 2, 3, 4, 5], capacity_per_day: 2, min_lead_days: 2, open_months: [] as string[] };
+export const CAPTURE_DEFAULTS = { enabled: false, weekdays: [1, 2, 3, 4, 5], capacity_per_day: 2, min_lead_days: 2, open_months: [] as string[], day_start_hour: 8, day_end_hour: 18, weekday_hours: {} as Record<string, { start: number; end: number }>, duration_minutes: 120, slot_step_minutes: 60 };
+
+/** The hours of one weekday (its own, or the default ones). */
+export function hoursOfWeekday(s: Pick<CaptureSettings, "day_start_hour" | "day_end_hour" | "weekday_hours">, weekday: number) {
+  return s.weekday_hours?.[String(weekday)] ?? { start: s.day_start_hour, end: s.day_end_hour };
+}
 
 export function captureLink(token: string) {
   return `${window.location.origin}/agendar/${token}`;
@@ -106,7 +120,7 @@ export function useCaptureBookings() {
     queryFn: async (): Promise<CaptureBooking[]> => {
       const { data, error } = await db
         .from("capture_bookings")
-        .select("id, booking_date, period, company_name, contact_name, whatsapp, location, notes, client_id, status, task_id, created_at, decided_at")
+        .select("id, booking_date, period, start_time, duration_minutes, company_name, contact_name, whatsapp, location, notes, client_id, status, task_id, created_at, decided_at")
         .order("booking_date", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -124,4 +138,14 @@ export function useUpdateCaptureBooking() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["capture_bookings"] }),
   });
+}
+
+/** "14:00" from "14:00:00" */
+export const hhmm = (t: string) => t.slice(0, 5);
+/** "14:00 – 16:00" */
+export function timeRange(t: string, durationMinutes: number) {
+  const start = Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const end = start + durationMinutes;
+  const f = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return `${f(start)} – ${f(end)}`;
 }
