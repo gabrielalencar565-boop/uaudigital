@@ -48,6 +48,7 @@ import { SpellCheckText } from "./SpellCheckText";
 import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { inferPmPostType, type PmPostType } from "../utils/infer-pm-post-type";
+import { resolveAlterationOrigin, WORK_STAGE_BY_ORIGIN, ALTERATION_KEY_BY_ORIGIN, type AlterationOrigin } from "../utils/alteration-origin";
 import { broadcastTeamActivity } from "@/hooks/use-team-activity";
 import { setViewingTask } from "@/hooks/use-task-viewers";
 import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
@@ -1712,53 +1713,25 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     );
     const hasMixedChildren = childPostTypes.has("video") && childPostTypes.has("design");
 
-    // Use children as the DEFINITIVE signal for post_type when available
-    // (the parent task.post_type may be corrupted from legacy bugs)
-    const childDerivedPostType: string | null = hasMixedChildren
-      ? null
-      : childPostTypes.has("design")
-        ? "design"
-        : childPostTypes.has("video")
-          ? "video"
-          : null;
+    // One answer for "where does this alteration come from?", resolved by the shared rule (saved origin → planning → subtasks →
+    // post type → ... → title/tags only as a last resort), instead of OR-ing title and tag clues that could flip design into video.
+    const { origin: resolvedOrigin } = resolveAlterationOrigin(task, childTasks.map((c) => c.post_type));
+    const isPautaReview = resolvedOrigin === "planejamento";
+    const previousWorkStage = resolvedOrigin ? WORK_STAGE_BY_ORIGIN[resolvedOrigin] : "design";
+    const resolvedAlteracaoPostType = hasMixedChildren ? null : (resolvedOrigin ?? "design");
+    const alterationOriginToSave = hasMixedChildren ? (isPautaReview ? "planejamento" : null) : resolvedAlteracaoPostType;
 
-    const taskTags = task.tags ?? [];
-    const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const isPautaReview = task.post_type === "planejamento" || (
-      task.post_type == null && task.stage_current === "revisao" && !childTasks.some(c => c.post_type === "video" || c.post_type === "design")
-    );
-    // Prefer child-derived type over inferPmPostType (which may use corrupted task.post_type)
-    const effectivePostType = childDerivedPostType ?? inferPmPostType(task);
-    const isVideoByPostType = effectivePostType === "video";
-    const isVideoByTag = taskTags.some((t) => {
-      const parsed = parseTag(t);
-      const tagName = parsed.name.toLowerCase();
-      return tagName === "vídeo" || tagName === "video";
+    // Who receives it when nobody held the stage before: the person set for this kind of alteration, else the one of the work stage
+    const fixedFor = (origin: AlterationOrigin | null, workStage: string) => ({
+      assignee: (origin && getFixedAssignee(stageAssignees, ALTERATION_KEY_BY_ORIGIN[origin], task.client_id)) ?? getFixedAssignee(stageAssignees, workStage, task.client_id),
+      watchers: (origin && getFixedWatchers(stageAssignees, ALTERATION_KEY_BY_ORIGIN[origin], task.client_id)?.length ? getFixedWatchers(stageAssignees, ALTERATION_KEY_BY_ORIGIN[origin], task.client_id) : null) ?? getFixedWatchers(stageAssignees, workStage, task.client_id),
     });
-    const isVideoByTitle = normalizedTitle.includes("video");
-    const previousWorkStage = isPautaReview
-      ? "planejamento"
-      : isVideoByPostType || isVideoByTag || isVideoByTitle
-        ? "edicao_videos"
-        : "design";
-    const resolvedAlteracaoPostType = hasMixedChildren
-      ? null
-      : isPautaReview
-        ? "planejamento"
-        : (childDerivedPostType ?? effectivePostType ?? (previousWorkStage === "edicao_videos" ? "video" : "design"));
+    const getAssigneeForPostType = (pt: string | null) => fixedFor(pt === "video" ? "video" : "design", pt === "video" ? "edicao_videos" : "design").assignee;
+    const getWatchersForPostType = (pt: string | null) => fixedFor(pt === "video" ? "video" : "design", pt === "video" ? "edicao_videos" : "design").watchers;
 
-    // Helper to get assignee/watchers per post_type
-    const getAssigneeForPostType = (pt: string | null) => {
-      const stage = pt === "video" ? "edicao_videos" : "design";
-      return getFixedAssignee(stageAssignees, stage, task.client_id);
-    };
-    const getWatchersForPostType = (pt: string | null) => {
-      const stage = pt === "video" ? "edicao_videos" : "design";
-      return getFixedWatchers(stageAssignees, stage, task.client_id);
-    };
-
-    const previousStageAssignee = getFixedAssignee(stageAssignees, previousWorkStage, task.client_id);
-    const previousStageWatchers = getFixedWatchers(stageAssignees, previousWorkStage, task.client_id);
+    const previousStageFixed = fixedFor(resolvedOrigin, previousWorkStage);
+    const previousStageAssignee = previousStageFixed.assignee;
+    const previousStageWatchers = previousStageFixed.watchers;
 
     // For mixed children, skip snapshot-based routing — just move to alteração with per-child assignees
     if (hasMixedChildren) {
@@ -1771,6 +1744,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         // Planejamento has mixed Design/Vídeo children, but the parent must stay PLAN
         // so returning from Alteração reopens REV/PLAN instead of falling back to REV/DSG.
         post_type: isPautaReview ? "planejamento" : null,
+        alteration_origin: alterationOriginToSave,
       };
       updateTask.mutate(updates);
 
@@ -1790,6 +1764,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           watchers: getWatchersForPostType(childPt) ?? previousStageWatchers,
           due_date: newAltDueDate,
           post_type: childPt,
+          alteration_origin: childPt === "video" ? "video" : "design",
         } as any);
       }
 
@@ -1842,6 +1817,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         watchers: resolvedPreviousWatchers,
         due_date: newAltDueDate,
         post_type: previousSnapshot.post_type ?? resolvedAlteracaoPostType,
+        alteration_origin: alterationOriginToSave,
       };
       updateTask.mutate(prevUpdates);
 
@@ -1865,6 +1841,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           watchers: resolvedPreviousWatchers,
           due_date: newAltDueDate,
           post_type: child.post_type ?? previousSnapshot.post_type ?? resolvedAlteracaoPostType,
+          alteration_origin: alterationOriginToSave,
         } as any);
       }
 
@@ -1900,6 +1877,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         watchers: resolvedPreviousWatchers,
         due_date: newAltDueDate,
         post_type: resolvedAlteracaoPostType,
+        alteration_origin: alterationOriginToSave,
       };
       updateTask.mutate(updates);
 
@@ -1911,6 +1889,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           watchers: resolvedPreviousWatchers,
           due_date: newAltDueDate,
           post_type: child.post_type ?? resolvedAlteracaoPostType,
+          alteration_origin: alterationOriginToSave,
         } as any);
       }
 
@@ -1927,28 +1906,14 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
-    // Detect original stage: use children post_type as definitive signal, then tags/title as fallback
-    const childPostTypes = new Set(childTasks.map((c) => c.post_type).filter(Boolean) as string[]);
-    const hasMixedPlanningChildren = childPostTypes.has("video") && childPostTypes.has("design");
-    const isPautaReview = task.post_type === "planejamento" || (task.stage_current === "alteracoes" && hasMixedPlanningChildren);
-    // Prefer child-derived type (most reliable for corrupted parent post_type)
-    const childDerivedPt = hasMixedPlanningChildren
-      ? null
-      : childPostTypes.has("design") ? "design"
-      : childPostTypes.has("video") ? "video"
-      : null;
-    const effectivePt = childDerivedPt ?? inferPmPostType(task);
-    const isVideoByPostType = effectivePt === "video";
-    const taskTags = task.tags ?? [];
-    const isVideoByTag = taskTags.some(t => {
-      const parsed = parseTag(t);
-      return parsed.name.toLowerCase() === "vídeo" || parsed.name.toLowerCase() === "video";
-    });
-    const normalizedTitle = task.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const isVideoByTitle = normalizedTitle.includes("video");
-    const isVideoTask = childDerivedPt === "video" || (!childDerivedPt && (isVideoByPostType || isVideoByTag || isVideoByTitle));
-    const originalStage = isPautaReview ? "planejamento" : isVideoTask ? "edicao_videos" : "design";
-    const resolvedReturnPostType = isPautaReview ? "planejamento" : isVideoTask ? "video" : "design";
+    // Where this alteration came from is read from what was saved when it entered "alteracoes" (see resolveAlterationOrigin):
+    // it is never re-guessed from the title or tags, which used to send a design alteration back as a video one.
+    const resolved = resolveAlterationOrigin(task, childTasks.map((c) => c.post_type));
+    // A planning with design AND video posts has no single origin, but it is a planning alteration
+    const origin: AlterationOrigin | null = resolved.mixed && task.stage_current === "alteracoes" ? "planejamento" : resolved.origin;
+    const isPautaReview = origin === "planejamento";
+    const originalStage = origin ? WORK_STAGE_BY_ORIGIN[origin] : "design";
+    const resolvedReturnPostType = origin ?? "design";
 
     // Find the paused revisão task in the same lineage to reactivate
     let revisaoQuery = sb
@@ -2475,15 +2440,18 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   <RotateCcw className="h-3.5 w-3.5" /> Desmarcar concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = inferPmPostType(task) ?? task.post_type;
-                  const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
-                  const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
-                  const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
+                  const { origin: altOrigin } = resolveAlterationOrigin(task);
+                  const pt = altOrigin ?? task.post_type;
+                  const altStage = altOrigin ? WORK_STAGE_BY_ORIGIN[altOrigin] : "planejamento";
+                  const altKey = altOrigin ? ALTERATION_KEY_BY_ORIGIN[altOrigin] : null;
+                  const altAssignee = (altKey && getFixedAssignee(stageAssignees, altKey, task.client_id)) ?? getFixedAssignee(stageAssignees, altStage, task.client_id);
+                  const altWatchers = (altKey && getFixedWatchers(stageAssignees, altKey, task.client_id)?.length ? getFixedWatchers(stageAssignees, altKey, task.client_id) : null) ?? getFixedWatchers(stageAssignees, altStage, task.client_id);
                   updateTask.mutate({
                     id: task.id,
                     stage_current: "alteracoes",
                     status_global: "backlog",
                     post_type: pt ?? task.post_type,
+                    alteration_origin: altOrigin,
                     due_date: computeAlteracaoDueDate(transitionDates),
                     ...(altAssignee ? { assignee_id: altAssignee } : {}),
                     ...(altWatchers?.length ? { watchers: altWatchers } : {}),
@@ -2522,15 +2490,18 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   <CheckCircle2 className="h-4 w-4" /> Concluído
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => {
-                  const pt = inferPmPostType(task) ?? task.post_type;
-                  const altStage = pt === "video" ? "edicao_videos" : pt === "design" ? "design" : "planejamento";
-                  const altAssignee = getFixedAssignee(stageAssignees, altStage, task.client_id);
-                  const altWatchers = getFixedWatchers(stageAssignees, altStage, task.client_id);
+                  const { origin: altOrigin } = resolveAlterationOrigin(task);
+                  const pt = altOrigin ?? task.post_type;
+                  const altStage = altOrigin ? WORK_STAGE_BY_ORIGIN[altOrigin] : "planejamento";
+                  const altKey = altOrigin ? ALTERATION_KEY_BY_ORIGIN[altOrigin] : null;
+                  const altAssignee = (altKey && getFixedAssignee(stageAssignees, altKey, task.client_id)) ?? getFixedAssignee(stageAssignees, altStage, task.client_id);
+                  const altWatchers = (altKey && getFixedWatchers(stageAssignees, altKey, task.client_id)?.length ? getFixedWatchers(stageAssignees, altKey, task.client_id) : null) ?? getFixedWatchers(stageAssignees, altStage, task.client_id);
                   updateTask.mutate({
                     id: task.id,
                     stage_current: "alteracoes",
                     status_global: "backlog",
                     post_type: pt ?? task.post_type,
+                    alteration_origin: altOrigin,
                     due_date: computeAlteracaoDueDate(transitionDates),
                     ...(altAssignee ? { assignee_id: altAssignee } : {}),
                     ...(altWatchers?.length ? { watchers: altWatchers } : {}),

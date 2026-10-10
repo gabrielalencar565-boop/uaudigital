@@ -117,7 +117,7 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, c
       {/* ── Sub-tab bar (above main pill) ── */}
       {currentSubTabs.length > 0 && (
         <div
-          className="fixed inset-x-0 z-[79] flex justify-center pointer-events-none"
+          className="mobile-bottom-nav fixed inset-x-0 z-[79] flex justify-center pointer-events-none"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}
         >
           <div
@@ -148,7 +148,7 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, c
 
       {/* ── Floating pill bottom bar ── */}
       <nav
-        className="fixed bottom-4 inset-x-0 z-[80] flex justify-center pointer-events-none"
+        className="mobile-bottom-nav fixed bottom-4 inset-x-0 z-[80] flex justify-center pointer-events-none"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div
@@ -181,7 +181,7 @@ export function MobileBottomNav({ tab, onTabChange, isAdmin, canSeeFinanceiro, c
 
       {/* ── "Mais": everything that is not in the bar ── */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-28 pt-5" hideCloseButton>
+        <SheetContent side="bottom" data-mobile-more-sheet className="rounded-t-3xl px-4 pb-28 pt-5" hideCloseButton>
           <SheetHeader className="mb-3 text-left">
             <SheetTitle className="text-base">Mais</SheetTitle>
           </SheetHeader>

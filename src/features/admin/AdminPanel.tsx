@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mail, Pencil, Trash2, UserPlus, Users2, KeyRound, Copy, Loader2,
-  Settings2, ShieldCheck, ShieldX, Eye, EyeOff, Clock, Check, X,
+  Settings2, ShieldCheck, ShieldX, Eye, EyeOff, Clock, Check, X, ArrowUpRight,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,6 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -26,12 +25,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useBatchUserRoles, useSetUserRoles } from "@/hooks/use-user-roles";
-import { RoleSelector } from "@/features/admin/components/RoleSelector";
 import { useAdminUsers, type AdminUserRow } from "@/hooks/use-admin-users";
 import { useSquads, useSquadMembers } from "@/features/projetos/hooks/use-squads";
-import { CargoMultiSelect } from "@/components/CargoMultiSelect";
 import type { AppRole } from "@/hooks/use-role";
 import { InviteDialog, PendingInvites } from "@/features/admin/AgencyInvites";
+import { brandGradientCss } from "@/lib/brand-gradient";
+import { byName } from "@/lib/sort";
+import { EditUserDialog } from "@/features/admin/components/EditUserDialog";
 
 /* ───────── helpers ───────── */
 
@@ -104,6 +104,17 @@ export function AdminPanel() {
     setEditRoleTitles(r.role_titles ?? []);
     setEditRoleUser(r);
   };
+
+  // Save stays disabled until something actually changed
+  const editDirty = useMemo(() => {
+    if (!editRoleUser) return false;
+    const same = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+    return (
+      !same(editRoles, rolesQ.data?.get(editRoleUser.user_id) ?? []) ||
+      !same(editRoleTitles, editRoleUser.role_titles ?? []) ||
+      !same(editSquadIds, userSquadMap.get(editRoleUser.user_id) ?? [])
+    );
+  }, [editRoleUser, editRoles, editRoleTitles, editSquadIds, rolesQ.data, userSquadMap]);
 
   const handleSaveRoles = async () => {
     if (!editRoleUser) return;
@@ -279,7 +290,7 @@ export function AdminPanel() {
       });
     }
 
-    return all;
+    return [...all].sort(byName((r) => r.display_name));
   }, [usersQ.data, filter, roleFilter, rolesQ.data]);
 
   const pending = useMemo(
@@ -287,42 +298,15 @@ export function AdminPanel() {
     [usersQ.data]
   );
 
-  /* ── role & squad badges for a user ── */
+  /* ── what the user card shows: admin or not, and the squads ── */
 
-  const getRoleBadges = (userId: string) => {
+  const getCardInfo = (userId: string) => {
     const roles = rolesQ.data?.get(userId) ?? [];
     const squadIds = userSquadMap.get(userId) ?? [];
-    const squads = (squadsQ.data ?? []).filter((s: any) => squadIds.includes(s.id));
-
-    if (roles.length === 0 && squads.length === 0) return null;
-    return (
-      <div className="flex flex-wrap gap-1.5 justify-center">
-        {roles.map((role) => {
-          const cfg = ROLE_MAP[role];
-          if (!cfg) return null;
-          return (
-            <Badge
-              key={role}
-              variant="outline"
-              className={cn("gap-1 text-xs font-normal", cfg.color)}
-            >
-              <Users2 className="h-3 w-3" />
-              {cfg.label}
-            </Badge>
-          );
-        })}
-        {squads.map((s: any) => (
-          <Badge
-            key={s.id}
-            variant="outline"
-            className="gap-1 text-xs font-normal border-sidebar text-sidebar"
-          >
-            <Users2 className="h-3 w-3" />
-            {s.name}
-          </Badge>
-        ))}
-      </div>
-    );
+    return {
+      isAdmin: roles.includes("admin"),
+      squads: (squadsQ.data ?? []).filter((sq: any) => squadIds.includes(sq.id)) as { id: string; name: string; color: string }[],
+    };
   };
 
   /* ── render ── */
@@ -395,19 +379,10 @@ export function AdminPanel() {
 
       {/* User cards grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {rows.map((r) => (
-          <UserCard
-            key={r.user_id}
-            user={r}
-            roleBadges={getRoleBadges(r.user_id)}
-            onEditRoles={() => openRoleEditor(r)}
-            onRevoke={() => setRevokeTarget(r)}
-            onHide={() => hide.mutate(r)}
-            onUnhide={() => unhide.mutate(r)}
-            onGenerateResetLink={() => setResetLinkUser(r)}
-            isBusy={isBusy}
-          />
-        ))}
+        {rows.map((r) => {
+          const info = getCardInfo(r.user_id);
+          return <UserCard key={r.user_id} user={r} isAdmin={info.isAdmin} squads={info.squads} onEdit={() => openRoleEditor(r)} />;
+        })}
         {rows.length === 0 && !usersQ.isLoading && (
           <p className="col-span-full text-sm text-muted-foreground text-center py-8">
             Nenhum usuário encontrado.
@@ -446,223 +421,93 @@ export function AdminPanel() {
 
 
       {/* Dialog de edição */}
-      <Dialog open={!!editRoleUser} onOpenChange={(open) => !open && setEditRoleUser(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3">
-              <Avatar className="h-10 w-10">
-                {editRoleUser?.avatar_url && <AvatarImage src={editRoleUser.avatar_url} />}
-                <AvatarFallback className="bg-muted text-sm font-medium">
-                  {editRoleUser ? getInitials(editRoleUser.display_name) : ""}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">{editRoleUser?.display_name ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">{editRoleUser?.email}</p>
-              </div>
-            </div>
-
-            <CargoMultiSelect selected={editRoleTitles} onChange={setEditRoleTitles} disabled={savingAll} />
-
-            <RoleSelector
-              selectedRoles={editRoles}
-              onChange={setEditRoles}
-              disabled={savingAll}
-            />
-
-            {/* Squad selector */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Squads</Label>
-              <div className="space-y-2">
-                {(squadsQ.data ?? []).map((squad: any) => (
-                  <label
-                    key={squad.id}
-                    className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/20 p-3 transition hover:bg-card/40 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={editSquadIds.includes(squad.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setEditSquadIds((prev) => [...prev, squad.id]);
-                        } else {
-                          setEditSquadIds((prev) => prev.filter((id) => id !== squad.id));
-                        }
-                      }}
-                      disabled={savingAll}
-                      className="mt-0.5"
-                    />
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: squad.color }}
-                      />
-                      <span className="font-medium text-sm">{squad.name}</span>
-                    </div>
-                  </label>
-                ))}
-                {(squadsQ.data ?? []).length === 0 && (
-                  <p className="text-xs text-muted-foreground">Nenhum squad cadastrado.</p>
-                )}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setEditRoleUser(null)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="brand"
-              onClick={handleSaveRoles}
-              disabled={savingAll}
-            >
-              {savingAll ? "Salvando..." : "Salvar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditUserDialog
+        user={editRoleUser}
+        roles={editRoles}
+        onRolesChange={setEditRoles}
+        cargos={editRoleTitles}
+        onCargosChange={setEditRoleTitles}
+        squadIds={editSquadIds}
+        onSquadIdsChange={setEditSquadIds}
+        squads={(squadsQ.data ?? []) as any[]}
+        dirty={editDirty}
+        saving={savingAll}
+        onSave={handleSaveRoles}
+        onClose={() => setEditRoleUser(null)}
+        onResetPassword={() => { const u = editRoleUser; setEditRoleUser(null); if (u) setResetLinkUser(u); }}
+        onDelete={() => { const u = editRoleUser; setEditRoleUser(null); if (u) setRevokeTarget(u); }}
+        onToggleVisible={() => {
+          const u = editRoleUser;
+          if (!u) return;
+          (u.is_active ? hide : unhide).mutate(u, { onSuccess: () => setEditRoleUser((cur) => (cur ? { ...cur, is_active: !u.is_active } : cur)) });
+        }}
+      />
     </div>
   );
 }
 
 /* ───────── User Card ───────── */
 
+// Same family as the client cards (Clientes): avatar in the brand ring, arrow in the corner, quiet text. Everything you can
+// do to the person (reset the password, hide, delete) lives inside the edit window that this card opens.
 function UserCard({
   user,
-  roleBadges,
-  onEditRoles,
-  onRevoke,
-  onHide,
-  onUnhide,
-  onGenerateResetLink,
-  isBusy,
+  isAdmin,
+  squads,
+  onEdit,
 }: {
   user: AdminUserRow;
-  roleBadges: React.ReactNode;
-  onEditRoles: () => void;
-  onRevoke: () => void;
-  onHide: () => void;
-  onUnhide: () => void;
-  onGenerateResetLink: () => void;
-  isBusy: boolean;
+  isAdmin: boolean;
+  squads: { id: string; name: string; color: string }[];
+  onEdit: () => void;
 }) {
+  const cargo = (user.role_titles?.length ? user.role_titles.join(" · ") : user.role_title) || "Sem cargo";
   return (
-    <div className="rounded-xl border border-border/60 bg-card/30 p-5 flex flex-col items-center text-center space-y-3 transition-colors hover:border-sidebar/30">
-      {/* Avatar */}
-      <Avatar className="h-16 w-16">
-        {user.avatar_url && <AvatarImage src={user.avatar_url} />}
-        <AvatarFallback className="bg-muted text-lg font-semibold">
-          {getInitials(user.display_name)}
-        </AvatarFallback>
-      </Avatar>
-
-      {/* Name & email */}
-      <div className="space-y-0.5">
-        <p className="font-semibold text-sm">{user.display_name}</p>
-        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</p>
-      </div>
-
-      {/* Cargo */}
-      {user.role_title && (
-        <Badge variant="outline" className="gap-1 text-xs font-normal border-primary/40 text-primary">
-          <Users2 className="h-3 w-3" />
-          {user.role_title}
-        </Badge>
+    <button
+      type="button"
+      onClick={onEdit}
+      className={cn(
+        "group relative flex flex-col items-start gap-4 rounded-3xl border border-border/40 bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated",
+        !user.is_active && "opacity-60 hover:opacity-100",
       )}
+    >
+      <div className="flex w-full items-start justify-between">
+        <span className="rounded-full p-[2.5px]" style={{ background: brandGradientCss(135) }}>
+          <Avatar className="h-14 w-14 ring-2 ring-card">
+            {user.avatar_url && <AvatarImage src={user.avatar_url} className="object-cover" />}
+            <AvatarFallback className="bg-muted text-base font-semibold">{getInitials(user.display_name)}</AvatarFallback>
+          </Avatar>
+        </span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50 text-muted-foreground transition-all group-hover:border-violet-500/50 group-hover:bg-violet-500/10 group-hover:text-violet-500">
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </span>
+      </div>
 
-      {/* Role badges */}
-      {roleBadges}
+      <div className="flex min-w-0 max-w-full flex-col gap-0.5">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-base font-semibold leading-tight">{user.display_name}</span>
+          {isAdmin && <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Administrador" />}
+        </span>
+        <span className="truncate text-xs text-muted-foreground">{cargo}</span>
+        <span className="truncate text-[11px] text-muted-foreground/60">{user.email}</span>
+      </div>
 
-      {/* Visibility badge */}
-      {!user.is_active && (
-        <Badge variant="outline" className="gap-1 text-xs text-muted-foreground">
-          <EyeOff className="h-3 w-3" /> Oculto
-        </Badge>
+      {(squads.length > 0 || !user.is_active) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {squads.map((sq) => (
+            <span key={sq.id} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: sq.color }} />
+              {sq.name}
+            </span>
+          ))}
+          {!user.is_active && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/70">
+              <EyeOff className="h-3 w-3" /> Oculto
+            </span>
+          )}
+        </div>
       )}
-
-      <Separator className="my-1" />
-
-      {/* Email + Reset password */}
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <a
-          href={`mailto:${user.email}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-        >
-          <Mail className="h-3.5 w-3.5" />
-          Email
-        </a>
-        <button
-          type="button"
-          onClick={onGenerateResetLink}
-          className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-          title="Gerar link de redefinição de senha"
-        >
-          <KeyRound className="h-3.5 w-3.5" />
-          Resetar senha
-        </button>
-      </div>
-
-      <Separator className="my-1" />
-
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        <Button
-          size="icon"
-          variant="outline"
-          className="h-8 w-8 rounded-lg"
-          onClick={onEditRoles}
-          disabled={isBusy}
-          title="Editar permissões"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-
-        {user.is_active ? (
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8 rounded-lg"
-            onClick={onHide}
-            disabled={isBusy}
-            title="Ocultar"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-          </Button>
-        ) : (
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8 rounded-lg"
-            onClick={onUnhide}
-            disabled={isBusy}
-            title="Mostrar"
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </Button>
-        )}
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 rounded-lg gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-          onClick={onRevoke}
-          disabled={isBusy}
-          title="Excluir"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Excluir
-        </Button>
-      </div>
-
-      {/* Creation date */}
-      <p className="text-[11px] text-muted-foreground pt-1">
-        Criado em {formatDate(user.requested_at)}
-      </p>
-    </div>
+    </button>
   );
 }
 

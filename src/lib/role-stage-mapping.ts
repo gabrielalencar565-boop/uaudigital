@@ -16,26 +16,60 @@
  */
 
 const ROLE_TO_STAGES: Record<string, string[]> = {
-  "Social Media": ["planejamento", "pdf", "alteracoes", "agendamento"],
-  "Designer": ["design"],
-  "Editor de Vídeo": ["captacao", "edicao_videos"],
+  // alteracao_* are the three kinds of alteration (planejamento / design / vídeo): each follows the cargo of the work it comes from
+  "Social Media": ["planejamento", "pdf", "alteracoes", "agendamento", "alteracao_pauta"],
+  "Designer": ["design", "alteracao_design"],
+  "Editor de Vídeo": ["captacao", "edicao_videos", "alteracao_video"],
   "Head de Conteúdo": ["revisao_pauta"],
   "Diretor de Arte": ["revisao_design"],
   "Diretor de Vídeo": ["revisao_video"],
 };
 
+/** Stage → cargo as it always worked (the starting point; each agency can change it in Configuração de fluxos). */
+export const DEFAULT_STAGE_ROLES: Record<string, string> = Object.fromEntries(
+  Object.entries(ROLE_TO_STAGES).flatMap(([role, stages]) => stages.map((s) => [s, role])),
+);
+
+/** Overrides saved by the agency (flow_stage_roles) on top of the defaults. A saved null means "no cargo on purpose". */
+export function resolveStageRoles(rows: { stage_key: string; role_title: string | null }[] | null | undefined): Record<string, string | null> {
+  const map: Record<string, string | null> = { ...DEFAULT_STAGE_ROLES };
+  for (const r of rows ?? []) map[r.stage_key] = r.role_title && r.role_title.trim() ? r.role_title : null;
+  return map;
+}
+
+/** cargo → stages, from a stage → cargo map. */
+export function stagesByRole(stageRoles: Record<string, string | null>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [stage, role] of Object.entries(stageRoles)) {
+    if (!role) continue;
+    (out[role] ??= []).push(stage);
+  }
+  return out;
+}
+
 // cargos.label agora é a fonte da verdade (role_titles é travado nessa lista via trigger
 // no banco — ver migration validate_role_titles_against_cargos), então o match aqui é
 // exato, sem normalização/substring como a cópia antiga em SquadDashboardDialog.tsx fazia.
 // Uma pessoa pode ter mais de um cargo -- devolve a união (deduplicada) das etapas de
-// todos eles.
-export function getStagesForRoles(roleTitles: string[] | undefined | null): string[] {
+// todos eles. `roleToStages` vem da configuração da agência; sem ela vale o padrão.
+export function getStagesForRoles(roleTitles: string[] | undefined | null, roleToStages: Record<string, string[]> = ROLE_TO_STAGES): string[] {
   if (!roleTitles || roleTitles.length === 0) return [];
   const stages = new Set<string>();
   for (const roleTitle of roleTitles) {
-    for (const stage of ROLE_TO_STAGES[roleTitle] ?? []) stages.add(stage);
+    for (const stage of roleToStages[roleTitle] ?? []) stages.add(stage);
   }
   return Array.from(stages);
+}
+
+/**
+ * When two people of a squad share a cargo, the one who joined the squad first takes the stages (same date: alphabetical by
+ * name). This used to depend on whatever order the database returned, so two screens could disagree about who was "the first".
+ */
+export function sortForAssignment<T extends { joined_at?: string | null; display_name?: string | null }>(people: T[]): T[] {
+  return [...people].sort((a, b) => {
+    const byDate = new Date(a.joined_at ?? 0).getTime() - new Date(b.joined_at ?? 0).getTime();
+    return byDate || (a.display_name ?? "").localeCompare(b.display_name ?? "", "pt-BR");
+  });
 }
 
 export interface SquadMemberWithRole {
@@ -51,12 +85,13 @@ export interface SquadMemberWithRole {
  * by order received). Stages with no matching member are left out.
  */
 export function buildAssigneesForClient(
-  members: SquadMemberWithRole[]
+  members: SquadMemberWithRole[],
+  roleToStages: Record<string, string[]> = ROLE_TO_STAGES,
 ): Record<string, string> {
   const result: Record<string, string> = {};
 
   for (const member of members) {
-    const stages = getStagesForRoles(member.role_titles);
+    const stages = getStagesForRoles(member.role_titles, roleToStages);
     for (const stage of stages) {
       // first member with the role wins
       if (!result[stage]) {
@@ -66,6 +101,32 @@ export function buildAssigneesForClient(
   }
 
   return result;
+}
+
+/** Everyone of the squads who could take each stage (has its cargo), in the order they would be picked. */
+export function buildCandidatesForClient(
+  members: SquadMemberWithRole[],
+  roleToStages: Record<string, string[]> = ROLE_TO_STAGES,
+): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  for (const member of members) {
+    for (const stage of getStagesForRoles(member.role_titles, roleToStages)) {
+      const list = (result[stage] ??= []);
+      if (!list.includes(member.user_id)) list.push(member.user_id);
+    }
+  }
+  return result;
+}
+
+/**
+ * Who ends up on a stage: the explicit choice (when that person is a candidate), else whoever already holds it if they are
+ * still a candidate (so a choice made earlier survives later squad changes), else the first candidate.
+ */
+export function pickAssignee(candidates: string[], current: string | null | undefined, choice?: string | null): string | null {
+  if (candidates.length === 0) return null;
+  if (choice && candidates.includes(choice)) return choice;
+  if (current && candidates.includes(current)) return current;
+  return candidates[0];
 }
 
 /**
@@ -95,21 +156,30 @@ export function mergeClientAssignees(
  * squad (ver autoAssignStagesForSquad abaixo). Falhas aqui nunca devem travar a ação
  * principal do chamador — quem chama decide se envolve isso num try/catch.
  */
-export async function autoAssignStagesForClient(sb: any, clientId: string, squadIds: string[]): Promise<void> {
+export async function autoAssignStagesForClient(sb: any, clientId: string, squadIds: string[], choices: Record<string, string> = {}): Promise<void> {
   if (squadIds.length === 0) return;
-  const { data: squadMembers } = await sb.from("squad_members").select("user_id").in("squad_id", squadIds);
+  const { data: squadMembers } = await sb.from("squad_members").select("user_id, created_at").in("squad_id", squadIds);
   if (!squadMembers || squadMembers.length === 0) return;
 
   const memberUserIds = squadMembers.map((sm: any) => sm.user_id);
-  const { data: tms } = await sb
+  const joinedAt = new Map<string, string>();
+  for (const sm of squadMembers as any[]) {
+    const prev = joinedAt.get(sm.user_id);
+    if (!prev || sm.created_at < prev) joinedAt.set(sm.user_id, sm.created_at);
+  }
+  const { data: tmRows } = await sb
     .from("team_members")
-    .select("user_id, role_titles")
+    .select("user_id, display_name, role_titles")
     .in("user_id", memberUserIds)
     .eq("is_active", true);
-  if (!tms || tms.length === 0) return;
+  if (!tmRows || tmRows.length === 0) return;
+  const tms = sortForAssignment((tmRows as any[]).map((tm) => ({ ...tm, joined_at: joinedAt.get(tm.user_id) ?? null })));
 
-  const perStage = buildAssigneesForClient(tms.map((tm: any) => ({ user_id: tm.user_id, role_titles: tm.role_titles ?? [] })));
-  if (Object.keys(perStage).length === 0) return;
+  // which cargo answers for each stage is the agency's setting (Configuração de fluxos), not fixed in code
+  const { data: roleRows } = await sb.from("flow_stage_roles").select("stage_key, role_title");
+  const roleToStages = stagesByRole(resolveStageRoles(roleRows));
+  const candidates = buildCandidatesForClient(tms.map((tm: any) => ({ user_id: tm.user_id, role_titles: tm.role_titles ?? [] })), roleToStages);
+  if (Object.keys(candidates).length === 0) return;
 
   const { data: flows } = await sb
     .from("pm_stage_flows")
@@ -120,7 +190,21 @@ export async function autoAssignStagesForClient(sb: any, clientId: string, squad
   if (!defaultFlow) return;
 
   const existing = (defaultFlow.stage_assignees ?? {}) as Record<string, Record<string, any>>;
+  const perStage: Record<string, string> = {};
+  for (const [stage, cands] of Object.entries(candidates)) {
+    const raw = existing[stage]?.[clientId];
+    const current = Array.isArray(raw) ? raw[0] : raw;
+    const picked = pickAssignee(cands, current, choices[stage]);
+    if (picked && picked !== current) perStage[stage] = picked;
+  }
+  if (Object.keys(perStage).length === 0) return;
+
   const merged = mergeClientAssignees(existing, clientId, perStage);
+  // keep the watchers of a stage that was stored as [assignee, ...watchers]
+  for (const stage of Object.keys(perStage)) {
+    const raw = existing[stage]?.[clientId];
+    if (Array.isArray(raw)) merged[stage][clientId] = [perStage[stage], ...raw.slice(1)];
+  }
   await sb.from("pm_stage_flows").update({ stage_assignees: merged, updated_at: new Date().toISOString() }).eq("id", defaultFlow.id);
 }
 

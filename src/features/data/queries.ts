@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { byName } from "@/lib/sort";
 import { endOfMonth, format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
@@ -159,10 +160,12 @@ export function useTeamMembers() {
         .eq("is_active", true)
         .order("display_name", { ascending: true });
       if (error) throw error;
-      const rows = ((data ?? []) as TeamMemberRow[]).map((member) => ({
-        ...member,
-        avatar_url: optimizeAvatarUrl(member.avatar_url) ?? null,
-      }));
+      const rows = ((data ?? []) as TeamMemberRow[])
+        .map((member) => ({
+          ...member,
+          avatar_url: optimizeAvatarUrl(member.avatar_url) ?? null,
+        }))
+        .sort(byName((m) => m.display_name));
       void preloadAvatars(rows.map((r) => r.avatar_url));
       return rows;
     },

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { autoAssignStagesForSquad } from "@/lib/role-stage-mapping";
+import { byName } from "@/lib/sort";
 
 export function useSquads() {
   return useQuery({
@@ -12,7 +13,7 @@ export function useSquads() {
         .select("*")
         .order("name");
       if (error) throw error;
-      return (data ?? []) as any[];
+      return ((data ?? []) as any[]).sort(byName((sq) => sq.name));
     },
   });
 }
