@@ -4,6 +4,10 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // preenche as faixas em loop (conteúdo duplicado para o loop infinito)
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
+const heroTile=n=>`<div class="img photo" style="background-image:url(img/${n}.jpg)"></div>`;
+loop('hp1', ['bastidores','gravacao-1','equipe','camera','gravacao-2'].map(heroTile).join(''));
+loop('hp2', ['camera','fundadores','camiseta','bastidores','socios'].map(heroTile).join(''));
+loop('hp3', ['gravacao-2','socios','bastidores','equipe','gravacao-1'].map(heroTile).join(''));
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
 loop('logos', Array.from({length:10},(_,i)=>`<div class="logo-tile">LOGO ${String(i+1).padStart(2,'0')}</div>`).join(''));
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
@@ -54,17 +58,11 @@ if(filters){
   const words=[...document.querySelectorAll('#rotator span')];
   const steps=[...document.querySelectorAll('#vlesteps b')];
   if(reduce||!words.length) return;
-  // a largura acompanha a palavra atual, para a linha do título ficar sempre centralizada
-  const rot=document.getElementById('rotator');
-  const fit=w=>{ rot.style.width=w.offsetWidth+'px'; };
-  fit(words[0]); addEventListener('resize',()=>fit(words[i]));
   let i=0;
   setInterval(()=>{
     const cur=words[i], nxt=words[(i+1)%words.length];
     cur.className='out';
     nxt.className='in'; void nxt.offsetWidth; nxt.className='';
-    // abre logo para a palavra maior; só fecha depois que a anterior saiu
-    rot.style.width=Math.max(cur.offsetWidth,nxt.offsetWidth)+'px'; setTimeout(()=>fit(nxt),750);
     setTimeout(()=>{ if(cur.className==='out') cur.className='in'; },750);
     i=(i+1)%words.length;
     steps.forEach((b,k)=>b.classList.toggle('on',k===i));
