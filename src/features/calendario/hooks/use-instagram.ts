@@ -93,6 +93,28 @@ export function useDisconnectInstagram() {
   });
 }
 
+/** Copies the connected Instagram account's profile picture into the client's photo. */
+export function useSyncInstagramPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ clientId }: { clientId: string }) => {
+      const { data, error } = await supabase.functions.invoke("instagram-profile-photo", {
+        body: { client_id: clientId, force: true },
+      });
+      if (error) throw new Error(await resolveFunctionError(error));
+      if (data?.error) throw new Error(data.error);
+      return data as { updated: boolean; reason?: string };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["clients_admin_all"] });
+      if (res.updated) toast.success("Foto do Instagram aplicada.");
+      else toast.error(res.reason === "no_picture" ? "O Instagram não devolveu a foto desta conta." : "Não foi possível buscar a foto agora.");
+    },
+    onError: (error) => toast.error(instagramErrorMessage(error)),
+  });
+}
+
 export function usePublishToInstagram() {
   const qc = useQueryClient();
   return useMutation({

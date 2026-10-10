@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
+import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections, useSyncInstagramPhoto } from "@/features/calendario/hooks/use-instagram";
 import { useConnectWithInsights } from "@/features/resultados/hooks/use-resultados";
 import { brandGradientCss } from "@/lib/brand-gradient";
 import { useClients, useTeamMembers } from "@/features/data/queries";
@@ -55,6 +55,9 @@ function PhotoCard({ clientId }: { clientId: string }) {
   const clientsQ = useClients();
   const client = (clientsQ.data ?? []).find((c) => c.id === clientId);
   const update = useUpdateClientPhoto(clientId);
+  const syncPhoto = useSyncInstagramPhoto();
+  const connectionsQ = useInstagramConnections();
+  const igConnected = (connectionsQ.data ?? []).some((c) => c.client_id === clientId && c.status === "active");
   const inputRef = useRef<HTMLInputElement>(null);
   const logo = client?.logo_url ?? null;
 
@@ -79,6 +82,11 @@ function PhotoCard({ clientId }: { clientId: string }) {
             <Button variant="outline" size="sm" className="rounded-full" disabled={update.isPending} onClick={() => inputRef.current?.click()}>
               {update.isPending ? "Enviando…" : logo ? "Trocar foto" : "Adicionar foto"}
             </Button>
+            {igConnected && (
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-full" disabled={update.isPending || syncPhoto.isPending} onClick={() => syncPhoto.mutate({ clientId })}>
+                <Instagram className="h-3.5 w-3.5" /> {syncPhoto.isPending ? "Buscando…" : "Usar foto do Instagram"}
+              </Button>
+            )}
             {logo && (
               <Button variant="ghost" size="sm" className="gap-1.5 rounded-full text-muted-foreground hover:text-destructive" disabled={update.isPending} onClick={() => update.mutate(null)}>
                 <Trash2 className="h-3.5 w-3.5" /> Remover

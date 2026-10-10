@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { BellRing } from "lucide-react";
+import { BellRing, Send, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
   getPushSubscriptionState,
@@ -18,6 +20,7 @@ function PushNotificationsPanel() {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState<"local" | "server" | null>(null);
   const [permission, setPermission] = useState<"granted" | "denied" | "default" | "unsupported">("default");
 
   useEffect(() => {
@@ -48,6 +51,32 @@ function PushNotificationsPanel() {
     }
   };
 
+  // 1) shows a notification straight from this device (no server): tells if the phone/computer displays them at all
+  const testHere = async () => {
+    setTesting("local");
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification("Teste neste aparelho 📲", { body: "Se você viu isto, o aparelho mostra notificações.", icon: "/icons/icon-192x192.png" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Este aparelho não conseguiu mostrar a notificação.");
+    } finally {
+      setTesting(null);
+    }
+  };
+  // 2) asks the server to push to all of the person's devices: tells if the whole path works
+  const testPush = async () => {
+    setTesting("server");
+    try {
+      const { error } = await (supabase as any).rpc("send_test_push");
+      if (error) throw error;
+      toast.success("Teste enviado. Em alguns segundos deve chegar nos seus aparelhos.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível enviar o teste.");
+    } finally {
+      setTesting(null);
+    }
+  };
+
   if (permission === "unsupported") {
     return (
       <p className="text-sm text-muted-foreground">
@@ -62,12 +91,29 @@ function PushNotificationsPanel() {
         <div className="min-w-0 pr-4">
           <div className="text-sm font-medium">Ativar neste dispositivo</div>
           <div className="text-xs text-muted-foreground">
-            Tarefa atribuída a você, menções em comentários, e um resumo diário de tarefas vencendo/atrasadas —
-            chegam mesmo com o app fechado.
+            Tarefa atribuída a você, menções em comentários, o resumo diário de tarefas vencendo/atrasadas e o lembrete
+            de posts sem agendar — chegam mesmo com o app fechado.
           </div>
         </div>
         <Switch checked={enabled} disabled={loading || busy} onCheckedChange={handleToggle} />
       </div>
+      {enabled && (
+        <div className="space-y-2 rounded-lg border border-border/60 p-3">
+          <div className="text-sm font-medium">Testar</div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" disabled={testing !== null} onClick={testHere}>
+              <Smartphone className="h-3.5 w-3.5" /> {testing === "local" ? "Mostrando…" : "Testar neste aparelho"}
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" disabled={testing !== null} onClick={testPush}>
+              <Send className="h-3.5 w-3.5" /> {testing === "server" ? "Enviando…" : "Enviar notificação de teste"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            O primeiro mostra um aviso direto no aparelho; se ele não aparecer, o problema é do aparelho (permissão ou modo Não perturbar).
+            O segundo vem do servidor, como os avisos de verdade, e chega em todos os seus aparelhos.
+          </p>
+        </div>
+      )}
       {permission === "denied" && (
         <p className="text-xs text-destructive">
           Notificações foram bloqueadas nas configurações do navegador — permita o site pra poder ativar.

@@ -41,6 +41,10 @@ interface Props {
   onFocusHandled?: () => void;
   // Embedded mode (Clientes tab): the client is chosen outside, so there's no client grid / "Voltar" button.
   fixedClientId?: string;
+  // Client page: outline in red the posts that were never scheduled on Instagram (a week back to a week ahead);
+  // `alertRequest` goes up each time the person asks to be taken to them (scrolls to the first and makes them pulse).
+  alertUnscheduled?: boolean;
+  alertRequest?: number;
 }
 
 // Grid/list/feed cards only ever show a post's cover at a few hundred px — the originals
@@ -127,14 +131,17 @@ const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed; t
   { key: "aprovado", label: "Aprovado", icon: CheckCircle2, tone: "emerald" },
 ];
 
-function DraggablePublication({ publication, images, onClick, isCapa }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean }) {
+type AlertMode = false | "on" | "pulse";
+const alertClass = (mode: AlertMode) => (mode === "pulse" ? "rounded-lg ring-4 ring-rose-500 animate-pulse" : mode === "on" ? "rounded-lg ring-2 ring-rose-500/80" : "");
+
+function DraggablePublication({ publication, images, onClick, isCapa, alert = false }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean; alert?: AlertMode }) {
   const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: publication.id,
     data: { publication },
   });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className={alertClass(alert)} data-unscheduled-alert={alert ? "" : undefined}>
       <PublicationCard
         publication={publication}
         images={images}
@@ -147,7 +154,7 @@ function DraggablePublication({ publication, images, onClick, isCapa }: { public
   );
 }
 
-function ListPublicationCard({ publication: p, idx, images, onClick, isCapa, hasVideo }: { publication: CalendarPublication; idx: number; images: string[]; onClick: () => void; isCapa?: boolean; hasVideo?: boolean }) {
+function ListPublicationCard({ publication: p, idx, images, onClick, isCapa, hasVideo, alert = false }: { publication: CalendarPublication; idx: number; images: string[]; onClick: () => void; isCapa?: boolean; hasVideo?: boolean; alert?: AlertMode }) {
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const Icon = isCapa ? Bookmark : CONTENT_TYPE_ICON[p.content_type];
@@ -169,7 +176,8 @@ function ListPublicationCard({ publication: p, idx, images, onClick, isCapa, has
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
-      className="group grid cursor-pointer overflow-hidden rounded-3xl border border-border/40 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated sm:grid-cols-[240px_1fr]"
+      data-unscheduled-alert={alert ? "" : undefined}
+      className={cn("group grid cursor-pointer overflow-hidden rounded-3xl border border-border/40 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-elevated sm:grid-cols-[240px_1fr]", alert === "pulse" ? "ring-4 ring-rose-500 animate-pulse" : alert === "on" && "ring-2 ring-rose-500/80")}
     >
       <div
         className="relative flex items-center justify-center bg-muted/30 p-3 sm:border-r sm:border-border/30"
@@ -271,7 +279,7 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
   );
 }
 
-export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled, fixedClientId }: Props) {
+export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled, fixedClientId, alertUnscheduled = false, alertRequest = 0 }: Props) {
   const { day: magicDay } = useMagicNumberConfig();
   const [clientId, setClientId] = useState<string | null>(fixedClientId ?? null);
   useEffect(() => {
@@ -448,6 +456,32 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   const publicationsQ = useCalendarPublications(calendar?.id ?? null);
   const publications = publicationsQ.data ?? [];
+
+  // Posts to outline in red: not scheduled, not published, dated from a week back to a week ahead (same rule as the
+  // alert on the client page). `alertRequest` asks to jump to them: scroll to the first and pulse for a moment.
+  const alertIds = useMemo(() => {
+    if (!alertUnscheduled) return new Set<string>();
+    const from = format(addDays(new Date(), -7), "yyyy-MM-dd");
+    const to = format(addDays(new Date(), 7), "yyyy-MM-dd");
+    return new Set(
+      publications
+        .filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && !!p.publish_date && p.publish_date >= from && p.publish_date <= to)
+        .map((p) => p.id),
+    );
+  }, [alertUnscheduled, publications]);
+  const [alertPulse, setAlertPulse] = useState(false);
+  const alertModeFor = (p: CalendarPublication): AlertMode => (alertIds.has(p.id) ? (alertPulse ? "pulse" : "on") : false);
+  useEffect(() => {
+    if (!alertRequest) return;
+    setAlertPulse(true);
+    const scroll = setTimeout(() => {
+      const el = document.querySelector("[data-unscheduled-alert]");
+      if (el) (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      else toast.info("Os posts sem agendar estão em outro ciclo: use as setas do mês para encontrá-los.");
+    }, 150);
+    const stop = setTimeout(() => setAlertPulse(false), 3500);
+    return () => { clearTimeout(scroll); clearTimeout(stop); };
+  }, [alertRequest]);
   // Current cycle's publications plus the cross-cycle "sem data" ones (which may be parked
   // under a different cycle's calendar_id) — media/thumbnail/capa lookups below need both so
   // "Publicações sem data" cards render fully, not just the day grid's. Deduped since a "sem
@@ -1280,7 +1314,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 ) : (
                   unscheduled.map((p) => (
                     <div key={p.id} className="w-28">
-                      <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                      <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
                     </div>
                   ))
                 );
@@ -1346,7 +1380,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                           <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
                             {dayPubs.map((p) => (
                               <div key={p.id} className="w-28">
-                                <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                                <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
                               </div>
                             ))}
                           </div>
@@ -1403,7 +1437,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                             )}
                           </div>
                           {dayPubs.map((p) => (
-                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} />
+                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
                           ))}
                         </DropZone>
                       );
@@ -1430,6 +1464,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                         onClick={() => setSelectedId(p.id)}
                         isCapa={isCapaTask(p.task_id)}
                         hasVideo={mediaFor(p.task_id).some((m) => m.type?.startsWith("video/"))}
+                        alert={alertModeFor(p)}
                       />
                     ));
                   })()}
@@ -1470,7 +1505,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   const isVideoish = p.content_type === "reel";
                   return (
                     // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
-                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
+                    <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} data-unscheduled-alert={alertModeFor(p) ? "" : undefined} className={cn("group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted", alertClass(alertModeFor(p)))}>
                       {thumb ? (
                         <img src={thumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-opacity group-hover:opacity-90" />
                       ) : (
