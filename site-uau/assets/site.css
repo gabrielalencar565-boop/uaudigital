@@ -393,9 +393,21 @@ body.locked{overflow:hidden}
   .vf-letter{font-size:88px}
   .vf-name{padding-bottom:10px}
   .vf-text{flex-basis:100%}
-  .cmp-head{display:none}
-  .cmp-row{grid-template-columns:1fr 1fr}
-  .cmp-label{grid-column:1/-1;padding-bottom:0}
+  /* comparativo no celular: um cartão por tema, UAU em destaque e a agência comum embaixo, menor */
+  .compare{gap:10px}
+  .cmp-row{display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:18px 20px}
+  .cmp-row > *{padding:0;border-radius:0;background:none;border:0}
+  .cmp-label{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .cmp-uau{order:2;display:flex;gap:10px;align-items:flex-start;font-size:16px;line-height:1.4;color:var(--fg)}
+  .cmp-uau::before{content:"✓";flex:none;width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .cmp-other{order:3;display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.4;padding-top:10px;border-top:1px dashed var(--line);text-decoration:none}
+  .cmp-other::before{content:"✕";flex:none;width:22px;height:22px;border-radius:50%;border:1px solid #3A3542;color:var(--dim);font-size:10px;display:flex;align-items:center;justify-content:center}
+  .cmp-head{display:flex;gap:18px;font-size:11px;padding:0 0 6px;letter-spacing:.14em}
+  .cmp-head span{padding:0!important;display:flex;align-items:center;gap:7px}
+  .cmp-head span:first-child{display:none}
+  .cmp-head span:last-child{order:-1}
+  .cmp-head span:last-child::before{content:"✓";width:16px;height:16px;border-radius:50%;background:var(--grad);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center}
+  .cmp-head span:nth-child(2)::before{content:"✕";width:16px;height:16px;border-radius:50%;border:1px solid #3A3542;font-size:8px;display:flex;align-items:center;justify-content:center}
   footer .wrap{grid-template-columns:1fr}
   .split,.values,.brand-row{grid-template-columns:1fr}
   .people{grid-template-columns:repeat(2,1fr)}
@@ -437,7 +449,6 @@ body.locked{overflow:hidden}
   .team-cap{flex-direction:column;gap:4px}
   .video{width:240px}
   .quote{width:280px}
-  .cmp-row{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
   .track{animation:none}
