@@ -52,6 +52,7 @@ if(filters){
 // hero: palavra que troca
 (function(){
   const words=[...document.querySelectorAll('#rotator span')];
+  const steps=[...document.querySelectorAll('#vlesteps b')];
   if(reduce||!words.length) return;
   let i=0;
   setInterval(()=>{
@@ -60,6 +61,7 @@ if(filters){
     nxt.className='in'; void nxt.offsetWidth; nxt.className='';
     setTimeout(()=>{ if(cur.className==='out') cur.className='in'; },750);
     i=(i+1)%words.length;
+    steps.forEach((b,k)=>b.classList.toggle('on',k===i));
   },2400);
 })();
 
