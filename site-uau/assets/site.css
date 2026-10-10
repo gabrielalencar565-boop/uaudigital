@@ -136,12 +136,31 @@ footer .logo img{height:44px}
 .band span{font-size:15px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;padding-inline:32px;display:flex;align-items:center;gap:32px;white-space:nowrap}
 .band span::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--lilac)}
 
-/* NÚMEROS */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.stat{background:#fff;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:8px;transition:transform .3s}
-.stat:hover{transform:translateY(-6px)}
-.stat strong{font-size:clamp(40px,5vw,64px);font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
-.stat .bar{height:4px;border-radius:4px;background:var(--grad);width:40px}
+/* NÚMEROS: mosaico com tamanhos diferentes */
+.nums-head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:40px}
+.nums-head > p{max-width:340px;font-size:16px}
+.bento{display:grid;grid-template-columns:1.35fr 1fr 1fr;grid-template-rows:230px 230px;gap:16px}
+.tile{border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.tile:hover{transform:translateY(-6px)}
+.tile strong{font-size:clamp(44px,5vw,72px);font-weight:800;letter-spacing:-.045em;line-height:.95;font-variant-numeric:tabular-nums}
+.tile p{font-size:15px;line-height:1.4}
+.t-views{grid-row:span 2;background:#141217;color:#fff;justify-content:flex-end}
+.t-views::before{content:"";position:absolute;width:520px;height:520px;right:-180px;top:-200px;border-radius:50%;background:radial-gradient(circle,rgba(201,48,122,.55),rgba(123,47,224,.35) 40%,transparent 68%)}
+.t-views > *{position:relative}
+.t-views .tile-big strong{font-size:clamp(84px,10vw,150px);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.06em}
+.t-views p{font-size:18px;max-width:300px;color:#D8D3E0}
+.tile-tag{position:absolute;top:28px;left:28px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#B9B4C4;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 12px}
+.t-clients{background:#fff}
+.seg-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.seg-chips span{font-size:12px;font-weight:500;padding:5px 10px;border-radius:999px;background:#F1EEF6;color:#5A5563}
+.t-years{background:var(--grad);color:#fff;justify-content:flex-end}
+.t-years p{color:rgba(255,255,255,.9)}
+.t-team{grid-column:2 / span 2;background-size:cover;background-position:center 35%;justify-content:flex-end;color:#fff}
+.t-team::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,14,17,.85),rgba(15,14,17,.2) 70%)}
+.team-cap{position:relative;display:flex;align-items:baseline;gap:12px;max-width:420px}
+.team-cap strong{font-size:clamp(40px,4.4vw,60px)}
+.team-cap span{font-size:15px;line-height:1.4;color:#E6E1EC}
+.t-team .fill{color:#F2A04A}
 
 /* CLIENTES */
 .chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:40px}
@@ -331,7 +350,10 @@ body.locked{overflow:hidden}
 @media (max-width:900px){
   .menu,.nav-cta{display:none}
   .burger{display:block}
-  .stats{grid-template-columns:repeat(2,1fr)}
+  .bento{grid-template-columns:1fr 1fr;grid-template-rows:auto}
+  .t-views{grid-column:1 / -1;grid-row:auto;min-height:300px}
+  .t-team{grid-column:1 / -1;min-height:240px}
+  .tile{min-height:200px}
   .vle,.group,.team{grid-template-columns:1fr}
   .vle-card{min-height:auto}
   .cmp-head{display:none}
@@ -363,8 +385,12 @@ body.locked{overflow:hidden}
   .port .img{width:180px;height:230px}.port .img.w{width:300px}
 }
 @media (max-width:520px){
-  .stats{grid-template-columns:1fr 1fr;gap:12px}
-  .stat{padding:20px}
+  .bento{gap:12px}
+  .tile{padding:22px;border-radius:22px;min-height:180px}
+  .t-views{min-height:290px}
+  .tile-tag{top:22px;left:22px}
+  .seg-chips span{font-size:11px;padding:4px 8px}
+  .team-cap{flex-direction:column;gap:4px}
   .video{width:240px}
   .quote{width:280px}
   .cmp-row{grid-template-columns:1fr}
