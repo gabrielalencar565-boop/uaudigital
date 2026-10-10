@@ -105,14 +105,16 @@ footer .logo img{height:44px}
 .hero{min-height:100svh;display:flex;align-items:center}
 .hero .wrap.hx{display:flex;flex-direction:column;align-items:stretch;gap:40px;width:100%}
 .grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse at 50% 40%,#000 20%,transparent 75%)}
-.hx-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.hx-top{display:flex;justify-content:center;text-align:center;align-items:center;gap:16px;flex-wrap:wrap}
+.hx-top .hero-label::before{display:none}
+.hx-top .hero-label{justify-content:center}
 .vle-steps{display:flex;align-items:center;gap:6px}
 .vle-steps small{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-right:6px}
 .vle-steps b{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:var(--bg3);color:var(--dim);border:1px solid var(--line);transition:background .5s,color .5s,transform .5s,border-color .5s}
 .vle-steps b.on{background:var(--grad);color:#fff;border-color:transparent;transform:translateY(-3px)}
 .hero .hx-title{font-size:clamp(56px,11.5vw,176px);font-weight:300;line-height:.92;letter-spacing:-.055em;display:flex;flex-direction:column}
-.hx-line{display:flex;align-items:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
-.hx-line2{justify-content:flex-end;gap:.3em}
+.hx-line{display:flex;align-items:center;justify-content:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
+.hx-line2{gap:.3em}
 .hx-title .rotator span{font-weight:800}
 .pill{display:inline-block;height:.74em;width:1.9em;border-radius:999px;overflow:hidden;flex:none;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 50px rgba(123,47,224,.35);animation:pill-open 1.2s .2s cubic-bezier(.7,0,.2,1) both}
 .pill img{width:115%;height:115%;margin:-7.5%;object-fit:cover;object-position:center 45%;display:block;will-change:transform}
@@ -123,8 +125,11 @@ footer .logo img{height:44px}
 .spin text{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;fill:var(--muted)}
 .spin-arr{font-size:.22em;font-weight:600;letter-spacing:0}
 @keyframes rot{to{transform:rotate(1turn)}}
-.hx-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:40px;flex-wrap:wrap;padding-top:32px;border-top:1px solid var(--line)}
-.hx-copy{display:flex;flex-direction:column;gap:24px;max-width:520px}
+.hx-bottom{display:flex;flex-direction:column;align-items:center;text-align:center;gap:40px;padding-top:32px;border-top:1px solid var(--line)}
+.hx-copy{display:flex;flex-direction:column;align-items:center;gap:24px;max-width:600px}
+.hx .cta-row{justify-content:center}
+.hx .hero-meta{justify-content:center;gap:56px}
+.hx .hero-meta div{align-items:center}
 .hx-copy p{font-size:18px;line-height:1.6}
 .hx .hero-meta{border:0;padding:0}
 
@@ -353,9 +358,8 @@ body.locked{overflow:hidden}
   .hero{min-height:auto}
   .hero .hx-title{font-size:clamp(52px,17vw,96px)}
   .hx-line{flex-wrap:wrap}
-  .hx-line2{justify-content:flex-start}
   .spin{display:none}
-  .hx-bottom{flex-direction:column;align-items:stretch}
+  .hx .hero-meta{gap:24px}
   .hero-meta{gap:24px}
   .track .img{width:200px;height:150px}
   .port .img{width:180px;height:230px}.port .img.w{width:300px}
