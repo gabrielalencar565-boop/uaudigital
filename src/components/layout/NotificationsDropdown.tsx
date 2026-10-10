@@ -1,6 +1,8 @@
 import { useMemo, useCallback, useState } from "react";
 import { normalizeAvatarUrl } from "@/lib/avatar-url";
-import { Bell, CheckCircle2, MessageSquareWarning, Trash2 } from "lucide-react";
+import { Bell, CalendarClock, CheckCircle2, MessageSquareWarning, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useUnscheduledPosts } from "@/features/clientes/hooks/use-unscheduled-posts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays } from "date-fns";
 import { useRole } from "@/hooks/use-role";
@@ -27,13 +29,14 @@ function timeAgo(timestamp: string): string {
 type NotificationItem = {
   id: string;
   key: string; // unique key for read tracking
-  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested";
+  type: "mention" | "assigned" | "overdue" | "upcoming" | "appeal" | "problem_report" | "calendar_approved" | "calendar_change_requested" | "unscheduled_posts";
   title: string;
   kicker?: string; // small label above the title (client responses)
   subtitle: string;
   timestamp: string;
   taskId?: string;
   appealUserId?: string;
+  clientId?: string;
 };
 
 interface NotificationsDropdownProps {
@@ -46,6 +49,22 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
   const queryClient = useQueryClient();
   const { isAdmin, isDeveloper } = useRole(user?.id);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Posts in the Cronograma that were never scheduled on Instagram, for the person who schedules that client (or the
+  // admins when nobody is set). It reappears unread every 12 hours, like the push reminder, until it is scheduled.
+  // Admins also get one summary of every client with posts waiting, even where someone else is the responsible
+  const allUnscheduledQ = useUnscheduledPosts();
+  const unscheduledQ = useQuery({
+    queryKey: ["notifications_unscheduled_posts", user?.id],
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc("my_unscheduled_post_alerts");
+      return (data ?? []) as { client_id: string; client_name: string; total: number; overdue: number; due_today: number; awaiting_approval: number; first_date: string }[];
+    },
+  });
 
   const appealsQ = useQuery({
     queryKey: ["notifications_appeals_admin", user?.id],
@@ -346,10 +365,49 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       }
     });
 
+    const slotStart = new Date(today);
+    slotStart.setHours(today.getHours() < 12 ? 0 : 12, 0, 0, 0);
+    const slotKey = `${slotStart.getFullYear()}-${slotStart.getMonth() + 1}-${slotStart.getDate()}-${slotStart.getHours() < 12 ? "am" : "pm"}`;
+    (unscheduledQ.data ?? []).forEach((u) => {
+      const parts: string[] = [];
+      if (u.overdue > 0) parts.push(`${u.overdue} ${u.overdue > 1 ? "atrasados" : "atrasado"}`);
+      if (u.due_today > 0) parts.push(`${u.due_today} para hoje`);
+      if (u.awaiting_approval > 0) parts.push(`${u.awaiting_approval} aguardando aprovação`);
+      items.push({
+        id: `unsched-${u.client_id}-${slotKey}`,
+        key: `unsched-${u.client_id}-${slotKey}`,
+        type: "unscheduled_posts",
+        kicker: "Sem agendar no Instagram",
+        title: `${u.client_name}: ${u.total} ${u.total > 1 ? "posts" : "post"} sem agendar`,
+        subtitle: parts.join(" · ") || "Abra o Cronograma e agende",
+        timestamp: slotStart.toISOString(),
+        clientId: u.client_id,
+      });
+    });
+
+    if (isAdmin) {
+      const mine = new Set((unscheduledQ.data ?? []).map((u) => u.client_id));
+      const others = [...(allUnscheduledQ.data?.values() ?? [])].filter((u) => !mine.has(u.client_id));
+      if (others.length > 0) {
+        const total = others.reduce((n, u) => n + u.total, 0);
+        const overdue = others.reduce((n, u) => n + u.overdue, 0);
+        items.push({
+          id: `unsched-admin-${slotKey}`,
+          key: `unsched-admin-${slotKey}`,
+          type: "unscheduled_posts",
+          kicker: "Sem agendar no Instagram",
+          title: `${others.length} ${others.length > 1 ? "clientes" : "cliente"} com ${total} ${total > 1 ? "posts" : "post"} sem agendar`,
+          subtitle: overdue > 0 ? `${overdue} ${overdue > 1 ? "atrasados" : "atrasado"} · toque para ver quais clientes` : "Toque para ver quais clientes",
+          timestamp: slotStart.toISOString(),
+          clientId: "__all__",
+        });
+      }
+    }
+
     // Não lidas primeiro (como grupo), lidas ficam atrás -- dentro de cada grupo, mais
     // recente primeiro.
     // What a client answered comes first among the unread: it is what the team is waiting for.
-    const isClientReply = (n: NotificationItem) => n.type === "calendar_approved" || n.type === "calendar_change_requested";
+    const isClientReply = (n: NotificationItem) => n.type === "calendar_approved" || n.type === "calendar_change_requested" || n.type === "unscheduled_posts";
     items.sort((a, b) => {
       const aRead = readKeys.has(a.key);
       const bRead = readKeys.has(b.key);
@@ -358,7 +416,7 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
     return items.filter(n => !dismissedKeys.has(n.key)).slice(0, 30);
-  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, membersMap, today, formatMentionContent, dismissedKeys, readKeys]);
+  }, [mentionsQ.data, assignedQ.data, appealsQ.data, appealPmTasksQ.data, isAdmin, isDeveloper, problemReportsQ.data, calendarFeedbackQ.data, unscheduledQ.data, allUnscheduledQ.data, membersMap, today, formatMentionContent, dismissedKeys, readKeys]);
 
   const unreadCount = notifications.filter(n => !readKeys.has(n.key)).length;
 
@@ -372,6 +430,11 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
       window.dispatchEvent(new CustomEvent("open-appeal-review", {
         detail: { pmTaskId: n.taskId, userId: n.appealUserId },
       }));
+      return;
+    }
+    if (n.type === "unscheduled_posts" && n.clientId) {
+      setPopoverOpen(false);
+      navigate(n.clientId === "__all__" ? "/clientes" : `/clientes/${n.clientId}`);
       return;
     }
     if (n.type === "problem_report") {
@@ -443,10 +506,11 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
               {notifications.map(n => {
                 const isUnread = !readKeys.has(n.key);
                 const approved = n.type === "calendar_approved";
-                const clientReply = approved || n.type === "calendar_change_requested";
+                const unsched = n.type === "unscheduled_posts";
+                const clientReply = approved || unsched || n.type === "calendar_change_requested";
                 if (clientReply) {
                   // Client answers get their own look (colored badge and edge) and keep it after being read
-                  const Icon = approved ? CheckCircle2 : MessageSquareWarning;
+                  const Icon = approved ? CheckCircle2 : unsched ? CalendarClock : MessageSquareWarning;
                   return (
                     <button
                       key={n.id}
@@ -454,24 +518,24 @@ export function NotificationsDropdown({ onOpenTask }: NotificationsDropdownProps
                       onClick={() => handleClickNotification(n)}
                       className={cn(
                         "flex w-full cursor-pointer items-start gap-3 border-l-[3px] px-4 py-3 text-left transition hover:bg-accent/30",
-                        approved ? "border-l-emerald-500" : "border-l-amber-500",
-                        isUnread ? (approved ? "bg-emerald-500/10" : "bg-amber-500/10") : "bg-transparent",
+                        approved ? "border-l-emerald-500" : unsched ? "border-l-rose-500" : "border-l-amber-500",
+                        isUnread ? (approved ? "bg-emerald-500/10" : unsched ? "bg-rose-500/10" : "bg-amber-500/10") : "bg-transparent",
                       )}
                     >
                       <span className={cn(
                         "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                        approved ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500",
+                        approved ? "bg-emerald-500/15 text-emerald-500" : unsched ? "bg-rose-500/15 text-rose-500" : "bg-amber-500/15 text-amber-500",
                         !isUnread && "opacity-70",
                       )}>
                         <Icon className="h-[18px] w-[18px]" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", approved ? "text-emerald-500" : "text-amber-500", !isUnread && "opacity-70")}>{n.kicker}</p>
+                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", approved ? "text-emerald-500" : unsched ? "text-rose-500" : "text-amber-500", !isUnread && "opacity-70")}>{n.kicker}</p>
                         <p className={cn("mt-0.5 text-[13px] font-semibold leading-snug", isUnread ? "text-foreground" : "text-foreground/70")}>{n.title}</p>
                         {n.subtitle && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{n.subtitle}</p>}
                         <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo(n.timestamp)}</p>
                       </div>
-                      {isUnread && <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", approved ? "bg-emerald-500" : "bg-amber-500")} />}
+                      {isUnread && <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", approved ? "bg-emerald-500" : unsched ? "bg-rose-500" : "bg-amber-500")} />}
                     </button>
                   );
                 }

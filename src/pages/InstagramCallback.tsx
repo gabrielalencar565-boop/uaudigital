@@ -52,6 +52,20 @@ function successMessage(data: { facebook_page_name?: string | null; instagram_us
   return data.instagram_username ? `Conectado à conta @${data.instagram_username}.` : "Conectado.";
 }
 
+// Right after connecting, the client's photo follows the Instagram profile picture (a photo someone uploaded by hand is
+// kept). Best effort: it never changes the outcome of the connection. The connection answer carries the client's name,
+// so the client is found by it — and skipped if the name is not unique.
+async function syncPhotoAfterConnect(clientName: string | null | undefined) {
+  if (!clientName) return;
+  try {
+    const { data } = await supabase.from("clients").select("id").eq("name", clientName).limit(2);
+    if (!data || data.length !== 1) return;
+    await supabase.functions.invoke("instagram-profile-photo", { body: { client_id: data[0].id, force: false } });
+  } catch {
+    /* the "Usar foto do Instagram" button is there for a retry */
+  }
+}
+
 async function exchangeCode(code: string, state: string): Promise<Outcome> {
   // The Instagram Login flow's state is prefixed ("ig:...") so this page can tell the two
   // OAuth flows apart from the redirect alone, before any other context is available.
@@ -68,6 +82,7 @@ async function exchangeCode(code: string, state: string): Promise<Outcome> {
       options: data.options as PageOption[],
     };
   }
+  await syncPhotoAfterConnect(data.client_name);
   return { status: "success", message: successMessage(data) };
 }
 
@@ -109,6 +124,7 @@ export default function InstagramCallback() {
       setOutcome({ status: "error", message: await extractError(data, error) });
       return;
     }
+    await syncPhotoAfterConnect(data.client_name);
     setOutcome({ status: "success", message: successMessage(data) });
   }
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BarChart3, CalendarDays, ChevronLeft, FileText, Instagram, Settings } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarDays, ChevronLeft, FileText, Instagram, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { describeUnscheduled, useUnscheduledPosts } from "./hooks/use-unscheduled-posts";
 import { useClientsIncludingEnded } from "@/features/data/queries";
 import { useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
 import { CalendarioPublicacaoPanel, toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
@@ -44,6 +45,8 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
 
   const clientsQ = useClientsIncludingEnded();
   const client = (clientsQ.data ?? []).find((c) => c.id === clientId) ?? null;
+  const unscheduled = useUnscheduledPosts().data?.get(clientId) ?? null;
+  const [alertRequest, setAlertRequest] = useState(0);
   const connectionsQ = useInstagramConnections();
   const username = (connectionsQ.data ?? []).find((c) => c.client_id === clientId && c.status === "active")?.instagram_username ?? null;
 
@@ -115,6 +118,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
                     >
                       <s.icon className="h-4 w-4" />
                       {s.label}
+                      {s.key === "cronograma" && unscheduled && <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500 ring-2 ring-white/40" aria-label="Posts sem agendar" />}
                     </button>
                   );
                 })}
@@ -130,9 +134,26 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
         </p>
       )}
 
+      {unscheduled && (
+        <button
+          type="button"
+          onClick={() => { setSection("cronograma"); setAlertRequest((n) => n + 1); }}
+          className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-left transition-colors hover:bg-rose-500/15"
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-rose-500/20 text-rose-400"><AlertTriangle className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1 text-sm">
+            <b className="font-semibold">{unscheduled.total} {unscheduled.total > 1 ? "posts" : "post"} sem agendar no Instagram.</b>{" "}
+            <span className="text-muted-foreground">{describeUnscheduled(unscheduled)}</span>{" "}
+            <span className="text-rose-400/90">Clique para ver onde estão.</span>
+          </span>
+        </button>
+      )}
+
       <main className="min-w-0">
         {section === "cronograma" && <CalendarioPublicacaoPanel
             fixedClientId={clientId}
+            alertUnscheduled={!!unscheduled}
+            alertRequest={alertRequest}
             onOpenTask={openTask}
             focusRequest={focusRequest}
             onFocusHandled={() => { setFocusRequest(null); setPendingCalendarioFocus(null); }}

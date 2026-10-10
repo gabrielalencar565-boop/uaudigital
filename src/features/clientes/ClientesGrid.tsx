@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { ArrowUpRight, ChevronDown, Instagram, Search } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ChevronDown, Instagram, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { describeUnscheduled, useUnscheduledPosts } from "./hooks/use-unscheduled-posts";
 import { brandGradientCss } from "@/lib/brand-gradient";
 import { useClientsIncludingEnded, type ClientRow } from "@/features/data/queries";
 import { useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
@@ -11,6 +13,9 @@ export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => voi
   const clientsQ = useClientsIncludingEnded();
   const connectionsQ = useInstagramConnections();
   const [search, setSearch] = useState("");
+  const unscheduledQ = useUnscheduledPosts();
+  const unscheduled = unscheduledQ.data ?? new Map();
+  const [onlyPending, setOnlyPending] = useState(false);
   // always starts minimized; a search opens it so a match among the ended clients is never hidden
   const [endedOpen, setEndedOpen] = useState(false);
 
@@ -23,9 +28,10 @@ export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => voi
     const term = search.trim().toLowerCase();
     const matching = [...(clientsQ.data ?? [])]
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-      .filter((c) => !term || c.name.toLowerCase().includes(term));
+      .filter((c) => !term || c.name.toLowerCase().includes(term))
+      .filter((c) => !onlyPending || unscheduled.has(c.id));
     return { clients: matching.filter((c) => c.is_active), ended: matching.filter((c) => !c.is_active) };
-  }, [clientsQ.data, search]);
+  }, [clientsQ.data, search, onlyPending, unscheduled]);
 
   const showEnded = endedOpen || search.trim().length > 0;
 
@@ -55,6 +61,21 @@ export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => voi
                   ) : (
                     <span className="truncate text-xs text-muted-foreground/70">{c.plan_name ?? "Instagram não conectado"}</span>
                   )}
+                  {unscheduled.get(c.id) && (() => {
+                    const u = unscheduled.get(c.id)!;
+                    return (
+                      <span
+                        title={describeUnscheduled(u)}
+                        className={cn(
+                          "mt-1.5 flex w-fit max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                          u.overdue > 0 ? "bg-rose-500/15 text-rose-400" : "bg-amber-500/15 text-amber-500",
+                        )}
+                      >
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{u.total} sem agendar</span>
+                      </span>
+                    );
+                  })()}
                   {!c.is_active && (
                     <span className="mt-1 w-fit rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Encerrado{c.ended_at ? ` em ${new Date(c.ended_at.slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" })}` : ""}
@@ -77,6 +98,24 @@ export function ClientesGrid({ onSelect }: { onSelect: (clientId: string) => voi
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente" className="h-10 rounded-full pl-10" />
         </div>
       </div>
+
+      {unscheduled.size > 0 && (
+        <button
+          type="button"
+          onClick={() => setOnlyPending((v) => !v)}
+          aria-pressed={onlyPending}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
+            onlyPending ? "border-rose-500/50 bg-rose-500/15" : "border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/15",
+          )}
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-rose-500/20 text-rose-400"><AlertTriangle className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1 text-sm">
+            <b className="font-semibold">{unscheduled.size} {unscheduled.size > 1 ? "clientes" : "cliente"} com posts sem agendar no Instagram.</b>{" "}
+            <span className="text-muted-foreground">{onlyPending ? "Mostrando só esses. Clique para ver todos." : "Clique para ver só esses."}</span>
+          </span>
+        </button>
+      )}
 
       {clients.length === 0 && ended.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
