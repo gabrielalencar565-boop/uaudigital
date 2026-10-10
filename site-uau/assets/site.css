@@ -291,7 +291,6 @@ footer li a:hover{color:var(--lilac)}
 
 .wa{position:fixed;right:20px;bottom:20px;z-index:25;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:26px;transition:transform .2s}
 .wa:hover{transform:scale(1.08)}
-.sticky{display:none}
 
 /* reveal: parte de estado visível, só desliza */
 .reveal{transition:transform .8s cubic-bezier(.2,.7,.2,1)}
@@ -376,9 +375,6 @@ body.locked{overflow:hidden}
   .page-hero{padding-block:128px 48px}
   .brand-row .art{min-height:220px}
   .brand-row .txt{padding:28px}
-  .sticky{display:block;position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:rgba(15,14,17,.95);border-top:1px solid var(--line);z-index:24}
-  .sticky .btn{width:100%}
-  .wa{bottom:90px}
   section{padding-block:72px}
   .hero{padding-block:108px 48px}
   .hx-mark{height:34px;margin-bottom:4px}
