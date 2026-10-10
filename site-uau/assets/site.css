@@ -115,7 +115,7 @@ footer .logo img{height:44px}
 .hx-line{display:flex;align-items:center;justify-content:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
 .hx-line2{gap:.22em}
 .hx-title .rotator span{font-weight:800;justify-self:center}
-.pill{display:inline-block;height:.74em;width:1.9em;border-radius:999px;overflow:hidden;flex:none;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 50px rgba(123,47,224,.35);animation:pill-open 1.2s .2s cubic-bezier(.7,0,.2,1) both}
+.pill{display:inline-block;height:.74em;width:1.9em;border-radius:999px;overflow:hidden;flex:none;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 50px rgba(0,0,0,.45);animation:pill-open 1.2s .2s cubic-bezier(.7,0,.2,1) both}
 .pill img{width:115%;height:115%;margin:-7.5%;object-fit:cover;object-position:center 21%;display:block;will-change:transform}
 @keyframes pill-open{from{width:0;opacity:0}}
 .hx-bottom{display:flex;flex-direction:column;align-items:center;text-align:center;gap:40px;padding-top:32px;border-top:1px solid var(--line)}
@@ -134,13 +134,11 @@ footer .logo img{height:44px}
 .hx-stats li+li{border-left:1px solid var(--line)}
 .hx-stats b{font-size:17px;font-weight:700;color:var(--fg);margin-right:4px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 
-/* fundo do hero: fotos dos bastidores passando devagar, bem escurecidas */
-.hero-photos{position:absolute;inset:-20% -10%;display:flex;flex-direction:column;justify-content:center;gap:18px;transform:rotate(-7deg);opacity:.42}
-.hero-photos .track{gap:18px;animation-duration:90s}
-.hero-photos .track.rev{animation-duration:110s}
-.hero-photos .img{width:300px;height:220px;flex:none;border-radius:20px;filter:saturate(.8)}
-.hero-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 48%,rgba(15,14,17,.92) 30%,rgba(15,14,17,.55) 70%,rgba(15,14,17,.35)),linear-gradient(180deg,rgba(15,14,17,.6),transparent 25%,transparent 75%,var(--bg))}
-.hero-bg .orb{z-index:1}
+/* fundo do hero: uma foto por vez, trocando em loop com um zoom lento */
+.hero-slides{position:absolute;inset:0}
+.hero-slides .slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.04);transition:opacity 1.6s ease,transform 7s linear}
+.hero-slides .slide.on{opacity:1;transform:scale(1.12)}
+.hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,17,.78),rgba(15,14,17,.62) 45%,rgba(15,14,17,.85) 85%,var(--bg))}
 
 /* BANDA DE SERVIÇOS */
 .band{border-block:1px solid var(--line);color:var(--muted);padding-block:22px;overflow:hidden}
@@ -371,7 +369,6 @@ body.locked{overflow:hidden}
   .hx-stats{display:grid;grid-template-columns:repeat(3,1fr);width:100%;border-radius:20px;padding:12px 0}
   .hx-stats li{padding:2px 6px;font-size:11px;white-space:normal;text-align:center;line-height:1.3}
   .hx-stats b{display:block;font-size:17px;margin:0 0 2px}
-  .hero-photos .img{width:200px;height:150px}
   .pill{width:1.35em}
   .hero-meta{gap:24px}
   .track .img{width:200px;height:150px}
@@ -389,5 +386,6 @@ body.locked{overflow:hidden}
   .eyebrow::before{animation:none}
   .reveal,.reveal.pre{transform:none;transition:none}
   .orb,.solo img,.pill{animation:none}
+  .hero-slides .slide{transition:none;transform:none}
   html{scroll-behavior:auto}
 }

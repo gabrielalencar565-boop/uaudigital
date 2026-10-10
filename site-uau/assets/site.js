@@ -4,10 +4,6 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // preenche as faixas em loop (conteúdo duplicado para o loop infinito)
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
-const heroTile=n=>`<div class="img photo" style="background-image:url(img/${n}.jpg)"></div>`;
-loop('hp1', ['bastidores','gravacao-1','equipe','camera','gravacao-2'].map(heroTile).join(''));
-loop('hp2', ['camera','fundadores','camiseta','bastidores','socios'].map(heroTile).join(''));
-loop('hp3', ['gravacao-2','socios','bastidores','equipe','gravacao-1'].map(heroTile).join(''));
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
 loop('logos', Array.from({length:10},(_,i)=>`<div class="logo-tile">LOGO ${String(i+1).padStart(2,'0')}</div>`).join(''));
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
@@ -52,6 +48,16 @@ if(filters){
     document.querySelectorAll('#logo-grid [data-seg]').forEach(t=>{ t.hidden = seg!=='todos' && t.dataset.seg!==seg; });
   });
 }
+
+// hero: fotos dos bastidores trocando no fundo, uma por vez
+(function(){
+  const box=document.getElementById('slides'); if(!box) return;
+  const imgs=['bastidores','gravacao-1','camera','gravacao-2','equipe','camiseta'];
+  box.innerHTML=imgs.map((n,k)=>`<div class="slide${k?'':' on'}" style="background-image:url(img/${n}.jpg)"></div>`).join('');
+  if(reduce) return;
+  const slides=[...box.children]; let k=0;
+  setInterval(()=>{ slides[k].classList.remove('on'); k=(k+1)%slides.length; slides[k].classList.add('on'); },5000);
+})();
 
 // hero: palavra que troca
 (function(){
