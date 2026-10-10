@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { autoAssignStagesForClient } from "@/lib/role-stage-mapping";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format, isValid } from "date-fns";
@@ -47,6 +46,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, useMagicNumberConfig, type ClientRow } from "@/features/data/queries";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
+import { SquadCard } from "@/features/clientes/components/ClienteConfiguracoes";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
 
 const SERVICE_OPTIONS = [
@@ -273,7 +273,6 @@ export function AdminClientesPanel({
   const endScheduled = endScheduledQ.data ?? [];
   const fmtDay = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   const [showInactive, setShowInactive] = useState(false);
-  const [editSquadIds, setEditSquadIds] = useState<string[]>([]);
 
 
   const squads = squadsQ.data ?? [];
@@ -533,30 +532,6 @@ export function AdminClientesPanel({
 
 
 
-      // Sync squads
-      const currentSquadIds = clientSquadMap.get(editClient.id) ?? [];
-      const toRemove = currentSquadIds.filter((id) => !editSquadIds.includes(id));
-      const toAdd = editSquadIds.filter((id) => !currentSquadIds.includes(id));
-
-      for (const squadId of toRemove) {
-        await supabase
-          .from("client_squads" as any)
-          .delete()
-          .eq("client_id", editClient.id)
-          .eq("squad_id", squadId);
-      }
-      if (toAdd.length > 0) {
-        const rows = toAdd.map((squadId) => ({ client_id: editClient.id, squad_id: squadId }));
-        await supabase.from("client_squads" as any).insert(rows as any);
-      }
-
-      // Auto-generate stage assignees from squad members
-      try {
-        await autoAssignStagesForClient(supabase, editClient.id, editSquadIds);
-      } catch (assigneeErr) {
-        console.warn("Auto-assign failed (non-blocking):", assigneeErr);
-      }
-
       clientsQ.refetch();
       qc.invalidateQueries({ queryKey: ["client_squads"] });
       qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
@@ -611,7 +586,6 @@ export function AdminClientesPanel({
       ended_at: client.ended_at ? client.ended_at.slice(0, 10) : "",
       end_reason: (client as any).end_reason ?? "",
     });
-    setEditSquadIds(clientSquadMap.get(client.id) ?? []);
     onClientDialogChange?.(client.id);
   };
 
@@ -789,8 +763,6 @@ export function AdminClientesPanel({
         title="Novo Cliente"
         form={createForm}
         onSubmit={handleCreate}
-        squads={squads}
-        teamMembers={teamMembers}
         submitting={createClient.isPending}
         submitLabel="Criar e sincronizar"
       />
@@ -806,10 +778,6 @@ export function AdminClientesPanel({
         title="Editar Cliente"
         form={editForm}
         onSubmit={handleEdit}
-        squads={squads}
-        teamMembers={teamMembers}
-        squadIds={editSquadIds}
-        setSquadIds={setEditSquadIds}
         contractMonthsFor={editClient}
         submitLabel="Salvar"
       />
@@ -975,10 +943,6 @@ type DialogProps = {
   title: string;
   form: ReturnType<typeof useForm<ClientFormValues>>;
   onSubmit: (values: ClientFormValues) => void | Promise<void>;
-  squads: any[];
-  teamMembers: any[];
-  squadIds?: string[];
-  setSquadIds?: (ids: string[]) => void;
   contractMonthsFor?: ClientRow | null;
   submitting?: boolean;
   submitLabel: string;
@@ -990,10 +954,6 @@ function ClientFormDialog({
   title,
   form,
   onSubmit,
-  squads,
-  teamMembers,
-  squadIds,
-  setSquadIds,
   contractMonthsFor,
   submitting,
   submitLabel,
@@ -1246,33 +1206,7 @@ function ClientFormDialog({
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Operação</h3>
 
-                {squads.length > 0 && setSquadIds && squadIds !== undefined && (
-                  <div className="space-y-2">
-                    <Label>Squads Responsáveis</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {squads.map((squad: any) => (
-                        <label
-                          key={squad.id}
-                          className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
-                        >
-                          <Checkbox
-                            checked={squadIds.includes(squad.id)}
-                            onCheckedChange={(checked) => {
-                              setSquadIds(
-                                checked ? [...squadIds, squad.id] : squadIds.filter((id) => id !== squad.id)
-                              );
-                            }}
-                          />
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: squad.color || "hsl(var(--sidebar))" }}
-                          />
-                          <span className="text-sm">{squad.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {contractMonthsFor && <SquadCard clientId={contractMonthsFor.id} />}
 
                 <div className="space-y-2">
                   <Label>Serviços Contratados</Label>

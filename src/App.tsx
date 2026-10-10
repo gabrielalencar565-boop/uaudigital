@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import CronogramaPublic from "./pages/CronogramaPublic";
 import AprovacaoPublic from "./pages/AprovacaoPublic";
 import RelatorioPublic from "./pages/RelatorioPublic";
+import AgendarPublic from "./pages/AgendarPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import Onboarding from "./pages/Onboarding";
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/avaliacao/:slug" element={<HealthScorePublic />} />
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
         <Route path="/relatorio/:token" element={<RelatorioPublic />} />
+        <Route path="/agendar/:token" element={<AgendarPublic />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />
         <Route path="/exclusao-de-dados" element={<DataDeletion />} />
         <Route
