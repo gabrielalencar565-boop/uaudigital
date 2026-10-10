@@ -91,3 +91,15 @@ if(!reduce && 'IntersectionObserver' in window){
   }),{threshold:.6});
   document.querySelectorAll('[data-count]').forEach(el=>co.observe(el));
 }
+
+// mosaico de números: os blocos entram em sequência quando a seção aparece
+const bento=document.querySelector('.bento');
+if(bento && !reduce && 'IntersectionObserver' in window && bento.getBoundingClientRect().top>innerHeight){
+  const tiles=[...bento.children];
+  tiles.forEach(t=>t.classList.add('pre'));
+  const bo=new IntersectionObserver(es=>{ if(!es[0].isIntersecting) return; bo.disconnect();
+    tiles.forEach((t,k)=>{ t.classList.add('in'); t.style.transitionDelay=(k*.12)+'s'; requestAnimationFrame(()=>t.classList.remove('pre'));
+      setTimeout(()=>{ t.style.transitionDelay=''; },1200+k*120); });
+  },{threshold:.2});
+  bo.observe(bento);
+}

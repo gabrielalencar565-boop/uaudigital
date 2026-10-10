@@ -145,15 +145,25 @@ footer .logo img{height:44px}
 .tile strong{font-size:clamp(44px,5vw,72px);font-weight:800;letter-spacing:-.045em;line-height:.95;font-variant-numeric:tabular-nums}
 .tile p{font-size:15px;line-height:1.4}
 .t-views{grid-row:span 2;background:#141217;color:#fff;justify-content:flex-end}
-.t-views::before{content:"";position:absolute;width:520px;height:520px;right:-180px;top:-200px;border-radius:50%;background:radial-gradient(circle,rgba(201,48,122,.55),rgba(123,47,224,.35) 40%,transparent 68%)}
-.t-views > *{position:relative}
-.t-views .tile-big strong{font-size:clamp(84px,10vw,150px);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.06em}
+.t-views::before,.t-views::after{content:"";position:absolute;border-radius:50%;pointer-events:none;filter:blur(10px)}
+.t-views::before{width:520px;height:520px;right:-180px;top:-200px;background:radial-gradient(circle,rgba(201,48,122,.6),rgba(123,47,224,.4) 40%,transparent 68%);animation:orbit-a 14s ease-in-out infinite alternate}
+.t-views::after{width:380px;height:380px;left:-140px;bottom:-160px;background:radial-gradient(circle,rgba(242,160,74,.35),rgba(201,48,122,.2) 45%,transparent 70%);animation:orbit-b 18s ease-in-out infinite alternate}
+@keyframes orbit-a{50%{transform:translate(-120px,140px) scale(1.15)}100%{transform:translate(-40px,260px) scale(.95)}}
+@keyframes orbit-b{50%{transform:translate(160px,-80px) scale(1.2)}100%{transform:translate(60px,-180px) scale(1)}}
+.t-views > *{position:relative;z-index:1}
+.t-views .tile-big strong{font-size:clamp(84px,10vw,150px);background:linear-gradient(90deg,#7B2FE0,#C9307A 30%,#F2A04A 50%,#C9307A 70%,#7B2FE0);background-size:200% 100%;animation:shine 7s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.06em}
 .t-views p{font-size:18px;max-width:300px;color:#D8D3E0}
 .tile-tag{position:absolute;top:28px;left:28px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#B9B4C4;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 12px}
 .t-clients{background:#fff}
 .seg-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
 .seg-chips span{font-size:12px;font-weight:500;padding:5px 10px;border-radius:999px;background:#F1EEF6;color:#5A5563}
-.t-years{background:var(--grad);color:#fff;justify-content:flex-end}
+.t-years{background:linear-gradient(120deg,#7B2FE0,#C9307A 35%,#F2A04A 65%,#C9307A 85%,#7B2FE0);background-size:300% 300%;animation:flow 12s ease-in-out infinite alternate;color:#fff;justify-content:flex-end}
+@keyframes shine{to{background-position:-200% 0}}
+@keyframes flow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+/* entrada do mosaico: os blocos sobem um depois do outro */
+.bento .tile.pre{opacity:0;transform:translateY(56px) scale(.95)}
+.bento .tile.in{transition:opacity .8s ease,transform 1s cubic-bezier(.2,.7,.2,1)}
+.bento .tile.in:hover{transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .t-years p{color:rgba(255,255,255,.9)}
 .t-team{grid-column:2 / span 2;background-size:cover;background-position:center 35%;justify-content:flex-end;color:#fff}
 .t-team::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,14,17,.85),rgba(15,14,17,.2) 70%)}
@@ -399,7 +409,7 @@ body.locked{overflow:hidden}
   .track{animation:none}
   .eyebrow::before{animation:none}
   .reveal,.reveal.pre{transform:none;transition:none}
-  .orb,.solo img,.pill{animation:none}
+  .orb,.solo img,.pill,.t-views::before,.t-views::after,.t-views .tile-big strong,.t-years{animation:none}
   .hero-slides .slide{transition:none;transform:none}
   html{scroll-behavior:auto}
 }
