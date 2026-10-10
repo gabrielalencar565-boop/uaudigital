@@ -178,9 +178,6 @@ footer .logo img{height:44px}
 .chips{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
 .chip{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--muted);transition:border-color .2s,color .2s}
 .chip:hover{border-color:var(--lilac);color:var(--lilac)}
-.cl-foot{display:flex;justify-content:center;margin-top:40px}
-.cl-link{font-size:14px;font-weight:600;color:var(--muted);display:inline-flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:4px;transition:color .2s,border-color .2s}
-.cl-link:hover{color:var(--fg);border-color:var(--lilac)}
 .logos .track{animation-duration:45s;gap:14px}
 .logos:hover .track{animation-play-state:paused}
 .logo-tile{width:180px;height:84px;flex:none;border:1px dashed #4A4552;border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;font-weight:600;letter-spacing:.1em;background:var(--bg)}
