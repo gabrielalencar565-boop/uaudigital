@@ -45,30 +45,37 @@ export function useBatchUserRoles(userIds: string[]) {
 }
 
 /**
- * Set roles for a user (replaces existing roles).
+ * Set the roles of a user to exactly `roles`.
+ * Only the difference is written: roles are added first and removed after, never "delete everything and insert again".
+ * (That older way made an admin who saved their own profile lose the admin role: the delete worked, then the insert
+ * was refused because they were no longer an admin.)
  */
 export function useSetUserRoles() {
   const qc = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (input: { userId: string; roles: AppRole[] }) => {
-      // Remove existing roles
-      const { error: delErr } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", input.userId);
-      if (delErr) throw delErr;
+      const { data: current, error: readErr } = await supabase.from("user_roles").select("role").eq("user_id", input.userId);
+      if (readErr) throw readErr;
+      const have = new Set((current ?? []).map((r) => r.role as AppRole));
+      const want = new Set(input.roles);
+      const toAdd = input.roles.filter((r) => !have.has(r));
+      const toRemove = [...have].filter((r) => !want.has(r));
 
-      // Add new roles
-      if (input.roles.length > 0) {
-        const payload = input.roles.map((role) => ({
-          user_id: input.userId,
-          role,
-        }));
-        const { error: insErr } = await supabase
-          .from("user_roles")
-          .insert(payload);
+      if (toRemove.includes("admin")) {
+        const { data: me } = await supabase.auth.getUser();
+        if (me.user?.id === input.userId) {
+          throw new Error("Você não pode tirar o seu próprio acesso de administrador. Peça para outro administrador fazer isso.");
+        }
+      }
+
+      if (toAdd.length > 0) {
+        const { error: insErr } = await supabase.from("user_roles").insert(toAdd.map((role) => ({ user_id: input.userId, role })));
         if (insErr) throw insErr;
+      }
+      if (toRemove.length > 0) {
+        const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", input.userId).in("role", toRemove);
+        if (delErr) throw delErr;
       }
     },
     onSuccess: (_, vars) => {

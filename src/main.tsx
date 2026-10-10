@@ -1,4 +1,6 @@
 import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
+import { friendlyError } from "./lib/friendly-error";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -69,6 +71,11 @@ try {
 } catch {
   // ignore
 }
+
+// Every error toast in the app is shown in plain Portuguese (technical messages from the database or network are translated)
+const originalToastError = toast.error;
+toast.error = ((message: Parameters<typeof toast.error>[0], data?: Parameters<typeof toast.error>[1]) =>
+  originalToastError(typeof message === "string" ? friendlyError(message) : message, data)) as typeof toast.error;
 
 createRoot(rootEl).render(<App />);
 
