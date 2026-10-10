@@ -259,7 +259,7 @@ export function GestaoPanel({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{capturasMode ? "Captações" : VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{capturasMode ? "Agenda de Gravação" : VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
           </div>
         </div>
         {effectiveView === "agenda" && (
@@ -267,7 +267,8 @@ export function GestaoPanel({
             <TabsList className="h-10 w-fit gap-1 rounded-full bg-muted/40 p-1">
               <TabsTrigger value="agenda" className="h-8 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">Tarefas</TabsTrigger>
               <TabsTrigger value="capturas" className="h-8 gap-2 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">
-                Captações
+                Agenda de Gravação
+                <span className="rounded-full bg-violet-500/20 px-1.5 text-[10px] font-semibold uppercase leading-4 tracking-wide text-violet-300">beta</span>
                 {pendingCaptures > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white">{pendingCaptures}</span>}
               </TabsTrigger>
             </TabsList>
