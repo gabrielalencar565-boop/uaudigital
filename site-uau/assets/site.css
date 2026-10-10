@@ -171,9 +171,18 @@ footer .logo img{height:44px}
 .team-cap span{font-size:15px;line-height:1.4;color:#E6E1EC}
 .t-team .fill{color:#F2A04A}
 
-/* CLIENTES: só um texto pequeno centralizado e os logos em branco passando */
-.cl{padding-block:72px}
-.cl-title{text-align:center;font-size:13px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);margin-bottom:40px}
+/* CLIENTES: frase com o logo trocando no lugar (mesmo gesto da palavra do título) */
+.cl{padding-block:110px}
+.cl-spot{display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center}
+.cl-line{font-size:clamp(30px,4.6vw,64px);font-weight:300;letter-spacing:-.035em;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.35em}
+.cl-slot{position:relative;display:inline-block;width:4.4em;height:1.6em;overflow:hidden;border-bottom:1px solid var(--line)}
+.cl-slot img{position:absolute;left:50%;top:50%;height:calc(1.08em * var(--s));max-width:100%;width:auto;object-fit:contain;transform:translate(-50%,60%);opacity:0;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
+.cl-slot img.on{transform:translate(-50%,-50%);opacity:1}
+.cl-slot img.out{transform:translate(-50%,-160%);opacity:0}
+.cl-meta{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--dim);letter-spacing:.04em}
+.cl-meta #clseg{transition:opacity .35s}
+.cl-count{font-variant-numeric:tabular-nums;padding-left:18px;border-left:1px solid var(--line)}
+.cl-count b{color:var(--fg);font-weight:600}
 .logos .track{animation-duration:45s;gap:14px}
 .logos:hover .track{animation-play-state:paused}
 .logo-tile{width:180px;height:84px;flex:none;border:1px dashed #4A4552;border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;font-weight:600;letter-spacing:.1em;background:var(--bg)}
@@ -394,8 +403,9 @@ body.locked{overflow:hidden}
 }
 @media (max-width:520px){
   .bento{gap:12px}
-  .cl{padding-block:56px}
-  .cl-title{font-size:11px;margin-bottom:28px;padding-inline:16px}
+  .cl{padding-block:80px}
+  .cl-line{flex-direction:column;gap:.2em}
+  .cl-slot{font-size:1.45em;width:min(5em,86vw);height:1.6em;margin-block:.15em}
   .logo-tile{width:140px;height:68px;font-size:11px}
   .logo-tile.real{height:72px;padding:0 24px}
   .logo-tile.real img{height:calc(var(--h) * .78)}
