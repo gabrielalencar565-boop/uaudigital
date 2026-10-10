@@ -54,11 +54,15 @@ if(filters){
   const words=[...document.querySelectorAll('#rotator span')];
   const steps=[...document.querySelectorAll('#vlesteps b')];
   if(reduce||!words.length) return;
+  // a largura acompanha a palavra atual, para a linha do título ficar sempre centralizada
+  const rot=document.getElementById('rotator');
+  const fit=w=>{ rot.style.width=w.offsetWidth+'px'; };
+  fit(words[0]); addEventListener('resize',()=>fit(words[i]));
   let i=0;
   setInterval(()=>{
     const cur=words[i], nxt=words[(i+1)%words.length];
     cur.className='out';
-    nxt.className='in'; void nxt.offsetWidth; nxt.className='';
+    nxt.className='in'; void nxt.offsetWidth; nxt.className=''; fit(nxt);
     setTimeout(()=>{ if(cur.className==='out') cur.className='in'; },750);
     i=(i+1)%words.length;
     steps.forEach((b,k)=>b.classList.toggle('on',k===i));

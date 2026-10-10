@@ -114,17 +114,12 @@ footer .logo img{height:44px}
 .vle-steps b.on{background:var(--grad);color:#fff;border-color:transparent;transform:translateY(-3px)}
 .hero .hx-title{font-size:clamp(56px,11.5vw,176px);font-weight:300;line-height:.92;letter-spacing:-.055em;display:flex;flex-direction:column}
 .hx-line{display:flex;align-items:center;justify-content:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
-.hx-line2{gap:.3em}
-.hx-title .rotator span{font-weight:800}
+.hx-line2{gap:.22em}
+.hx-title .rotator span{font-weight:800;justify-self:start}
+.hx-title .rotator{transition:width .45s cubic-bezier(.4,0,.2,1)}
 .pill{display:inline-block;height:.74em;width:1.9em;border-radius:999px;overflow:hidden;flex:none;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 50px rgba(123,47,224,.35);animation:pill-open 1.2s .2s cubic-bezier(.7,0,.2,1) both}
-.pill img{width:115%;height:115%;margin:-7.5%;object-fit:cover;object-position:center 45%;display:block;will-change:transform}
+.pill img{width:115%;height:115%;margin:-7.5%;object-fit:cover;object-position:center 21%;display:block;will-change:transform}
 @keyframes pill-open{from{width:0;opacity:0}}
-.spin{position:relative;width:.62em;height:.62em;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--bg2);border:1px solid var(--line);transition:background .3s,transform .3s}
-.spin:hover{background:var(--purple);transform:scale(1.06)}
-.spin svg{position:absolute;inset:6%;width:88%;height:88%;animation:rot 14s linear infinite;overflow:visible}
-.spin text{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;fill:var(--muted)}
-.spin-arr{font-size:.22em;font-weight:600;letter-spacing:0}
-@keyframes rot{to{transform:rotate(1turn)}}
 .hx-bottom{display:flex;flex-direction:column;align-items:center;text-align:center;gap:40px;padding-top:32px;border-top:1px solid var(--line)}
 .hx-copy{display:flex;flex-direction:column;align-items:center;gap:24px;max-width:600px}
 .hx .cta-row{justify-content:center}
@@ -133,23 +128,16 @@ footer .logo img{height:44px}
 .hx-copy p{font-size:18px;line-height:1.6}
 .hx .hero-meta{border:0;padding:0}
 
-/* foto dos sócios com números em blocos flutuantes */
-.stage{position:relative;margin:24px 0 0;width:min(560px,100%);align-self:center}
-.stage-photo{border-radius:32px;overflow:hidden;aspect-ratio:4/4.4;position:relative;box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
-.stage-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(15,14,17,.55))}
-.stage-photo img{width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block}
-.stage::before{content:"";position:absolute;inset:12% -10% -6%;z-index:-1;border-radius:50%;background:radial-gradient(circle,rgba(123,47,224,.45),rgba(201,48,122,.18) 45%,transparent 70%);filter:blur(30px)}
-.floater{position:absolute;display:flex;flex-direction:column;gap:2px;text-align:left;background:rgba(23,21,27,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:16px 20px;box-shadow:0 24px 50px rgba(0,0,0,.45);animation:bob 6s ease-in-out infinite}
-.floater strong{font-size:clamp(24px,2.6vw,34px);font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
-.floater span{font-size:13px;color:var(--muted)}
-.floater.f1{left:-22%;top:12%}
-.floater.f1 strong{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.floater.f2{right:-24%;top:38%;animation-delay:-2s;background:var(--grad);border-color:transparent}
-.floater.f2 span{color:rgba(255,255,255,.85)}
-.floater.f3{left:-14%;bottom:10%;animation-delay:-4s}
-.floater.tag{right:-8%;bottom:-18px;flex-direction:row;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;animation-delay:-1s}
-.floater .dot{width:8px;height:8px;border-radius:50%;background:#FF4D4D;animation:blink 1.2s infinite}
-@keyframes bob{50%{translate:0 -12px}}
+/* números em chips pequenos flutuando em volta do título */
+.hx-head{position:relative;padding-block:28px}
+.chip-float{position:absolute;z-index:2;display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap;font-size:13px;color:var(--muted);background:rgba(23,21,27,.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:8px 14px;box-shadow:0 14px 34px rgba(0,0,0,.4);animation:bob 6s ease-in-out infinite}
+.chip-float b{font-size:16px;font-weight:700;color:var(--fg);letter-spacing:-.01em}
+.chip-float.c1{left:4%;top:0;rotate:-4deg}
+.chip-float.c1 b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.chip-float.c2{right:6%;top:30%;rotate:3deg;animation-delay:-2s;background:var(--grad);border-color:transparent;color:rgba(255,255,255,.88)}
+.chip-float.c2 b{color:#fff}
+.chip-float.c3{left:10%;bottom:-4px;rotate:2deg;animation-delay:-4s}
+@keyframes bob{50%{translate:0 -10px}}
 
 /* BANDA DE SERVIÇOS */
 .band{border-block:1px solid var(--line);color:var(--muted);padding-block:22px;overflow:hidden}
@@ -374,16 +362,16 @@ body.locked{overflow:hidden}
   .hero .wrap{grid-template-columns:1fr;gap:48px}
   .collage{height:440px}
   .hero{min-height:auto}
-  .hero .hx-title{font-size:clamp(52px,17vw,96px)}
+  .hero .hx-title{font-size:clamp(40px,12.5vw,96px)}
   .hx-line{flex-wrap:wrap}
-  .spin{display:none}
-  .stage{margin-top:8px}
-  .floater{padding:12px 14px;border-radius:16px}
-  .floater span{font-size:12px}
-  .floater.f1{left:-8px;top:8%}
-  .floater.f2{right:-8px;top:auto;bottom:34%}
-  .floater.f3{left:-8px;bottom:12%}
-  .floater.tag{right:12px;bottom:-16px}
+  .hx-line2{flex-wrap:nowrap}
+  .hx-head{padding-block:44px}
+  .chip-float{font-size:11px;padding:6px 11px}
+  .chip-float b{font-size:13px}
+  .chip-float.c1{left:0;top:0}
+  .chip-float.c2{right:0;top:auto;bottom:0}
+  .chip-float.c3{display:none}
+  .pill{width:1.35em}
   .hero-meta{gap:24px}
   .track .img{width:200px;height:150px}
   .port .img{width:180px;height:230px}.port .img.w{width:300px}
@@ -399,6 +387,6 @@ body.locked{overflow:hidden}
   .track{animation:none}
   .eyebrow::before{animation:none}
   .reveal,.reveal.pre{transform:none;transition:none}
-  .orb,.solo img,.pill,.spin svg,.floater,.floater .dot{animation:none}
+  .orb,.solo img,.pill,.chip-float{animation:none}
   html{scroll-behavior:auto}
 }
