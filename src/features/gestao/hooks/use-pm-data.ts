@@ -11,7 +11,7 @@ const sb = supabase as any;
 // Colunas leves usadas em listagens (Kanban, Cronograma, agrupamentos).
 // Omite campos pesados como `description` (média 2KB, máx 557KB) que só são
 // necessários ao abrir o detalhe da tarefa — ali usamos queries específicas.
-const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,posting_date,posting_time,deleted_at,deleted_by,origin_task_id,periodic_stage_key";
+const PM_TASK_LIST_COLUMNS = "id,project_id,client_id,title,priority,status_global,stage_current,start_date,due_date,created_by,assignee_id,watchers,tags,created_at,updated_at,parent_task_id,cover_url,is_extra_demand,is_draft,post_type,alteration_origin,posting_date,posting_time,deleted_at,deleted_by,origin_task_id,periodic_stage_key";
 
 /** Fetch only root tasks (no parent) — light columns (see PM_TASK_LIST_COLUMNS).
  * This runs on nearly every page (app shell, Meu Painel, Gestão, deadline report, day view)

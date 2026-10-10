@@ -1,11 +1,21 @@
-import { useRef, useState } from "react";
-import { AlertTriangle, Camera, Instagram, Plug, RefreshCw, Trash2, Unplug } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Camera, Check, CircleDashed, Instagram, Plug, RefreshCw, Shield, Trash2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNowStrict, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/hooks/use-permission";
+import { useRole } from "@/hooks/use-role";
+import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
+import { autoAssignStagesForClient, buildCandidatesForClient, sortForAssignment, stagesByRole } from "@/lib/role-stage-mapping";
+import { useStageRoles } from "@/features/gestao/hooks/use-stage-roles";
+import { useStageFlows } from "@/features/gestao/components/PmStageFlowConfig";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useClientSquads, useSquadMembers, useSquads } from "@/features/projetos/hooks/use-squads";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -13,7 +23,7 @@ import {
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "@/features/calendario/hooks/use-instagram";
 import { useConnectWithInsights } from "@/features/resultados/hooks/use-resultados";
 import { brandGradientCss } from "@/lib/brand-gradient";
-import { useClients } from "@/features/data/queries";
+import { useClients, useTeamMembers } from "@/features/data/queries";
 import { toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
 import { useUpdateClientPhoto } from "../hooks/use-client-data";
 
@@ -78,6 +88,205 @@ function PhotoCard({ clientId }: { clientId: string }) {
           <p className="text-[11px] text-muted-foreground">JPG ou PNG quadrado, até 5 MB.</p>
         </div>
       </div>
+    </Card>
+  );
+}
+
+type Ambiguity = { cargo: string; stages: string[]; people: { user_id: string; display_name: string; avatar_url: string | null }[] };
+
+function SquadCard({ clientId }: { clientId: string }) {
+  const qc = useQueryClient();
+  const { user } = useSession();
+  const { isAdmin } = useRole(user?.id);
+  const squadsQ = useSquads();
+  const clientSquadsQ = useClientSquads();
+  const squadMembersQ = useSquadMembers();
+  const teamQ = useTeamMembers();
+  const rolesQ = useStageRoles();
+  const flowsQ = useStageFlows();
+  const clientsQ = useClients();
+  const clientName = (clientsQ.data ?? []).find((c) => c.id === clientId)?.name ?? "este cliente";
+
+  const saved = useMemo(
+    () => (clientSquadsQ.data ?? []).filter((cs: any) => cs.client_id === clientId).map((cs: any) => cs.squad_id as string),
+    [clientSquadsQ.data, clientId],
+  );
+  const [selected, setSelected] = useState<string[]>(saved);
+  const [saving, setSaving] = useState(false);
+  const [choosing, setChoosing] = useState<Ambiguity[] | null>(null);
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  // follow the saved squads whenever they load or change from outside
+  useEffect(() => { setSelected(saved); }, [saved.join("|")]);
+
+  const same = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+  const dirty = !same(selected, saved);
+  const countBySquad = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const sm of squadMembersQ.data ?? []) map.set(sm.squad_id, (map.get(sm.squad_id) ?? 0) + 1);
+    return map;
+  }, [squadMembersQ.data]);
+
+  const toggle = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
+  // Cargos for which the chosen squads have more than one person: the admin picks who takes this client
+  const findAmbiguities = (): Ambiguity[] => {
+    const joinedAt = new Map<string, string>();
+    for (const sm of (squadMembersQ.data ?? []) as any[]) {
+      if (!selected.includes(sm.squad_id)) continue;
+      const prev = joinedAt.get(sm.user_id);
+      if (!prev || sm.created_at < prev) joinedAt.set(sm.user_id, sm.created_at);
+    }
+    const team = (teamQ.data ?? []).filter((m) => joinedAt.has(m.user_id));
+    const ordered = sortForAssignment(team.map((m) => ({ ...m, joined_at: joinedAt.get(m.user_id) ?? null })));
+    const roleToStages = stagesByRole(rolesQ.data ?? {});
+    const candidates = buildCandidatesForClient(ordered.map((m) => ({ user_id: m.user_id, role_titles: m.role_titles ?? [] })), roleToStages);
+    const byId = new Map(ordered.map((m) => [m.user_id, m]));
+    const out: Ambiguity[] = [];
+    for (const [cargo, stages] of Object.entries(roleToStages)) {
+      const ids = candidates[stages[0]] ?? [];
+      if (ids.length < 2) continue;
+      out.push({ cargo, stages, people: ids.map((id) => ({ user_id: id, display_name: byId.get(id)!.display_name, avatar_url: byId.get(id)!.avatar_url ?? null })) });
+    }
+    return out;
+  };
+
+  const defaultPicks = (ambiguities: Ambiguity[]) => {
+    const flow = (flowsQ.data ?? []).find((f) => f.is_default) ?? (flowsQ.data ?? [])[0];
+    const assignees = (flow?.stage_assignees ?? {}) as Record<string, Record<string, any>>;
+    const out: Record<string, string> = {};
+    for (const a of ambiguities) {
+      const raw = assignees[a.stages[0]]?.[clientId];
+      const current = Array.isArray(raw) ? raw[0] : raw;
+      out[a.cargo] = a.people.some((p) => p.user_id === current) ? current : a.people[0].user_id;
+    }
+    return out;
+  };
+
+  const persist = async (choicesByCargo: Record<string, string>) => {
+    setSaving(true);
+    try {
+      const toRemove = saved.filter((id) => !selected.includes(id));
+      const toAdd = selected.filter((id) => !saved.includes(id));
+      for (const squadId of toRemove) {
+        const { error } = await supabase.from("client_squads" as any).delete().eq("client_id", clientId).eq("squad_id", squadId);
+        if (error) throw error;
+      }
+      if (toAdd.length > 0) {
+        const { error } = await supabase.from("client_squads" as any).insert(toAdd.map((squadId) => ({ client_id: clientId, squad_id: squadId })) as any);
+        if (error) throw error;
+      }
+      // the squad defines the client's team (each person by their cargo); a cargo with two people takes the one chosen
+      const roleToStages = stagesByRole(rolesQ.data ?? {});
+      const choices: Record<string, string> = {};
+      for (const [cargo, userId] of Object.entries(choicesByCargo)) for (const stage of roleToStages[cargo] ?? []) choices[stage] = userId;
+      try {
+        await autoAssignStagesForClient(supabase, clientId, selected, choices);
+      } catch (e) {
+        console.warn("Auto-assign failed (non-blocking):", e);
+      }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["client_squads"] }),
+        qc.invalidateQueries({ queryKey: ["pm_stage_flows"] }),
+        qc.invalidateQueries({ queryKey: ["magic2"] }),
+      ]);
+      setChoosing(null);
+      toast.success("Squad atualizado. A equipe do cliente foi preenchida.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não foi possível salvar o squad");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const save = () => {
+    const ambiguities = findAmbiguities();
+    if (ambiguities.length === 0) { void persist({}); return; }
+    setPicks(defaultPicks(ambiguities));
+    setChoosing(ambiguities);
+  };
+
+  const squads = squadsQ.data ?? [];
+  return (
+    <Card icon={Shield} title="Squad responsável" description="O squad define a equipe do cliente: cada pessoa assume as etapas do seu cargo.">
+      {squads.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border/50 px-3 py-6 text-center text-xs text-muted-foreground">Nenhum squad cadastrado.</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {squads.map((sq: any) => {
+            const on = selected.includes(sq.id);
+            return (
+              <button
+                key={sq.id}
+                type="button"
+                disabled={!isAdmin || saving}
+                onClick={() => toggle(sq.id)}
+                aria-pressed={on}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition disabled:cursor-default",
+                  on ? "border-primary/60 bg-primary/5" : "border-border/50",
+                  isAdmin && !on && "hover:bg-accent/30",
+                )}
+              >
+                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sq.color }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{sq.name}</span>
+                  <span className="block text-[11px] text-muted-foreground">{countBySquad.get(sq.id) ?? 0} {(countBySquad.get(sq.id) ?? 0) === 1 ? "pessoa" : "pessoas"}</span>
+                </span>
+                {on ? <Check className="h-4 w-4 shrink-0 text-primary" /> : <CircleDashed className="h-4 w-4 shrink-0 text-muted-foreground/40" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!isAdmin ? (
+        <p className="text-xs text-muted-foreground">Só administradores mudam o squad do cliente.</p>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button className="rounded-full" size="sm" disabled={!dirty || saving} onClick={save}>{saving ? "Salvando…" : "Salvar squad"}</Button>
+          {dirty && !saving && <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => setSelected(saved)}>Descartar</Button>}
+        </div>
+      )}
+
+      <Dialog open={!!choosing} onOpenChange={(o) => { if (!o && !saving) setChoosing(null); }}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quem assume {clientName}?</DialogTitle>
+            <DialogDescription>O squad tem mais de uma pessoa nestes cargos. Escolha quem fica com este cliente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            {(choosing ?? []).map((a) => (
+              <section key={a.cargo} className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{a.cargo}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {a.people.map((p) => {
+                    const on = picks[a.cargo] === p.user_id;
+                    return (
+                      <button
+                        key={p.user_id}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setPicks((cur) => ({ ...cur, [a.cargo]: p.user_id }))}
+                        className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition", on ? "border-primary/60 bg-primary/5" : "border-border/50 hover:bg-accent/30")}
+                      >
+                        <Avatar className="h-10 w-10"><AvatarImage src={p.avatar_url ?? undefined} className="object-cover" /><AvatarFallback className="text-xs">{p.display_name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.display_name}</span>
+                        <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-full border", on ? "border-primary" : "border-muted-foreground/40")}>
+                          {on && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setChoosing(null)} disabled={saving}>Cancelar</Button>
+            <Button onClick={() => persist(picks)} disabled={saving}>{saving ? "Salvando…" : "Salvar squad"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -174,6 +383,7 @@ export function ClienteConfiguracoes({ clientId }: { clientId: string }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <PhotoCard clientId={clientId} />
+      <SquadCard clientId={clientId} />
       <InstagramCard clientId={clientId} />
     </div>
   );

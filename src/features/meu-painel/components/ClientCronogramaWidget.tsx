@@ -6,6 +6,7 @@ import { CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, MessageSquareWa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { compareNames } from "@/lib/sort";
 import { useSession } from "@/hooks/use-session";
 import { useMagicNumberConfig } from "@/features/data/queries";
 import { getFixedAssignee, useDefaultFlowWithDates } from "@/features/gestao/components/PmStageFlowConfig";
@@ -115,15 +116,16 @@ export function ClientCronogramaWidget() {
       const latest = [...pubs].sort((a, b) => stamp(b) - stamp(a))[0];
       return { kind: "approved", key: `ok-${cid}`, pubs, latest, at: latest.client_responded_at ?? "" };
     });
-    const byRecent = (a: Row, b: Row) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime();
+    const nameOf = (r: Row) => clientsQ.data?.get((r.kind === "change" ? r.pub : r.latest).publication_calendars?.client_id ?? "")?.name ?? "";
+    const alphabetical = (a: Row, b: Row) => compareNames(nameOf(a), nameOf(b)) || new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime();
     return {
-      // change requests block the work, so they come first
-      rows: [...changeRows.sort(byRecent), ...approvedRows.sort(byRecent)],
+      // change requests block the work, so they come first; inside each group, alphabetical by client
+      rows: [...changeRows.sort(alphabetical), ...approvedRows.sort(alphabetical)],
       changes: changeRows.length,
       approved: replied.length - changeRows.length,
       waiting: visible.length - replied.length,
     };
-  }, [visible]);
+  }, [visible, clientsQ.data]);
 
   const clientOf = (p: Pub) => clientsQ.data?.get(p.publication_calendars?.client_id ?? "") ?? { name: "Cliente", logo: null };
   const shown = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);

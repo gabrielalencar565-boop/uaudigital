@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { resolveAlterationOrigin, ALTERATION_KEY_BY_ORIGIN } from "../utils/alteration-origin";
 import { Plus, ChevronRight, Check, RotateCcw, Trash2, Pencil, X, Tag as TagIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -204,11 +205,15 @@ export function PmSubtaskList({ parentTask, childTasks, membersMap, members, onS
 
   const sendToAlteracoes = (sub: PmTask) => {
     if (readOnly) return;
-    const fixedAssignee = getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
+    // The kind of alteration (planning / design / video) comes from the subtask itself; whoever is set for that kind takes it
+    const { origin } = resolveAlterationOrigin(sub);
+    const originKey = origin ? ALTERATION_KEY_BY_ORIGIN[origin] : null;
+    const fixedAssignee = (originKey && getFixedAssignee(stageAssignees, originKey, parentTask.client_id)) || getFixedAssignee(stageAssignees, "alteracoes", parentTask.client_id);
+    const fixedWatchers = (originKey && getFixedWatchers(stageAssignees, originKey, parentTask.client_id)?.length ? getFixedWatchers(stageAssignees, originKey, parentTask.client_id) : null) ?? getFixedWatchers(stageAssignees, "alteracoes", parentTask.client_id);
     const updates: any = {
       id: sub.id,
       stage_current: "alteracoes" as any,
+      ...(origin ? { alteration_origin: origin } : {}),
       status_global: "backlog" as any,
       due_date: computeAlteracaoDueDate(transitionDates),
     };

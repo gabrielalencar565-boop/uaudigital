@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, RotateCcw } from "lucide-react";
+import { CalendarClock, ChevronDown, RotateCcw } from "lucide-react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { useCascades, type Cascade } from "../hooks/use-cascades";
 import { orderSteps } from "../lib/cascade";
@@ -127,24 +128,42 @@ function CascadeCard({ cascade }: { cascade: Cascade }) {
   );
 }
 
+const COLLAPSED_KEY = "fluxo-cascade-collapsed";
+
 export function CascadeStudio() {
   const q = useCascades();
   const cascades = q.data ?? [];
+  // Minimized unless the person opened it before (remembered on this browser). Kept mounted while hidden, so edits in progress survive.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(COLLAPSED_KEY) !== "0"; } catch { return true; }
+  });
+  const toggle = () =>
+    setCollapsed((v) => {
+      try { localStorage.setItem(COLLAPSED_KEY, v ? "0" : "1"); } catch { /* preference only */ }
+      return !v;
+    });
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><CalendarClock className="h-5 w-5 text-muted-foreground" /> Cascata de datas</h3>
-        <p className="text-sm text-muted-foreground">
-          Ao criar um planejamento você escolhe o dia de início e o sistema já planeja a data de todas as etapas seguintes. Aqui você ajusta quantos dias cada etapa leva.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight"><CalendarClock className="h-5 w-5 text-muted-foreground" /> Cascata de datas</h3>
+          <p className="text-sm text-muted-foreground">
+            Ao criar um planejamento você escolhe o dia de início e o sistema já planeja a data de todas as etapas seguintes. Aqui você ajusta quantos dias cada etapa leva.
+          </p>
+        </div>
+        <Button variant="outline" size="icon" className="shrink-0 rounded-full" onClick={toggle} aria-expanded={!collapsed} aria-label={collapsed ? "Expandir a cascata" : "Minimizar a cascata"} title={collapsed ? "Expandir" : "Minimizar"}>
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !collapsed && "rotate-180")} />
+        </Button>
       </div>
-      {q.isLoading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
-      ) : cascades.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma cascata cadastrada.</p>
-      ) : (
-        cascades.map((c) => <CascadeCard key={c.id} cascade={c} />)
-      )}
+      <div className={cn("space-y-4", collapsed && "hidden")}>
+        {q.isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
+        ) : cascades.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma cascata cadastrada.</p>
+        ) : (
+          cascades.map((c) => <CascadeCard key={c.id} cascade={c} />)
+        )}
+      </div>
     </div>
   );
 }

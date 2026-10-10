@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { tabPath } from "@/lib/app-routes";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen } from "lucide-react";
+import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -102,6 +104,7 @@ export function GestaoPanel({
     forcedView as any ?? "agenda"
   );
   const effectiveView = forcedView ? (forcedView as any) : view;
+  const navigate = useNavigate();
   const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
@@ -237,9 +240,18 @@ export function GestaoPanel({
       {effectiveView !== "equipe" && effectiveView !== "calendario" &&
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          <div className="flex items-center gap-3">
+            {/* Flow settings is opened from Configurações, so it gets a way back there */}
+            {effectiveView === "fluxo" && (
+              <Button variant="ghost" size="icon" onClick={() => navigate(tabPath("configuracoes"))} aria-label="Voltar para Configurações">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
+        {/* The flow settings are about the pipeline itself, not about tasks: no task search or filters there */}
+        {effectiveView !== "fluxo" && <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 rounded-full text-sm border-border/30 bg-background/60" />
@@ -292,7 +304,7 @@ export function GestaoPanel({
               )}
             </SelectContent>
           </Select>
-        </div>
+        </div>}
       </div>
       }
 

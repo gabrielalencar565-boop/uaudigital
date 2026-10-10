@@ -24,6 +24,8 @@ export interface PmTask {
   periodic_stage_key?: string | null;
   // Cronograma (posting schedule) fields
   post_type: string | null;
+  /** planejamento | design | video: where an alteration comes from, saved when the task enters "alteracoes" */
+  alteration_origin?: string | null;
   posting_date: string | null;
   posting_time: string | null;
   caption: string | null;
