@@ -73,17 +73,6 @@ if(filters){
   },2400);
 })();
 
-// hero: foto segue o mouse de leve
-(function(){
-  const col=document.getElementById('collage');
-  if(reduce||!col||matchMedia('(hover: none)').matches) return;
-  const items=[...col.querySelectorAll('[data-depth]')];
-  addEventListener('mousemove',e=>{
-    const x=e.clientX/innerWidth-.5, y=e.clientY/innerHeight-.5;
-    items.forEach(el=>{ const d=+el.dataset.depth; el.style.transform=`translate(${-x*d}px,${-y*d}px)`; });
-  },{passive:true});
-})();
-
 // animações de entrada e contadores (o conteúdo já nasce visível)
 if(!reduce && 'IntersectionObserver' in window){
   const io=new IntersectionObserver(es=>es.forEach(e=>{
