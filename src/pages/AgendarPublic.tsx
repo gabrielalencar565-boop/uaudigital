@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarCheck, CalendarX, ChevronLeft, ChevronRight, Loader2, MousePointerClick, SearchX, Sun, Sunset } from "lucide-react";
+import { CalendarCheck, CalendarPlus, CalendarX, ChevronLeft, Download, ChevronRight, Clock, Loader2, MousePointerClick, SearchX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { downloadIcs, googleCalendarUrl, type CalendarEvent } from "@/lib/calendar-links";
 
 const FN_URL = "https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/public-agendamento";
 
 type DayStatus = "free" | "full" | "closed";
 type MonthData = { agency_name: string; open_months: string[]; days: Record<string, DayStatus> };
-type Booking = { id: string; booking_date: string; period: "manha" | "tarde"; company_name: string; status: "pending" | "confirmed" | "refused" | "cancelled" };
+type Booking = { id: string; booking_date: string; start_time: string; duration_minutes: number; company_name: string; location?: string | null; status: "pending" | "confirmed" | "refused" | "cancelled" };
 
-const PERIOD_LABEL = { manha: "Manhã", tarde: "Tarde" } as const;
+const hhmm = (t: string) => t.slice(0, 5);
+const durationLabel = (min: number) => (min % 60 === 0 ? `${min / 60}h` : `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`);
 const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 const ERRORS: Record<string, string> = {
   day_full: "Esse dia acabou de lotar. Escolha outra data.",
   day_closed: "Esse dia não está mais disponível. Escolha outra data.",
+  slot_taken: "Esse horário acabou de ser reservado. Escolha outro.",
   too_many_requests: "Você já tem pedidos em aberto. Fale com a gente para ajustar.",
   invalid_whatsapp: "Confira o WhatsApp: use o DDD e o número.",
   company_required: "Informe o nome da empresa.",
@@ -44,7 +47,9 @@ export default function AgendarPublic() {
   const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [date, setDate] = useState<string | null>(null);
-  const [period, setPeriod] = useState<"manha" | "tarde" | null>(null);
+  const [time, setTime] = useState<string | null>(null);
+  const [slots, setSlots] = useState<string[] | null>(null); // null = loading the times of the chosen day
+  const [duration, setDuration] = useState(120);
   const [form, setForm] = useState({ company_name: "", contact_name: "", whatsapp: "", location: "", notes: "", website: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export default function AgendarPublic() {
       if (next && next !== m) { setMonth(next); return; }
     }
     setData(payload);
+    if ((payload as any).duration_minutes) setDuration((payload as any).duration_minutes);
     setState("ready");
   }, [token]);
 
@@ -95,22 +101,51 @@ export default function AgendarPublic() {
     });
   }, [token, storageKey]);
 
+  // The booking as an event for the client's own calendar (Google link and .ics file)
+  const calendarEvent: CalendarEvent | null = mine
+    ? {
+        date: mine.booking_date,
+        startTime: hhmm(mine.start_time),
+        durationMinutes: mine.duration_minutes,
+        uid: mine.id,
+        title: `Gravação — ${data?.agency_name || "Agência"}`,
+        location: mine.location ?? null,
+        description: [
+          `Captação de conteúdo com ${data?.agency_name || "a agência"}, às ${hhmm(mine.start_time)} (duração aproximada de ${durationLabel(mine.duration_minutes)}).`,
+                    mine.status === "pending" ? "Pedido enviado: aguardando a confirmação da agência." : "Confirmada pela agência.",
+        ].join("\n"),
+      }
+    : null;
+
   const openMonths = useMemo(() => [...(data?.open_months ?? [])].sort(), [data]);
   const idx = openMonths.indexOf(month);
   const [yy, mm] = month.split("-").map(Number);
   const firstWeekday = new Date(yy, mm - 1, 1).getDay();
   const daysInMonth = new Date(yy, mm, 0).getDate();
 
+  // Choosing a day loads the start times still free on it
+  const pickDate = async (ymd: string) => {
+    if (!token) return;
+    setDate(ymd);
+    setTime(null);
+    setSlots(null);
+    setError(null);
+    const { ok, data: body } = await call({ action: "slots", token, date: ymd });
+    setSlots(ok ? ((body as any).slots as string[]) : []);
+    if (ok && (body as any).duration_minutes) setDuration((body as any).duration_minutes);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !date || !period) return;
+    if (!token || !date || !time) return;
     setSubmitting(true);
     setError(null);
-    const { ok, data: body } = await call({ action: "book", token, date, period, ...form });
+    const { ok, data: body } = await call({ action: "book", token, date, start_time: time, ...form });
     setSubmitting(false);
     if (!ok) {
       setError(ERRORS[(body as any).error] ?? "Não foi possível enviar agora. Tente de novo em instantes.");
-      if ((body as any).error === "day_full" || (body as any).error === "day_closed") { setDate(null); setPeriod(null); void load(month); }
+      if ((body as any).error === "day_full" || (body as any).error === "day_closed") { setDate(null); setTime(null); void load(month); }
+      if ((body as any).error === "slot_taken") { setTime(null); void pickDate(date); void load(month); }
       return;
     }
     const cancelToken = (body as any).cancel_token as string | undefined;
@@ -120,7 +155,7 @@ export default function AgendarPublic() {
       if (got.ok) setMine((got.data as any).booking);
     }
     setDate(null);
-    setPeriod(null);
+    setTime(null);
     setForm({ company_name: "", contact_name: "", whatsapp: "", location: "", notes: "", website: "" });
     void load(month);
   };
@@ -187,11 +222,11 @@ export default function AgendarPublic() {
           ) : (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-25" disabled={idx <= 0} onClick={() => { setMonth(openMonths[idx - 1]); setDate(null); setPeriod(null); }} aria-label="Mês anterior">
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-25" disabled={idx <= 0} onClick={() => { setMonth(openMonths[idx - 1]); setDate(null); setTime(null); }} aria-label="Mês anterior">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <p className="text-base font-semibold first-letter:uppercase">{MONTH_NAMES[mm - 1]} de {yy}</p>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-25" disabled={idx < 0 || idx >= openMonths.length - 1} onClick={() => { setMonth(openMonths[idx + 1]); setDate(null); setPeriod(null); }} aria-label="Próximo mês">
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-25" disabled={idx < 0 || idx >= openMonths.length - 1} onClick={() => { setMonth(openMonths[idx + 1]); setDate(null); setTime(null); }} aria-label="Próximo mês">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -208,7 +243,7 @@ export default function AgendarPublic() {
                       key={ymd}
                       type="button"
                       disabled={status !== "free"}
-                      onClick={() => { setDate(ymd); setPeriod(null); setError(null); }}
+                      onClick={() => void pickDate(ymd)}
                       title={status === "full" ? "Dia lotado" : status === "closed" ? "Indisponível" : "Disponível"}
                       className={cn(
                         "flex aspect-square items-center justify-center rounded-2xl text-sm font-semibold transition-all",
@@ -240,10 +275,23 @@ export default function AgendarPublic() {
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-400/20 text-emerald-300"><CalendarCheck className="h-5 w-5" /></span>
                 <div className="min-w-0 text-sm">
                   <p className="text-base font-semibold">{mine.status === "confirmed" ? "Captação confirmada" : "Pedido enviado"}</p>
-                  <p className="text-white/70 first-letter:uppercase">{fmtDate(mine.booking_date)} · {PERIOD_LABEL[mine.period]}</p>
+                  <p className="text-white/70 first-letter:uppercase">{fmtDate(mine.booking_date)} às {hhmm(mine.start_time)}</p>
                   {mine.status === "pending" && <p className="mt-1 text-xs text-white/50">Aguardando a confirmação da agência. Vamos te chamar no WhatsApp.</p>}
                 </div>
               </div>
+              {calendarEvent && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">Colocar na minha agenda</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm" className="rounded-full bg-white text-black hover:bg-white/90">
+                      <a href={googleCalendarUrl(calendarEvent)} target="_blank" rel="noreferrer"><CalendarPlus className="mr-1.5 h-3.5 w-3.5" /> Google Agenda</a>
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => downloadIcs(calendarEvent)}>
+                      <Download className="mr-1.5 h-3.5 w-3.5" /> Apple / Outlook (.ics)
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button variant="outline" size="sm" className="rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={cancel} disabled={cancelling}>
                 <CalendarX className="mr-1.5 h-3.5 w-3.5" /> {cancelling ? "Cancelando…" : "Cancelar este pedido"}
               </Button>
@@ -257,18 +305,29 @@ export default function AgendarPublic() {
                 <p className="text-lg font-semibold first-letter:uppercase">{fmtDate(date)}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                {(["manha", "tarde"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPeriod(p)}
-                    aria-pressed={period === p}
-                    className={cn("flex items-center justify-center gap-2 rounded-2xl border px-3 py-3.5 text-sm font-semibold transition", period === p ? "border-violet-400/70 bg-violet-500/20 text-white shadow-lg shadow-violet-600/20" : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.07]")}
-                  >
-                    {p === "manha" ? <Sun className="h-4 w-4" /> : <Sunset className="h-4 w-4" />} {PERIOD_LABEL[p]}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                  <Clock className="h-3.5 w-3.5" /> Escolha o horário <span className="font-normal normal-case tracking-normal text-white/35">· duração de cerca de {durationLabel(duration)}</span>
+                </p>
+                {slots === null ? (
+                  <p className="flex items-center gap-2 py-3 text-sm text-white/50"><Loader2 className="h-4 w-4 animate-spin" /> Buscando horários…</p>
+                ) : slots.length === 0 ? (
+                  <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm text-white/55">Não há mais horários nesse dia. Escolha outra data.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {slots.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTime(t)}
+                        aria-pressed={time === t}
+                        className={cn("rounded-xl border px-2 py-2.5 text-sm font-semibold tabular-nums transition", time === t ? "border-violet-400/70 bg-violet-500/25 text-white shadow-lg shadow-violet-600/20" : "border-white/10 bg-white/[0.03] text-white/75 hover:bg-white/[0.08]")}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -304,9 +363,9 @@ export default function AgendarPublic() {
                 type="submit"
                 className="h-12 w-full rounded-2xl text-base font-semibold text-white shadow-lg shadow-violet-700/30 hover:opacity-90 disabled:opacity-40"
                 style={{ background: "linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #7C3AED 100%)" }}
-                disabled={!period || submitting}
+                disabled={!time || submitting}
               >
-                {submitting ? "Enviando…" : period ? "Pedir este dia" : "Escolha manhã ou tarde"}
+                {submitting ? "Enviando…" : time ? `Pedir ${time}` : "Escolha um horário"}
               </Button>
             </form>
           ) : (

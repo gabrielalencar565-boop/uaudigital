@@ -5,7 +5,12 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useRole } from "@/hooks/use-role";
+import {
+  NOTIFICATION_TYPES, useMyNotificationAudience, useMyNotificationPrefs, useNotificationSettings, useSetMyNotificationPref,
+} from "@/features/configuracoes/hooks/use-notification-settings";
 import { useSession } from "@/hooks/use-session";
 import {
   getPushSubscriptionState,
@@ -20,6 +25,11 @@ function PushNotificationsPanel() {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { isAdmin } = useRole(user?.id);
+  const agencyOn = useNotificationSettings().data;
+  const myPrefs = useMyNotificationPrefs().data;
+  const inAudience = useMyNotificationAudience().data;
+  const setPref = useSetMyNotificationPref();
   const [testing, setTesting] = useState<"local" | "server" | null>(null);
   const [permission, setPermission] = useState<"granted" | "denied" | "default" | "unsupported">("default");
 
@@ -91,11 +101,32 @@ function PushNotificationsPanel() {
         <div className="min-w-0 pr-4">
           <div className="text-sm font-medium">Ativar neste dispositivo</div>
           <div className="text-xs text-muted-foreground">
-            Tarefa atribuída a você, menções em comentários, o resumo diário de tarefas vencendo/atrasadas e o lembrete
-            de posts sem agendar — chegam mesmo com o app fechado.
+            Tarefa atribuída a você, menções em comentários, respostas de clientes, posts sem agendar e pedidos de gravação —
+            chegam mesmo com o app fechado. Quais tipos ficam ligados é definido pelos administradores em Configurações → Notificações.
           </div>
         </div>
         <Switch checked={enabled} disabled={loading || busy} onCheckedChange={handleToggle} />
+      </div>
+      <div className="space-y-1 rounded-lg border border-border/60 p-3">
+        <div className="text-sm font-medium">Quais avisos você quer receber</div>
+        <p className="pb-1 text-xs text-muted-foreground">Vale para o sininho e para o celular. Os que a administração desligou aparecem apagados.</p>
+        {NOTIFICATION_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => {
+          const outOfAudience = inAudience ? inAudience[t.key] === false : false;
+          const offByAgency = (agencyOn ? agencyOn[t.key] === false : false) || outOfAudience;
+          return (
+            <div key={t.key} className="flex items-center justify-between gap-3 py-1.5">
+              <div className={cn("min-w-0", offByAgency && "opacity-50")}>
+                <div className="text-sm">{t.title}</div>
+                {(outOfAudience || offByAgency) && <div className="text-[11px] text-muted-foreground">{outOfAudience ? "Não é enviado para a sua função ou cargo" : "Desligado pela administração"}</div>}
+              </div>
+              <Switch
+                checked={!offByAgency && (myPrefs?.[t.key] ?? true)}
+                disabled={offByAgency || setPref.isPending}
+                onCheckedChange={(v) => setPref.mutate({ key: t.key, enabled: v }, { onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar") })}
+              />
+            </div>
+          );
+        })}
       </div>
       {enabled && (
         <div className="space-y-2 rounded-lg border border-border/60 p-3">

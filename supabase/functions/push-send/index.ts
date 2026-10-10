@@ -78,7 +78,8 @@ async function sendToUser(db: ReturnType<typeof createClient>, userId: string, p
 
 async function handleDispatch(db: ReturnType<typeof createClient>, body: { user_id?: string; title?: string; body?: string; task_id?: string }) {
   const { user_id, title, body: message, task_id } = body;
-  if (!user_id || !title || !message) return json({ error: "user_id, title and body are required" }, 400);
+  // The body may be empty on purpose: a title-only notification is the most compact one on iOS
+  if (!user_id || !title || typeof message !== "string") return json({ error: "user_id, title and body are required" }, 400);
   const result = await sendToUser(db, user_id, { title, body: message, task_id });
   return json(result);
 }
