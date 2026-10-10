@@ -5,7 +5,9 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
-loop('logos', Array.from({length:10},(_,i)=>`<div class="logo-tile">LOGO ${String(i+1).padStart(2,'0')}</div>`).join(''));
+const logoTile=i=>`<div class="logo-tile">LOGO ${String(i).padStart(2,'0')}</div>`;
+loop('logos', Array.from({length:8},(_,i)=>logoTile(i+1)).join(''));
+loop('logos2', Array.from({length:8},(_,i)=>logoTile(i+9)).join(''));
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
 loop('quotes', q.repeat(5));
 const quoteGrid=document.getElementById('quote-grid'); if(quoteGrid) quoteGrid.innerHTML=q.repeat(6);
