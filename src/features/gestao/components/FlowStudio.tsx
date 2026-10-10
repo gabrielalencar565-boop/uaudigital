@@ -1,6 +1,7 @@
+import { FluxoSection } from "./FluxoSection";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, Clock, Eye, EyeOff, LayoutTemplate, Plus, RotateCcw, Trash2, TriangleAlert, UserRound, Workflow } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, Clock, Eye, EyeOff, LayoutTemplate, Plus, RotateCcw, Sparkles, TrendingUp, Trash2, TriangleAlert, UserRound, Users, Video, Workflow } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -194,24 +195,69 @@ function RoleSelect({ value, cargos, onChange, label }: { value: string | null; 
   );
 }
 
-function TemplateCard({ t, onUse }: { t: FlowTemplate; onUse: () => void }) {
+const TEMPLATE_ICONS: Record<string, typeof Workflow> = {
+  uau: Sparkles,
+  agencia_social: Users,
+  social_solo: UserRound,
+  trafego: TrendingUp,
+  producao_video: Video,
+  em_branco: Plus,
+};
+
+// The stages of a template as one line: dot of its color, name, arrow.
+function TemplatePath({ t }: { t: FlowTemplate }) {
+  const stages = t.stages.filter((s) => s.key !== "alteracoes");
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/40 p-4 transition-colors hover:border-primary/40">
-      <div>
-        <p className="text-sm font-semibold">{t.name}</p>
-        <p className="text-[11px] text-muted-foreground">{t.audience}</p>
-      </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">{t.description}</p>
-      <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
-        {t.stages.filter((s) => s.key !== "alteracoes").map((s, i, arr) => (
-          <span key={s.key} className="flex items-center gap-1">
-            <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-foreground/80">{s.label}</span>
-            {i < arr.length - 1 && <ArrowRight className="h-2.5 w-2.5" />}
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
+      {stages.map((s, i) => (
+        <span key={s.key} className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+            <span className={cn("h-1.5 w-1.5 rounded-full", toneOf({ key: s.key, color: s.color ?? null }).bg)} />
+            {s.label}
           </span>
-        ))}
+          {i < stages.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground/50" />}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TemplateCard({ t, onUse, inUse }: { t: FlowTemplate; onUse: () => void; inUse: boolean }) {
+  const Icon = TEMPLATE_ICONS[t.id] ?? LayoutTemplate;
+  const featured = !!t.featured;
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 transition-all",
+        featured
+          ? "border-violet-500/40 bg-gradient-to-br from-violet-500/15 via-fuchsia-500/[0.07] to-transparent shadow-lg shadow-violet-500/10"
+          : "border-border/40 bg-card/40 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span className={cn("grid shrink-0 place-items-center rounded-xl", featured ? "h-11 w-11 bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/30" : "h-9 w-9 bg-muted/70 text-muted-foreground")}>
+          <Icon className={featured ? "h-5 w-5" : "h-4 w-4"} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={cn("font-semibold tracking-tight", featured ? "text-lg" : "text-sm")}>{t.name}</p>
+            {featured && <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">O nosso</span>}
+            {inUse && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em uso</span>}
+          </div>
+          <p className="text-xs text-muted-foreground">{t.audience}</p>
+        </div>
       </div>
+      <TemplatePath t={t} />
       {t.note && <p className="text-[11px] italic text-muted-foreground">{t.note}</p>}
-      <Button variant="outline" size="sm" className="mt-auto w-fit rounded-full" onClick={onUse}>Usar este modelo</Button>
+      <Button
+        variant={featured ? "default" : "outline"}
+        size="sm"
+        className={cn("mt-auto w-fit rounded-full px-4", featured && "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:opacity-90")}
+        onClick={onUse}
+        disabled={inUse}
+      >
+        {inUse ? "Já é o seu fluxo" : featured ? "Usar o Modelo Uau" : "Usar este modelo"}
+      </Button>
     </div>
   );
 }
@@ -234,21 +280,11 @@ export function FlowStudio() {
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [saving, setSaving] = useState(false);
-  // The flow board can be minimized to a one-line overview (remembered on this browser)
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem("fluxo-flow-board-collapsed") === "1"; } catch { return false; }
-  });
   // Cargo of each stage: only the edits are kept here; the saved/default map comes from the server
   const rolesQ = useStageRoles();
   const cargosQ = useCargos();
   const saveRoles = useSaveStageRoles();
   const [roleEdits, setRoleEdits] = useState<Record<string, string | null>>({});
-  const toggleCollapsed = () =>
-    setCollapsed((v) => {
-      try { localStorage.setItem("fluxo-flow-board-collapsed", v ? "0" : "1"); } catch { /* preference only */ }
-      return !v;
-    });
-
   // (Re)load the draft from the saved flow — but never throw away edits already made.
   useEffect(() => {
     if (!original || !originalSig) return;
@@ -332,6 +368,8 @@ export function FlowStudio() {
     setDraft((cur) => cur!.filter((x) => x.key !== d.key).map((x) => ({ ...x, next: x.next.filter((k) => k !== d.key) })));
   };
 
+  // A template is "in use" when the active stages (in order, with the same names) are exactly its stages
+  const isInUse = (t: FlowTemplate) => activeList.map((d) => `${d.key}:${d.label}`).join("|") === t.stages.map((x) => `${x.key}:${x.label}`).join("|");
   const useTemplate = (t: FlowTemplate) => {
     setDraft(draftFromTemplate(draft, t));
     setTemplatesOpen(false);
@@ -391,43 +429,34 @@ export function FlowStudio() {
     }
   };
 
+  const summary = (
+    // Minimized: the whole path in one glance
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+      {activeList.map((d, idx) => (
+        <span key={d.key} className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium">
+            <span className={cn("h-2 w-2 rounded-full", toneOf(d).bg)} />
+            {d.label}
+            {(open[d.key] ?? 0) > 0 && <span className="text-[10px] text-amber-600 dark:text-amber-400">{open[d.key]}</span>}
+          </span>
+          {idx < activeList.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground/60" />}
+        </span>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <Workflow className="h-5 w-5 text-muted-foreground" /> Fluxo de etapas
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{activeList.length}</span>
-          </h3>
-          <p className="text-sm text-muted-foreground">O caminho que cada tarefa percorre, do primeiro passo até a entrega.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2 rounded-full" onClick={() => setTemplatesOpen(true)}>
-            <LayoutTemplate className="h-4 w-4" /> Modelos prontos
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-full" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? "Expandir o fluxo" : "Minimizar o fluxo"} title={collapsed ? "Expandir" : "Minimizar"}>
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", !collapsed && "rotate-180")} />
-          </Button>
-        </div>
+    <>
+      <FluxoSection id="flow" icon={Workflow} title="Fluxo de etapas" badge={`${activeList.length} etapas`} summary={summary}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">O caminho que cada tarefa percorre, do primeiro passo até a entrega.</p>
+        <Button variant="outline" className="gap-2 rounded-full" onClick={() => setTemplatesOpen(true)}>
+          <LayoutTemplate className="h-4 w-4" /> Modelos prontos
+        </Button>
       </div>
 
-      {collapsed ? (
-        // Minimized: the whole path in one glance
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 rounded-3xl border border-border/40 bg-card/40 px-4 py-3.5">
-          {activeList.map((d, idx) => (
-            <span key={d.key} className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium">
-                <span className={cn("h-2 w-2 rounded-full", toneOf(d).bg)} />
-                {d.label}
-                {(open[d.key] ?? 0) > 0 && <span className="text-[10px] text-amber-600 dark:text-amber-400">{open[d.key]}</span>}
-              </span>
-              {idx < activeList.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground/60" />}
-            </span>
-          ))}
-        </div>
-      ) : (
-      <div className="rounded-3xl border border-border/40 bg-card/30 p-3 sm:p-5">
-        <ol className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="rounded-2xl border border-border/40 bg-card/30 p-3">
+        <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {activeList.map((d, idx) => {
             const isFinal = d.key === FINAL_KEY;
             const last = idx === activeList.length - 1;
@@ -436,30 +465,24 @@ export function FlowStudio() {
             const options = activeList.filter((a) => a.key !== d.key && a.key !== "alteracoes");
             return (
               <li key={d.key} className="group relative">
-                <div className="relative h-full overflow-hidden rounded-2xl border border-border/50 bg-card px-4 pb-3.5 pt-5 shadow-sm transition hover:border-border hover:shadow-md">
-                  <span className={cn("absolute inset-x-0 top-0 h-1", tone.bg)} />
+                <div className="relative flex h-full flex-col gap-1.5 overflow-hidden rounded-xl border border-border/50 bg-card px-3 pb-2 pt-3 transition hover:border-border hover:shadow-sm">
+                  <span className={cn("absolute inset-x-0 top-0 h-0.5", tone.bg)} />
 
-                  <div className="flex items-start gap-3">
-                    <ColorDot stage={d} onChange={(c) => patch(d.key, { color: c })} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Etapa {String(idx + 1).padStart(2, "0")}</p>
-                      <input
-                        value={d.label}
-                        onChange={(e) => patch(d.key, { label: e.target.value })}
-                        maxLength={40}
-                        aria-label="Nome da etapa"
-                        className="-ml-1.5 w-full rounded-md bg-transparent px-1.5 py-0.5 text-base font-semibold tracking-tight outline-none transition focus:bg-background focus:ring-1 focus:ring-border"
-                      />
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                        {count > 0 && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">{count} aberta{count > 1 ? "s" : ""}</span>}
-                        {!d.is_system && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">Personalizada</span>}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 pr-1">
+                    <ColorDot stage={d} onChange={(c) => patch(d.key, { color: c })} size="sm" />
+                    <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground/70">{String(idx + 1).padStart(2, "0")}</span>
+                    <input
+                      value={d.label}
+                      onChange={(e) => patch(d.key, { label: e.target.value })}
+                      maxLength={40}
+                      aria-label="Nome da etapa"
+                      className="min-w-0 flex-1 rounded-md bg-transparent px-1 py-0.5 text-sm font-semibold tracking-tight outline-none transition focus:bg-background focus:ring-1 focus:ring-border"
+                    />
+                    {count > 0 && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">{count}</span>}
                   </div>
 
                   {!isFinal && (
-                    <div className="mt-3 space-y-0.5 border-t border-border/40 pt-2.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cargo responsável</p>
+                    <div className="flex flex-col items-start gap-2.5 py-1">
                       {d.key === "revisao" ? (
                         REVIEW_ROLE_KEYS.map((r) => <RoleSelect key={r.key} label={r.label} value={roles[r.key] ?? null} cargos={cargoLabels} onChange={(v) => setRole(r.key, v)} />)
                       ) : d.key === "alteracoes" ? (
@@ -471,39 +494,30 @@ export function FlowStudio() {
                   )}
 
                   {d.key !== "alteracoes" && (
-                  <div className="mt-3 border-t border-border/40 pt-2.5">
-                    {isFinal ? (
-                      <p className="text-xs text-muted-foreground">Fim do fluxo: a tarefa sai da produção.</p>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <NextPicker stage={d} options={options} onToggle={(k) => toggleNext(d.key, k)} />
-                        <Select value={d.date === "none" ? "none" : String(d.date)} onValueChange={(v) => patch(d.key, { date: v === "none" ? "none" : v === "pick" ? "pick" : Number(v) })}>
-                          <SelectTrigger className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground">
-                            <Clock className="h-3 w-3" /> <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>{DATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
+                    <div className="mt-auto border-t border-border/30 pt-1.5">
+                      {isFinal ? (
+                        <p className="px-1 text-xs text-muted-foreground">Fim do fluxo: a tarefa sai da produção.</p>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                          <NextPicker stage={d} options={options} onToggle={(k) => toggleNext(d.key, k)} />
+                          <Select value={d.date === "none" ? "none" : String(d.date)} onValueChange={(v) => patch(d.key, { date: v === "none" ? "none" : v === "pick" ? "pick" : Number(v) })}>
+                            <SelectTrigger className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground">
+                              <Clock className="h-3 w-3" /> <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>{DATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
                   )}
 
-                  <div className="absolute right-2 top-3 flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-                    <button type="button" aria-label="Subir" disabled={idx === 0} onClick={() => move(d.key, -1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25"><ArrowLeft className="h-3.5 w-3.5" /></button>
-                    <button type="button" aria-label="Descer" disabled={last || (activeList[idx + 1]?.key === FINAL_KEY)} onClick={() => move(d.key, 1)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25"><ArrowRight className="h-3.5 w-3.5" /></button>
-                    {!isFinal && <button type="button" aria-label="Ocultar etapa" onClick={() => hide(d)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><EyeOff className="h-3.5 w-3.5" /></button>}
-                    {!d.is_system && <button type="button" aria-label="Excluir etapa" onClick={() => removeStage(d)} className="rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
+                  <div className="absolute right-1.5 top-2 flex items-center gap-0 rounded-full bg-card/90 opacity-0 backdrop-blur transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <button type="button" aria-label="Mover para antes" disabled={idx === 0} onClick={() => move(d.key, -1)} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25"><ArrowLeft className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Mover para depois" disabled={last || (activeList[idx + 1]?.key === FINAL_KEY)} onClick={() => move(d.key, 1)} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25"><ArrowRight className="h-3.5 w-3.5" /></button>
+                    {!isFinal && <button type="button" aria-label="Ocultar etapa" onClick={() => hide(d)} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><EyeOff className="h-3.5 w-3.5" /></button>}
+                    {!d.is_system && <button type="button" aria-label="Excluir etapa" onClick={() => removeStage(d)} className="rounded-full p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
                   </div>
                 </div>
-
-                {/* Connector to the next stage: down on one column, right where the next card sits beside this one */}
-                {!last && (
-                  <>
-                    <span className="absolute -bottom-[1.4rem] left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground sm:hidden"><ArrowDown className="h-3 w-3" /></span>
-                    {idx % 2 === 0 && <span className="absolute -right-[1.65rem] top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground sm:flex xl:hidden"><ArrowRight className="h-3 w-3" /></span>}
-                    {idx % 3 !== 2 && <span className="absolute -right-[1.65rem] top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground xl:flex"><ArrowRight className="h-3 w-3" /></span>}
-                  </>
-                )}
               </li>
             );
           })}
@@ -521,7 +535,6 @@ export function FlowStudio() {
           )}
         </div>
       </div>
-      )}
 
       {hiddenList.length > 0 && (
         <div className="rounded-2xl border border-border/30">
@@ -544,6 +557,7 @@ export function FlowStudio() {
           )}
         </div>
       )}
+      </FluxoSection>
 
       {/* Save bar */}
       {dirty && (
@@ -566,11 +580,17 @@ export function FlowStudio() {
             <DialogTitle>Modelos prontos</DialogTitle>
             <DialogDescription>Escolha o que mais se parece com o seu trabalho. O modelo vira um rascunho: você ajusta e só vale depois de salvar.</DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[65vh] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
-            {FLOW_TEMPLATES.map((t) => <TemplateCard key={t.id} t={t} onUse={() => useTemplate(t)} />)}
+          <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+            {FLOW_TEMPLATES.filter((t) => t.featured).map((t) => <TemplateCard key={t.id} t={t} inUse={isInUse(t)} onUse={() => useTemplate(t)} />)}
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Outros modelos</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {FLOW_TEMPLATES.filter((t) => !t.featured).map((t) => <TemplateCard key={t.id} t={t} inUse={isInUse(t)} onUse={() => useTemplate(t)} />)}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

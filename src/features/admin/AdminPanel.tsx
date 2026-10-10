@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Mail, Pencil, Trash2, UserPlus, Users2, KeyRound, Copy, Loader2,
+  Mail, Pencil, UserPlus, UserCheck, ChevronDown, Users2, KeyRound, Copy, Loader2,
   Settings2, ShieldCheck, ShieldX, Eye, EyeOff, Clock, Check, X, ArrowUpRight,
 } from "lucide-react";
 
@@ -71,6 +71,7 @@ export function AdminPanel() {
   const [editRoleTitles, setEditRoleTitles] = useState<string[]>([]);
   const [resetLinkUser, setResetLinkUser] = useState<AdminUserRow | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AdminUserRow | null>(null);
+  const [deactivatedOpen, setDeactivatedOpen] = useState(false);
 
   const usersQ = useAdminUsers();
   const squadsQ = useSquads();
@@ -236,9 +237,37 @@ export function AdminPanel() {
         qc.invalidateQueries({ queryKey: ["admin_users"] }),
         qc.invalidateQueries({ queryKey: ["team_members"] }),
       ]);
-      toast.success("Acesso revogado");
+      toast.success("Usuário desativado");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao revogar"),
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao desativar"),
+  });
+
+  // Brings a deactivated person back: access approved again, visible in the team, and the basic role (the admin then
+  // reviews role, cargos and squads in the edit window — the cargos and squads were never touched).
+  const reactivate = useMutation({
+    mutationFn: async (req: AdminUserRow) => {
+      if (!user) throw new Error("Não autenticado");
+      if (!req.access_request_id) throw new Error("Solicitação não encontrada");
+      const up = await supabase
+        .from("access_requests")
+        .update({ status: "approved", decided_at: new Date().toISOString(), decided_by: user.id })
+        .eq("id", req.access_request_id)
+        .select("id");
+      if (up.error) throw up.error;
+      if (!up.data?.length) throw new Error("Não foi possível reativar: sem permissão para esta solicitação.");
+      const tm = await supabase.from("team_members").update({ is_active: true }).eq("user_id", req.user_id);
+      if (tm.error) throw tm.error;
+      await setUserRoles.mutateAsync({ userId: req.user_id, roles: ["collaborator"] });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin_users"] }),
+        qc.invalidateQueries({ queryKey: ["team_members"] }),
+        qc.invalidateQueries({ queryKey: ["user_roles"] }),
+      ]);
+      toast.success("Usuário reativado. Revise o papel e os cargos em Editar.");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao reativar"),
   });
 
   const hide = useMutation({
@@ -286,12 +315,20 @@ export function AdminPanel() {
     if (roleFilter !== "all") {
       all = all.filter((r) => {
         const roles = rolesQ.data?.get(r.user_id) ?? [];
+        // "Membro" is everyone who is not an administrator (same label as in the edit window)
+        if (roleFilter === "member") return !roles.includes("admin");
         return roles.includes(roleFilter as AppRole);
       });
     }
 
     return [...all].sort(byName((r) => r.display_name));
   }, [usersQ.data, filter, roleFilter, rolesQ.data]);
+
+  // Deactivated = access revoked and hidden. A request that was only refused keeps the person visible, so it is not listed here.
+  const deactivated = useMemo(
+    () => (usersQ.data ?? []).filter((r) => r.access_status === "rejected" && !r.is_active).sort(byName((r) => r.display_name)),
+    [usersQ.data],
+  );
 
   const pending = useMemo(
     () => (usersQ.data ?? []).filter((r) => r.access_status === "pending"),
@@ -334,6 +371,7 @@ export function AdminPanel() {
           <SelectContent>
             <SelectItem value="all">Todos os cargos</SelectItem>
             <SelectItem value="admin">Administrador</SelectItem>
+            <SelectItem value="member">Membro</SelectItem>
           </SelectContent>
         </Select>
 
@@ -390,18 +428,51 @@ export function AdminPanel() {
         )}
       </div>
 
+      {deactivated.length > 0 && (
+        <section className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setDeactivatedOpen((v) => !v)}
+            aria-expanded={deactivatedOpen}
+            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/40 px-4 py-3 text-left transition-colors hover:bg-accent/30"
+          >
+            <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Desativados ({deactivated.length})</span>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200", deactivatedOpen && "rotate-180")} />
+          </button>
+          {deactivatedOpen && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {deactivated.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card/60 p-3">
+                  <Avatar className="h-10 w-10 opacity-60">
+                    {r.avatar_url && <AvatarImage src={r.avatar_url} className="object-cover" />}
+                    <AvatarFallback className="bg-muted text-xs font-semibold">{getInitials(r.display_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{r.display_name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{r.email}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1.5 rounded-full" disabled={reactivate.isPending} onClick={() => reactivate.mutate(r)}>
+                    <UserCheck className="h-3.5 w-3.5" /> Reativar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Dialog de link de reset */}
       <ResetLinkDialog user={resetLinkUser} onClose={() => setResetLinkUser(null)} />
 
-      {/* Confirmação de exclusão */}
+      {/* Confirmação de desativação */}
       <AlertDialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {revokeTarget?.display_name}?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar {revokeTarget?.display_name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Isso revoga o acesso dessa pessoa ao sistema — remove os papéis dela e desativa
-              seu cadastro. Não apaga o histórico (tarefas, pontuação, etc.). Pra ela voltar a
-              acessar, alguém precisa aprovar uma nova solicitação de acesso.
+              A pessoa perde o acesso ao sistema e deixa de aparecer para os outros. Nada é apagado: tarefas, pontuação
+              e histórico continuam. Você pode reativá-la a qualquer momento em "Desativados". As tarefas que estão com ela
+              seguem no nome dela até alguém reatribuir.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -413,7 +484,7 @@ export function AdminPanel() {
                 setRevokeTarget(null);
               }}
             >
-              Excluir
+              Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -435,7 +506,7 @@ export function AdminPanel() {
         onSave={handleSaveRoles}
         onClose={() => setEditRoleUser(null)}
         onResetPassword={() => { const u = editRoleUser; setEditRoleUser(null); if (u) setResetLinkUser(u); }}
-        onDelete={() => { const u = editRoleUser; setEditRoleUser(null); if (u) setRevokeTarget(u); }}
+        onDeactivate={() => { const u = editRoleUser; setEditRoleUser(null); if (u) setRevokeTarget(u); }}
         onToggleVisible={() => {
           const u = editRoleUser;
           if (!u) return;
@@ -449,7 +520,7 @@ export function AdminPanel() {
 /* ───────── User Card ───────── */
 
 // Same family as the client cards (Clientes): avatar in the brand ring, arrow in the corner, quiet text. Everything you can
-// do to the person (reset the password, hide, delete) lives inside the edit window that this card opens.
+// do to the person (reset the password, hide, deactivate) lives inside the edit window that this card opens.
 function UserCard({
   user,
   isAdmin,

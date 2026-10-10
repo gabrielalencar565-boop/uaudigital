@@ -15,16 +15,37 @@ export type FlowTemplate = {
   /** stage key → next stage key (the flow graph) */
   next: Record<string, string>;
   note?: string;
+  /** The agency's own setup, shown first and highlighted. */
+  featured?: boolean;
 };
 
 export const BUILTIN_STAGE_KEYS = ["captacao", "planejamento", "design", "edicao_videos", "revisao", "pdf", "agendamento", "entrega", "alteracoes"] as const;
 
 export const FLOW_TEMPLATES: FlowTemplate[] = [
   {
+    id: "uau",
+    name: "Modelo Uau",
+    audience: "O fluxo que a Uau Digital usa hoje",
+    description: "Captação e pauta, criação em paralelo (design e vídeo), revisão interna, cronograma com o cliente, agendamento e entrega. Alterações voltam para quem fez.",
+    featured: true,
+    stages: [
+      { key: "captacao", label: "Captação" },
+      { key: "planejamento", label: "Planejamento" },
+      { key: "design", label: "Design" },
+      { key: "edicao_videos", label: "Vídeo" },
+      { key: "revisao", label: "Revisão" },
+      { key: "pdf", label: "Cronograma" },
+      { key: "agendamento", label: "Agendamento" },
+      { key: "entrega", label: "Entregue" },
+      { key: "alteracoes", label: "Alterações" },
+    ],
+    next: { captacao: "planejamento", planejamento: "revisao", design: "revisao", edicao_videos: "revisao", revisao: "pdf", pdf: "agendamento", agendamento: "entrega" },
+  },
+  {
     id: "agencia_social",
     name: "Agência de social media",
     audience: "Equipe com planejamento, design, vídeo e revisão",
-    description: "O fluxo completo da Uau: pauta, criação em paralelo (design e vídeo), revisão, aprovação do cliente e agendamento.",
+    description: "Pauta, criação em paralelo (design e vídeo), revisão, aprovação do cliente em PDF e agendamento.",
     stages: [
       { key: "captacao", label: "Captação" },
       { key: "planejamento", label: "Planejamento" },

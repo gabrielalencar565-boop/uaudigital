@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarDays, Check, CircleDashed, Eye, EyeOff, KeyRound, ListChecks, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, CircleDashed, Eye, EyeOff, KeyRound, ListChecks, ShieldCheck, UserRound, UserX } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export interface EditUserDialogProps {
   onClose: () => void;
   onResetPassword: () => void;
   onToggleVisible: () => void;
-  onDelete: () => void;
+  onDeactivate: () => void;
 }
 
 function initials(name: string) {
@@ -211,8 +211,8 @@ export function EditUserDialog(p: EditUserDialogProps) {
               {u.is_active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {u.is_active ? "Ocultar da equipe" : "Mostrar na equipe"}
             </Button>
-            <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={p.onDelete}>
-              <Trash2 className="h-3.5 w-3.5" /> Excluir
+            <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={p.onDeactivate}>
+              <UserX className="h-3.5 w-3.5" /> Desativar usuário
             </Button>
           </div>
           <div className="flex items-center justify-end gap-2">

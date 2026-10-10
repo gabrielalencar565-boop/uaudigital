@@ -44,6 +44,13 @@ const NOT_ASSIGNED_PER_CLIENT = new Set(["entrega", "revisao", "alteracoes"]);
 
 const stageLabelOf = (key: string) => REVIEW_LABELS[key] ?? PM_ACTIVE_STAGES.find((s) => s.key === key)?.label ?? key;
 
+// Compact label for the table: first name, plus the next initial only when two people share it
+function shortName(m: { user_id: string; display_name: string }, all: { user_id: string; display_name: string }[]) {
+  const [first, ...rest] = m.display_name.trim().split(/\s+/);
+  const clash = all.some((o) => o.user_id !== m.user_id && o.display_name.trim().split(/\s+/)[0] === first);
+  return clash && rest.length ? `${first} ${rest[0][0]}.` : first;
+}
+
 type Member = { user_id: string; display_name: string; avatar_url: string | null; role_titles: string[] };
 
 const firstOf = (raw: unknown): string | null | undefined => (Array.isArray(raw) ? (raw[0] ?? null) : (raw as string | null | undefined));
@@ -136,7 +143,7 @@ function CargoCell({
     <Select value={value} onValueChange={(v) => onChange(v === "__unset__" ? undefined : v === "__none__" ? null : v)}>
       <SelectTrigger
         title={title}
-        className="h-11 w-full justify-between gap-2 rounded-lg border-transparent bg-transparent px-2 text-sm shadow-none hover:bg-muted/60 data-[state=open]:bg-muted/60 [&>svg:last-child]:opacity-0 hover:[&>svg:last-child]:opacity-60 data-[state=open]:[&>svg:last-child]:opacity-60"
+        className="h-9 w-full justify-between gap-1.5 rounded-lg border-transparent bg-transparent px-1.5 text-xs shadow-none hover:bg-muted/60 data-[state=open]:bg-muted/60 [&>svg:last-child]:opacity-0 hover:[&>svg:last-child]:opacity-60 data-[state=open]:[&>svg:last-child]:opacity-60"
       >
         <SelectValue>
           {state === "mixed" ? (
@@ -146,12 +153,12 @@ function CargoCell({
           ) : !shown ? (
             <span className="text-muted-foreground/30">—</span>
           ) : (
-            <span className={cn("flex min-w-0 items-center gap-2.5", state === "pending" && "opacity-60")}>
+            <span className={cn("flex min-w-0 items-center gap-2", state === "pending" && "opacity-60")}>
               <span className="relative shrink-0">
-                <Avatar className="h-8 w-8"><AvatarImage src={shown.avatar_url ?? undefined} className="object-cover" /><AvatarFallback className="text-[10px]">{initials(shown.display_name)}</AvatarFallback></Avatar>
-                {(state === "manual" || state === "pending") && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-card" />}
+                <Avatar className="h-6 w-6"><AvatarImage src={shown.avatar_url ?? undefined} className="object-cover" /><AvatarFallback className="text-[9px]">{initials(shown.display_name)}</AvatarFallback></Avatar>
+                {(state === "manual" || state === "pending") && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-card" />}
               </span>
-              <span className={cn("truncate text-sm", state === "pending" && "italic")}>{shown.display_name}</span>
+              <span className={cn("truncate text-xs", state === "pending" && "italic")} title={shown.display_name}>{shortName(shown, members)}</span>
             </span>
           )}
         </SelectValue>
@@ -167,7 +174,7 @@ function CargoCell({
   );
 }
 
-export function PmAssigneeFlowConfig() {
+export function PmAssigneeFlowConfig({ hideTitle = false }: { hideTitle?: boolean } = {}) {
   const qc = useQueryClient();
   const flowsQ = useStageFlows();
   const rolesQ = useStageRoles();
@@ -357,11 +364,13 @@ export function PmAssigneeFlowConfig() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          Responsáveis por Cliente
-        </h3>
+      <div className={cn("flex flex-wrap items-center gap-3", hideTitle ? "justify-end" : "justify-between")}>
+        {!hideTitle && (
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            Responsáveis por Cliente
+          </h3>
+        )}
         <div className="flex items-center gap-2">
           {outOfSync.length > 0 && (
             <Button size="sm" variant="outline" className="gap-1.5 rounded-full" disabled={!!syncing} onClick={() => setConfirmAll(true)}>
@@ -383,18 +392,18 @@ export function PmAssigneeFlowConfig() {
 
       <div className="overflow-hidden rounded-2xl border border-border/30 bg-card/30">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
+          <table className="w-full min-w-max border-separate border-spacing-0 text-xs">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 min-w-[220px] border-b border-border/30 bg-card px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente</th>
-                <th className="min-w-[130px] border-b border-border/30 bg-card/60 px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Squad</th>
+                <th className="sticky left-0 z-10 min-w-[170px] border-b border-border/30 bg-card px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente</th>
+                <th className="min-w-[96px] border-b border-border/30 bg-card/60 whitespace-nowrap px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Squad</th>
                 {cargoBlocks.map((b) => (
-                  <th key={b.cargo} title={b.keys.map(stageLabelOf).join(" · ")} className="min-w-[170px] border-b border-border/30 bg-card/60 px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th key={b.cargo} title={b.keys.map(stageLabelOf).join(" · ")} className="min-w-[120px] border-b border-border/30 bg-card/60 whitespace-nowrap px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {b.cargo}
                   </th>
                 ))}
                 {loose.map((k) => (
-                  <th key={k} className="min-w-[170px] border-b border-border/30 bg-card/60 px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{stageLabelOf(k)}</th>
+                  <th key={k} className="min-w-[120px] border-b border-border/30 bg-card/60 whitespace-nowrap px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{stageLabelOf(k)}</th>
                 ))}
                 <th className="w-20 border-b border-border/30 bg-card/60" />
               </tr>
@@ -407,15 +416,15 @@ export function PmAssigneeFlowConfig() {
                 return (
                   <Fragment key={client.id}>
                     <tr className="group transition-colors hover:bg-accent/20">
-                      <td className="sticky left-0 z-10 border-b border-border/20 bg-card px-4 py-1.5 group-hover:bg-accent/20">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border/60">
+                      <td className="sticky left-0 z-10 border-b border-border/20 bg-card px-3 py-1 group-hover:bg-accent/20">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-1 ring-border/60">
                             {client.logo_url ? <img src={client.logo_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : client.name.trim().charAt(0).toUpperCase()}
                           </span>
-                          <span className="min-w-0 truncate text-sm font-medium">{client.name}</span>
+                          <span className="min-w-0 truncate text-xs font-medium" title={client.name}>{client.name}</span>
                         </div>
                       </td>
-                      <td className="border-b border-border/20 px-3 py-1">
+                      <td className="border-b border-border/20 px-2 py-0.5">
                         {squadIds.length === 0 ? (
                           <span className="text-xs text-muted-foreground/50" title="Escolha o squad em Clientes → (cliente) → Configurações">Sem squad</span>
                         ) : (
@@ -423,7 +432,7 @@ export function PmAssigneeFlowConfig() {
                             {squadIds.map((id) => {
                               const sq = squadById.get(id);
                               return sq ? (
-                                <span key={id} className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                <span key={id} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: sq.color }} />
                                   {sq.name}
                                 </span>
@@ -435,13 +444,13 @@ export function PmAssigneeFlowConfig() {
                       {cargoBlocks.map((b) => {
                         const { state, person, expected, candidates } = cellOf(b.keys, client.id);
                         return (
-                          <td key={b.cargo} className="border-b border-border/20 px-1.5 py-1">
+                          <td key={b.cargo} className="border-b border-border/20 px-1 py-0.5">
                             <CargoCell state={state} person={person} expected={expected} candidates={candidates} members={members} cargo={b.cargo} onChange={(v) => setStages(b.keys, client.id, v)} />
                           </td>
                         );
                       })}
                       {loose.map((k) => (
-                        <td key={k} className="border-b border-border/20 px-1.5 py-1">
+                        <td key={k} className="border-b border-border/20 px-1 py-0.5">
                           <PersonSelect value={firstOf(assignees[k]?.[client.id])} members={members} onChange={(v) => setStages([k], client.id, v)} />
                         </td>
                       ))}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -416,6 +417,24 @@ export function AdminPontuacaoPanel() {
                           />
                         </TableCell>
                         <TableCell className="text-center">
+                          {!isCustom && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-disabled="true"
+                                  aria-label="Esta etapa não pode ser excluída"
+                                  className="h-7 w-7 mx-auto flex items-center justify-center rounded-md cursor-not-allowed"
+                                  onClick={() => toast.info("Esta etapa faz parte do fluxo padrão e não pode ser excluída. Para tirá-la de uso, oculte-a em Fluxos.")}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-[240px] text-xs">
+                                Esta etapa faz parte do fluxo padrão do sistema e a pontuação das tarefas depende dela, por isso não pode ser excluída. Para tirá-la de uso, oculte-a em Fluxos. Só as etapas periódicas criadas por você podem ser removidas.
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                           {isCustom && (
                             <button
                               type="button"

@@ -1,5 +1,7 @@
+import { FluxoSection } from "./components/FluxoSection";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { CapturasPanel, usePendingCaptureCount } from "@/features/agenda/components/CapturasPanel";
 import { tabPath } from "@/lib/app-routes";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -105,6 +107,16 @@ export function GestaoPanel({
   );
   const effectiveView = forcedView ? (forcedView as any) : view;
   const navigate = useNavigate();
+  // Agenda has a second sub-tab: the recording requests that clients send through the public link (?secao=capturas)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const capturasMode = effectiveView === "agenda" && searchParams.get("secao") === "capturas";
+  const pendingCaptures = usePendingCaptureCount();
+  const setAgendaSection = (next: string) => {
+    const copy = new URLSearchParams(searchParams);
+    if (next === "capturas") copy.set("secao", "capturas");
+    else copy.delete("secao");
+    setSearchParams(copy, { replace: true });
+  };
   const hideViewTabs = !!forcedView;
   const [search, setSearch] = useState("");
   const [filterClient, setFilterClient] = useState("__all__");
@@ -247,11 +259,22 @@ export function GestaoPanel({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{capturasMode ? "Captações" : VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
           </div>
         </div>
+        {effectiveView === "agenda" && (
+          <Tabs value={capturasMode ? "capturas" : "agenda"} onValueChange={setAgendaSection}>
+            <TabsList className="h-10 w-fit gap-1 rounded-full bg-muted/40 p-1">
+              <TabsTrigger value="agenda" className="h-8 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">Tarefas</TabsTrigger>
+              <TabsTrigger value="capturas" className="h-8 gap-2 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">
+                Captações
+                {pendingCaptures > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white">{pendingCaptures}</span>}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
         {/* The flow settings are about the pipeline itself, not about tasks: no task search or filters there */}
-        {effectiveView !== "fluxo" && <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
+        {effectiveView !== "fluxo" && !capturasMode && <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar tarefa..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 rounded-full text-sm border-border/30 bg-background/60" />
@@ -385,7 +408,8 @@ export function GestaoPanel({
 
       {/* View content */}
       <div className="mt-4">
-        {effectiveView === "agenda" &&
+        {capturasMode && <CapturasPanel />}
+        {effectiveView === "agenda" && !capturasMode &&
         <AgendaCalendarView
           tasks={tasks}
           childTasksMap={childTasksMap}
@@ -461,10 +485,12 @@ export function GestaoPanel({
 
         }
         {effectiveView === "fluxo" &&
-        <div className="space-y-8">
+        <div className="space-y-4">
             <FlowStudio />
             <CascadeStudio />
-            <PmAssigneeFlowConfig />
+            <FluxoSection id="responsaveis" icon={Users} title="Responsáveis por Cliente" description="Quem cuida de cada etapa em cada cliente. O squad do cliente define a equipe; aqui você confere e ajusta.">
+              <PmAssigneeFlowConfig hideTitle />
+            </FluxoSection>
           </div>
         }
         {effectiveView === "responsaveis" &&

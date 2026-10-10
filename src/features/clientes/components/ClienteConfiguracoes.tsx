@@ -94,7 +94,7 @@ function PhotoCard({ clientId }: { clientId: string }) {
 
 type Ambiguity = { cargo: string; stages: string[]; people: { user_id: string; display_name: string; avatar_url: string | null }[] };
 
-function SquadCard({ clientId }: { clientId: string }) {
+export function SquadCard({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
