@@ -6,7 +6,9 @@ Este pacote tem tudo o que foi feito até 10/10/2026 no site institucional da UA
 
 | Arquivo | O que é |
 | --- | --- |
-| `index.html` | Rascunho visual da home (HTML + CSS + JS num arquivo só). Abra no navegador. |
+| `index.html` | Home. Abra no navegador (ou sirva a pasta com `python3 -m http.server`). |
+| `sobre.html`, `clientes.html`, `servicos.html`, `grupo-uau.html`, `trabalhe-conosco.html` | Páginas internas, montadas a partir da `copy-do-site.md` |
+| `assets/site.css`, `assets/site.js` | Estilo e comportamento compartilhados por todas as páginas |
 | `img/` | Fotos reais da equipe e do estúdio, logo da UAU Digital, do Fluxo e da UAU Produtora |
 | `logos-originais/` | Arquivos vetoriais originais (PDF) dos logos da UAU e do Fluxo, para o site final |
 | `copy-do-site.md` | Copy completa de todas as páginas (Home, Sobre, Clientes, Serviços, Grupo UAU, Trabalhe conosco, Rodapé e SEO) |
@@ -28,6 +30,16 @@ Este pacote tem tudo o que foi feito até 10/10/2026 no site institucional da UA
 6. **Nome correto da unidade audiovisual:** UAU Produtora (não usar "UAU.PROD").
 7. **Visual:** fundo escuro com seções claras alternadas, cores da UAU (roxo #7B2FE0 → magenta #C9307A → laranja #F2A04A), fonte Bricolage Grotesque.
 8. **Primeira tela (hero):** pedida moderna e minimalista. Versão atual: título "Sua marca" + palavra que alterna (vista. / lembrada. / escolhida.), texto de apoio, dois botões, linha com 3 números e uma foto da equipe à direita.
+
+## Estado em 10/10/2026 (continuação)
+
+- O rascunho de um arquivo só virou um site de 6 páginas com CSS e JS compartilhados.
+- Menu, rodapé e botões são iguais em todas as páginas. Se mudar o menu, mude nas 6.
+- Área do Cliente → `https://appfluxo.app.br/auth`; Conhecer o Fluxo → `https://appfluxo.app.br`.
+- "Falar com a UAU" e o botão de WhatsApp levam por enquanto para o CTA final da home (`index.html#contato`). Quando tiver o número, troque por `https://wa.me/55DDDNUMERO` nas 6 páginas.
+- Clientes tem filtro por segmento funcionando; os logos são marcadores (`LOGO 01`…) com `data-seg` para trocar pelas imagens reais.
+- Em laranja = dado que falta preencher (igual ao rascunho).
+- Atenção: o arquivo `img/logo-produtora.png` ainda mostra "UAU PROD". Pela decisão 6, falta um logo com o nome UAU Produtora.
 
 ## O que ainda falta
 
