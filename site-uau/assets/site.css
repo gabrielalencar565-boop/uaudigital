@@ -102,15 +102,8 @@ footer .logo img{height:44px}
 .marquee{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 
 /* HERO EDITORIAL: título gigante com a foto do time dentro da frase */
-.hero{display:flex;align-items:center;padding-block:116px 56px}
+.hero{display:flex;align-items:center;padding-block:148px 64px}
 .hero .wrap.hx{display:flex;flex-direction:column;align-items:stretch;gap:28px;width:100%}
-.hx-top{display:flex;justify-content:center;text-align:center;align-items:center;gap:16px;flex-wrap:wrap}
-.hx-badge{display:inline-flex;align-items:center;gap:10px;padding:8px 16px 8px 12px;border-radius:999px;background:rgba(23,21,27,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);font-size:13.5px;font-weight:500;color:var(--muted)}
-.hx-badge .dot{width:8px;height:8px;border-radius:50%;background:#7FE0A7;box-shadow:0 0 0 4px rgba(127,224,167,.15);animation:blink 2s infinite}
-.hx-badge .sep{width:1px;height:14px;background:rgba(255,255,255,.18)}
-.vle-steps{display:inline-flex;gap:1px;font-weight:700}
-.vle-steps b{color:#5A5563;transition:color .5s}
-.vle-steps b.on{color:var(--orange)}
 .hero .hx-title{font-size:clamp(48px,7.6vw,116px);font-weight:300;line-height:.94;letter-spacing:-.055em;display:flex;flex-direction:column}
 .hx-line{display:flex;align-items:center;justify-content:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
 .hx-line2{gap:.22em}
@@ -360,7 +353,7 @@ body.locked{overflow:hidden}
   .sticky .btn{width:100%}
   .wa{bottom:90px}
   section{padding-block:72px}
-  .hero{padding-block:104px 48px}
+  .hero{padding-block:120px 48px}
   .hero .wrap{grid-template-columns:1fr;gap:48px}
   .collage{height:440px}
   .hero{min-height:auto}
@@ -386,7 +379,7 @@ body.locked{overflow:hidden}
   .track{animation:none}
   .eyebrow::before{animation:none}
   .reveal,.reveal.pre{transform:none;transition:none}
-  .orb,.solo img,.pill,.hx-badge .dot{animation:none}
+  .orb,.solo img,.pill{animation:none}
   .hero-slides .slide{transition:none;transform:none}
   html{scroll-behavior:auto}
 }
