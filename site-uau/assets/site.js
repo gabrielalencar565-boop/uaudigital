@@ -17,6 +17,30 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
   setInterval(()=>{ if(Date.now()-hold<6000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },3200);
 })();
 
+// parede 3D do portfólio: deitada (rotateX) quando entra na tela e de frente quando chega ao meio; colunas se encaixam em ritmos diferentes
+(function(){
+  const stage=document.getElementById('wall'); if(!stage) return;
+  const wall=stage.querySelector('.wall'), cols=[...wall.querySelectorAll('.wcol')], vids=[...wall.querySelectorAll('video')];
+  const off=[120,-60,160,-30];
+  const ease=t=>1-Math.pow(1-t,3);
+  const tick=()=>{
+    const r=stage.getBoundingClientRect(), vh=innerHeight;
+    const raw=reduce?1:Math.min(1,Math.max(0,(vh-r.top)/(vh*1.25)));
+    const p=ease(raw), q=1-p;
+    wall.style.setProperty('--rx',(q*58)+'deg');
+    wall.style.setProperty('--rz',(q*-7)+'deg');
+    wall.style.setProperty('--sc',(1+q*.18).toFixed(3));
+    stage.style.setProperty('--glow',(.2+p*.8).toFixed(2));
+    cols.forEach((c,k)=>c.style.setProperty('--cy',(q*off[k%4])+'px'));
+    wall.classList.toggle('flat',raw>.97);
+  };
+  addEventListener('scroll',()=>requestAnimationFrame(tick),{passive:true}); addEventListener('resize',tick); tick();
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver(es=>es.forEach(e=>{ vids.forEach(v=>{ if(e.isIntersecting && !reduce) v.play().catch(()=>{}); else v.pause(); }); }),{threshold:.1});
+    io.observe(stage);
+  }
+})();
+
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
 (function(){
   const slot=document.getElementById('clslot'); if(!slot) return;
