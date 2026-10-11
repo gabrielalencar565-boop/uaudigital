@@ -5,16 +5,16 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function loop(id, html){ const el=document.getElementById(id); if(el) el.innerHTML = html + html; }
 const v=['','v2','v3','v4'];
 loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design','Estratégia','Gestão com o Fluxo'].map(t=>`<span>${t}</span>`).join(''));
-// método: a etapa ativa avança sozinha; passar o mouse ou clicar escolhe a etapa
+// método: a etapa ativa avança sozinha (só com a seção na tela); mouse ou clique escolhem a etapa
 (function(){
-  const flow=document.getElementById('vleflow'); if(!flow) return;
-  const steps=[...flow.querySelectorAll('.vf-step')], fill=flow.querySelector('.vf-fill');
+  const box=document.getElementById('vleflow'); if(!box) return;
+  const steps=[...box.querySelectorAll('.vr-step')], rings=[...box.querySelectorAll('.ring')];
   let i=0, hold=0;
-  const go=k=>{ i=k; steps.forEach((s,j)=>{ s.classList.toggle('on',j===k); s.classList.toggle('done',j<k); s.setAttribute('aria-pressed',j===k); }); fill.style.width=((k+1)/steps.length*100)+'%'; };
+  const go=k=>{ i=k; steps.forEach((s,j)=>{ s.classList.toggle('on',j===k); s.setAttribute('aria-pressed',j===k); }); rings.forEach((r,j)=>r.classList.toggle('on',j===k)); };
   steps.forEach((s,k)=>{ s.addEventListener('mouseenter',()=>{ hold=Date.now(); go(k); }); s.addEventListener('click',()=>{ hold=Date.now(); go(k); }); });
   go(0);
   if(reduce) return;
-  setInterval(()=>{ if(Date.now()-hold<6000) return; const r=flow.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },2800);
+  setInterval(()=>{ if(Date.now()-hold<6000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },3200);
 })();
 
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
@@ -34,7 +34,6 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
 loop('quotes', q.repeat(5));
 const quoteGrid=document.getElementById('quote-grid'); if(quoteGrid) quoteGrid.innerHTML=q.repeat(6);
-loop('textband', ['Vista.','Lembrada.','Escolhida.'].map(t=>`<span>${t}</span>`).join('').repeat(3));
 const port=['Vídeo','Post','Foto','Design','Reels','Campanha','Carrossel','Ensaio'];
 loop('p1', port.map((t,i)=>`<div class="img ${v[i%4]} ${i%3===1?'w':''}"><span>${t}</span></div>`).join(''));
 loop('p2', port.slice().reverse().map((t,i)=>`<div class="img ${v[(i+1)%4]} ${i%3===0?'w':''}"><span>${t}</span></div>`).join(''));
