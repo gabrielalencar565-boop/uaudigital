@@ -273,9 +273,11 @@ footer .logo img{height:44px}
 .ch-head h3{font-size:clamp(30px,3.6vw,48px);font-weight:600;letter-spacing:-.035em;line-height:1}
 .ch-sub{margin-left:auto;font-size:14px;color:var(--dim)}
 .cr{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:18px;align-items:start}
+.cr-loop{margin-inline:calc(50% - 50vw);padding-block:4px 10px}
+.cr-loop-track{gap:14px;animation-duration:70s;animation-direction:reverse}
+.cr-loop:hover .cr-loop-track{animation-play-state:paused}
+.cr-loop .cr-item{flex:none;width:300px}
 .cr-item{margin:0;position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/5;background:var(--bg2);box-shadow:0 24px 50px rgba(0,0,0,.35)}
-.cr-item:nth-child(2){margin-top:56px}
-.cr-item:nth-child(3){margin-top:112px}
 .cr-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .9s cubic-bezier(.2,.7,.2,1)}
 .cr-item:hover img{transform:scale(1.05)}
 .cr-item::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 62%,rgba(15,14,17,.85));pointer-events:none}
@@ -436,6 +438,8 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
+  .cr-loop .cr-item{width:200px}
+  .cr-loop-track{animation-duration:50s}
   .inst{grid-template-columns:1fr}
   .reel.inst-card{width:auto;max-width:none}
   .inst-card{border-radius:16px}
