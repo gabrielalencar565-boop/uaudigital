@@ -17,13 +17,36 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
   setInterval(()=>{ if(Date.now()-hold<6000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },3200);
 })();
 
-// portfólio (mosaico): as peças entram em sequência quando o mural aparece
+// portfólio (lista): no computador a prévia segue o cursor e o clique abre grande; no celular o toque abre a prévia na própria linha
 (function(){
-  const mural=document.getElementById('mural'); if(!mural || reduce || !('IntersectionObserver' in window)) return;
-  if(mural.getBoundingClientRect().top<innerHeight) return;
-  const items=[...mural.children]; items.forEach(el=>el.classList.add('pre'));
-  const io=new IntersectionObserver(es=>{ if(!es[0].isIntersecting) return; io.disconnect(); items.forEach(el=>el.classList.remove('pre')); },{threshold:.12});
-  io.observe(mural);
+  const list=document.getElementById('pflist'); if(!list) return;
+  const rows=[...list.querySelectorAll('.pl-row')], float=document.getElementById('pffloat'), modal=document.getElementById('pfmodal');
+  const stage=modal.querySelector('.pl-stage'), cap=modal.querySelector('.pl-cap');
+  const fine=matchMedia('(hover:hover) and (pointer:fine)');
+  let cur=null, x=0, y=0, fx=0, fy=0, raf=0;
+  const media=(r,big)=>r.dataset.type==='v'
+    ? `<video src="${r.dataset.src}" poster="${r.dataset.poster}" ${big?'controls autoplay':'muted loop autoplay'} playsinline></video>`
+    : `<img src="${r.dataset.src}" alt="">`;
+  const follow=()=>{ fx+=(x-fx)*.18; fy+=(y-fy)*.18; float.style.transform=`translate(${fx+48}px,${fy-float.offsetHeight/2}px)`; raf=requestAnimationFrame(follow); };
+  rows.forEach((r,k)=>{
+    r.addEventListener('mouseenter',e=>{ if(!fine.matches) return;
+      if(cur!==r){ float.className='pl-float'+(r.dataset.type==='i'?' is-img':''); float.innerHTML=media(r,false); float.style.setProperty('--tilt',(k%2?-3:3)+'deg'); const v=float.querySelector('video'); if(v) v.play().catch(()=>{}); cur=r; }
+      x=e.clientX; y=e.clientY; if(!raf){ fx=x; fy=y; follow(); } requestAnimationFrame(()=>float.classList.add('on'));
+    });
+    r.addEventListener('mousemove',e=>{ x=e.clientX; y=e.clientY; });
+    r.addEventListener('click',()=>{
+      if(fine.matches){ open(r); return; }
+      const was=r.classList.contains('open');
+      rows.forEach(o=>{ o.classList.remove('open'); const v=o.querySelector('.pl-inline video'); if(v) v.pause(); });
+      if(!was){ r.classList.add('open'); const v=r.querySelector('.pl-inline video'); if(v){ v.muted=true; v.play().catch(()=>{}); } }
+    });
+  });
+  list.addEventListener('mouseleave',()=>{ float.classList.remove('on'); cancelAnimationFrame(raf); raf=0; const v=float.querySelector('video'); if(v) v.pause(); cur=null; });
+  const open=r=>{ float.classList.remove('on'); stage.className='pl-stage'+(r.dataset.type==='i'?' is-img':''); stage.innerHTML=media(r,true); cap.textContent=r.dataset.name; modal.hidden=false; document.body.classList.add('locked'); modal.querySelector('.pl-close').focus(); };
+  const close=()=>{ modal.hidden=true; stage.innerHTML=''; document.body.classList.remove('locked'); };
+  modal.querySelector('.pl-close').addEventListener('click',close);
+  modal.addEventListener('click',e=>{ if(e.target===modal) close(); });
+  addEventListener('keydown',e=>{ if(e.key==='Escape' && !modal.hidden) close(); });
 })();
 
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."

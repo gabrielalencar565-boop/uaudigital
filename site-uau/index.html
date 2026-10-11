@@ -180,7 +180,7 @@
   </div>
 </section>
 
-<!-- 6. PORTFÓLIO: mosaico solto, como um mural -->
+<!-- 6. PORTFÓLIO: lista tipográfica, a prévia aparece junto do cursor -->
 <section class="pf" id="portfolio">
   <div class="wrap">
     <div class="nums-head reveal">
@@ -188,43 +188,48 @@
         <span class="eyebrow">Portfólio</span>
         <h2>O que <b>sai daqui.</b></h2>
       </div>
-      <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time.</p>
+      <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time. <span class="pf-tip-d">Passe o mouse para ver, clique para abrir.</span><span class="pf-tip-m">Toque para ver.</span></p>
     </div>
-    <div class="mural" id="mural">
-      <article class="reel pf-v mz" style="grid-area:1 / 1 / span 6 / span 3;--rot:-4deg;--d:0ms">
-        <video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video>
-        <span class="reel-dur">29s</span>
-        <button type="button" class="reel-btn" aria-label="Ouvir este vídeo do portfólio com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
-        <div class="reel-who"><b>Reels</b><span>Comércio</span></div>
-      </article>
-      <figure class="pf-img mz" style="grid-area:2 / 4 / span 4 / span 3;--rot:3deg;--d:90ms"><img src="portfolio/retrato.jpg" alt="Retrato profissional de cliente da UAU" loading="lazy"><figcaption><b>Foto</b><span>Retrato profissional</span></figcaption></figure>
-      <article class="reel pf-v mz" style="grid-area:1 / 7 / span 6 / span 3;--rot:-2deg;--d:180ms">
-        <video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video>
-        <span class="reel-dur">46s</span>
-        <button type="button" class="reel-btn" aria-label="Ouvir este vídeo do portfólio com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
-        <div class="reel-who"><b>Institucional</b><span>Indústria</span></div>
-      </article>
-      <figure class="pf-img mz" style="grid-area:2 / 10 / span 4 / span 3;--rot:4deg;--d:270ms"><img src="portfolio/doce-rio-produto.jpg" alt="Foto de produto do Doce Rio Gelato e Açaí" loading="lazy"><figcaption><b>Foto</b><span>Doce Rio Gelato & Açaí</span></figcaption></figure>
-      <figure class="pf-img mz" style="grid-area:7 / 1 / span 4 / span 3;--rot:3deg;--d:360ms"><img src="portfolio/bucall-carrossel.jpg" alt="Post da Clínica Bucall Center criado pela UAU" loading="lazy"><figcaption><b>Design</b><span>Clínica Bucall Center</span></figcaption></figure>
-      <article class="reel pf-v mz" style="grid-area:6 / 4 / span 6 / span 3;--rot:-3deg;--d:450ms">
-        <video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video>
-        <span class="reel-dur">24s</span>
-        <button type="button" class="reel-btn" aria-label="Ouvir este vídeo do portfólio com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
-        <div class="reel-who"><b>Reels</b><span>Saúde</span></div>
-      </article>
-      <article class="reel pf-v mz" style="grid-area:7 / 7 / span 6 / span 3;--rot:2deg;--d:540ms">
-        <video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video>
-        <span class="reel-dur">1min</span>
-        <button type="button" class="reel-btn" aria-label="Ouvir este vídeo do portfólio com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
-        <div class="reel-who"><b>Reels</b><span>Educação</span></div>
-      </article>
-      <article class="reel pf-v mz" style="grid-area:6 / 10 / span 6 / span 3;--rot:-4deg;--d:630ms">
-        <video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video>
-        <span class="reel-dur">39s</span>
-        <button type="button" class="reel-btn" aria-label="Ouvir este vídeo do portfólio com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
-        <div class="reel-who"><b>Reels</b><span>Saúde</span></div>
-      </article>
-    </div>
+    <ul class="pl" id="pflist">
+      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/conveniencia.mp4" data-poster="portfolio/conveniencia.jpg" data-name="Conveniência">
+        <span class="pl-n">01</span><span class="pl-name">Conveniência</span><span class="pl-kind">Reels</span><span class="pl-seg">Comércio</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/diferro.mp4" data-poster="portfolio/diferro.jpg" data-name="Diferro">
+        <span class="pl-n">02</span><span class="pl-name">Diferro</span><span class="pl-kind">Institucional</span><span class="pl-seg">Indústria</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/retrato.jpg" data-poster="portfolio/retrato.jpg" data-name="Retrato profissional">
+        <span class="pl-n">03</span><span class="pl-name">Retrato profissional</span><span class="pl-kind">Foto</span><span class="pl-seg">Ensaio</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><img src="portfolio/retrato.jpg" alt="" loading="lazy"></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/odontopediatria.mp4" data-poster="portfolio/odontopediatria.jpg" data-name="Odontopediatria">
+        <span class="pl-n">04</span><span class="pl-name">Odontopediatria</span><span class="pl-kind">Reels</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/doce-rio-produto.jpg" data-poster="portfolio/doce-rio-produto.jpg" data-name="Doce Rio Gelato & Açaí">
+        <span class="pl-n">05</span><span class="pl-name">Doce Rio Gelato & Açaí</span><span class="pl-kind">Foto de produto</span><span class="pl-seg">Alimentação</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><img src="portfolio/doce-rio-produto.jpg" alt="" loading="lazy"></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/bucall-carrossel.jpg" data-poster="portfolio/bucall-carrossel.jpg" data-name="Clínica Bucall Center">
+        <span class="pl-n">06</span><span class="pl-name">Clínica Bucall Center</span><span class="pl-kind">Design</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><img src="portfolio/bucall-carrossel.jpg" alt="" loading="lazy"></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/educacao.mp4" data-poster="portfolio/educacao.jpg" data-name="Escola">
+        <span class="pl-n">07</span><span class="pl-name">Escola</span><span class="pl-kind">Reels</span><span class="pl-seg">Educação</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video></span>
+      </button></li>
+      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/dra-luana.mp4" data-poster="portfolio/dra-luana.jpg" data-name="Dra. Luana">
+        <span class="pl-n">08</span><span class="pl-name">Dra. Luana</span><span class="pl-kind">Reels</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
+        <span class="pl-inline" aria-hidden="true"><video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video></span>
+      </button></li>
+    </ul>
+  </div>
+  <div class="pl-float" id="pffloat" aria-hidden="true"></div>
+  <div class="pl-modal" id="pfmodal" hidden>
+    <button type="button" class="pl-close" aria-label="Fechar">✕</button>
+    <div class="pl-stage"></div>
+    <p class="pl-cap"></p>
   </div>
 </section>
 
