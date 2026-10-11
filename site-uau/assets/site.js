@@ -78,6 +78,7 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   const stopSound=r=>{ const v=r.querySelector('video'); r.classList.remove('sound'); v.muted=true; v.controls=false; };
   reels.forEach(r=>{
     const v=r.querySelector('video');
+    v.addEventListener('playing',()=>v.classList.add('live'));
     r.querySelector('.reel-btn').addEventListener('click',()=>{
       reels.forEach(o=>{ if(o!==r){ stopSound(o); if(reduce) o.querySelector('video').pause(); } });
       r.classList.add('sound'); v.muted=false; v.controls=true; v.loop=false; v.currentTime=0; v.play().catch(()=>stopSound(r));

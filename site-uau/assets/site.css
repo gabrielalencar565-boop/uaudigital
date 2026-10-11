@@ -220,7 +220,10 @@ footer .logo img{height:44px}
 .reels{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .reel{position:relative;aspect-ratio:9/16;border-radius:22px;overflow:hidden;background:#1F1C25;box-shadow:0 20px 40px rgba(20,18,23,.18);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .reel:hover{transform:translateY(-6px)}
-.reel video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.reel video,.reel .vprev{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+/* prévia animada (WebP) sempre toca, até onde o celular bloqueia vídeo automático; o vídeo aparece por cima quando de fato começa a tocar */
+.reel video{opacity:0;transition:opacity .4s}
+.reel video.live{opacity:1}
 .reel::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,14,17,.35),transparent 20%,transparent 34%,rgba(15,14,17,.82) 56%,rgba(15,14,17,.95) 80%);pointer-events:none;transition:opacity .3s}
 .reel-dur{position:absolute;top:14px;left:14px;z-index:2;font-size:11px;font-weight:600;color:#fff;background:rgba(15,14,17,.55);backdrop-filter:blur(8px);border-radius:999px;padding:5px 10px}
 .reel-btn{all:unset;cursor:pointer;position:absolute;top:12px;right:12px;z-index:2;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#141217;background:#fff;border-radius:999px;padding:7px 12px 7px 10px;transition:transform .2s}
@@ -300,7 +303,7 @@ footer .logo img{height:44px}
 .inst-loop .inst-card{flex:none;width:520px}
 .inst-card{aspect-ratio:16/9;border-radius:22px;box-shadow:0 24px 50px rgba(0,0,0,.4);background:#0F0E11}
 .inst-card:only-child{grid-column:1/-1}
-.reel.inst-card video{object-fit:cover;object-position:center 30%}
+.reel.inst-card video,.reel.inst-card .vprev{object-fit:cover;object-position:center 30%}
 .inst-card::after{background:linear-gradient(180deg,rgba(15,14,17,.25),transparent 25%,transparent 60%,rgba(15,14,17,.8))}
 .inst-card .reel-who{left:18px;bottom:16px;right:auto;max-width:55%}
 .inst-card .reel-who b{font-size:17px}
@@ -343,7 +346,7 @@ footer .logo img{height:44px}
 .cap-cta small{font-size:12px;opacity:.9}
 .cap-cta:hover{filter:brightness(1.08)}
 .tm-pills::after{content:"";position:absolute;left:0;right:0;bottom:0;height:200px;background:radial-gradient(ellipse at 20% 100%,rgba(242,160,74,.18),transparent 60%),radial-gradient(ellipse at 70% 100%,rgba(123,47,224,.14),transparent 60%);pointer-events:none}
-.tm-pills .nums-head{flex-direction:column;align-items:center;text-align:center}
+.tm-pills .nums-head{flex-direction:column;align-items:center;text-align:center;gap:12px}
 .tm-pills .nums-head .head{align-items:center}
 .tm-pills .nums-head p{max-width:520px}
 
