@@ -267,6 +267,10 @@ footer .logo img{height:44px}
 
 /* PORTFÓLIO: dois capítulos — 01 Criativos e 02 Reels */
 .pf{padding-block:110px 120px}
+/* portfólio: cada categoria entra deitada em 3D (como um piso) e se levanta de frente conforme a rolagem */
+#portfolio{overflow-x:clip}
+.ch3d{transform-origin:50% 0%;transform:perspective(1100px) translateY(var(--ty,0px)) rotateX(var(--rx,0deg)) rotateZ(var(--rz,0deg)) scale(var(--sc,1));opacity:var(--op,1);will-change:transform;position:relative}
+.ch3d::after{content:"";position:absolute;left:10%;right:10%;top:30%;bottom:-10%;z-index:-1;background:radial-gradient(ellipse at 50% 50%,rgba(123,47,224,.35),rgba(201,48,122,.12) 45%,transparent 70%);filter:blur(30px);opacity:var(--gl,0);pointer-events:none}
 .ch{margin-top:64px}
 .ch-head{display:flex;align-items:baseline;gap:18px;padding-bottom:22px;margin-bottom:28px;border-bottom:1px solid var(--line)}
 .ch-n{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--lilac)}

@@ -101,6 +101,25 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   setInterval(()=>{ const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; cols[k%cols.length].classList.toggle('flip'); k++; },1400);
 })();
 
+// portfólio 3D: cada categoria (Criativos, Reels, Filmes) chega deitada e levanta de frente com a rolagem, uma depois da outra
+(function(){
+  const chs=[...document.querySelectorAll('.ch3d')]; if(!chs.length || reduce) return;
+  const tick=()=>{
+    const vh=innerHeight;
+    chs.forEach((c,k)=>{
+      const r=c.getBoundingClientRect();
+      const raw=Math.min(1,Math.max(0,(vh-r.top)/(vh*.78))), p=raw*raw*(3-2*raw), q=1-p;
+      c.style.setProperty('--rx',(q*62)+'deg');
+      c.style.setProperty('--rz',(q*(k%2?5:-5))+'deg');
+      c.style.setProperty('--ty',(q*90)+'px');
+      c.style.setProperty('--sc',(1+q*.12).toFixed(3));
+      c.style.setProperty('--op',(.25+p*.75).toFixed(2));
+      c.style.setProperty('--gl',(Math.sin(p*Math.PI)*.9).toFixed(2));
+    });
+  };
+  addEventListener('scroll',()=>requestAnimationFrame(tick),{passive:true}); addEventListener('resize',tick); tick();
+})();
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
