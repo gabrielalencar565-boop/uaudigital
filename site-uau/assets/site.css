@@ -680,22 +680,24 @@ body.lb-open{overflow:hidden}
   html{scroll-behavior:auto}
 }
 
-/* clientes: fundo roxo, minimalista */
-.cl-purple{background:#6A24D0;background:radial-gradient(120% 140% at 50% 0%,#8A3BF0 0%,#6A24D0 45%,#4E17A8 100%);color:#fff;overflow:hidden}
-.cl-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;margin-bottom:56px}
-.cl-kicker{font-size:12px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.7)}
-.cl-head h2{font-size:clamp(34px,5.2vw,68px);line-height:1.02;letter-spacing:-.04em;font-weight:300;color:#fff}
-.cl-head h2 b{font-weight:800}
+/* clientes: faixa roxa compacta */
+.cl-band{padding:0;background:linear-gradient(90deg,#5B1DB8,#7B2FE0 55%,#8B3BE8);color:#fff;overflow:hidden}
+.cb-in{display:flex;align-items:center;height:112px}
+.cb-t{flex:none;padding:0 36px 0 max(20px,calc((100vw - 1180px)/2 + 20px));font-size:20px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
+.cb-t b{display:block;font-size:30px;font-weight:800;letter-spacing:-.04em}
+.cl-band .cm-row{flex:1;min-width:0;border-left:1px solid rgba(255,255,255,.22)}
 .cm-wall{display:flex;flex-direction:column;gap:30px}
 .cm-row{mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
 .cm-row .track{gap:0;align-items:center}
-.cm{flex:none;display:flex;align-items:center;height:56px;padding-inline:44px;position:relative}
+.cm{flex:none;display:flex;align-items:center;height:56px;padding-inline:38px;position:relative}
 .cm::after{content:"";position:absolute;right:-3px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:rgba(255,255,255,.35)}
-.cm-logo img{height:calc(44px * var(--s));max-width:170px;width:auto;object-fit:contain}
-.cm-name{font-size:26px;font-weight:300;letter-spacing:-.03em;white-space:nowrap}
+.cm-logo img{height:calc(38px * var(--s));max-width:150px;width:auto;object-fit:contain}
+.cm-name{font-size:21px;font-weight:300;letter-spacing:-.03em;white-space:nowrap}
 @media (max-width:700px){
-  .cl-head{margin-bottom:38px}
-  .cm-wall{gap:18px}
+  .cb-in{flex-direction:column;align-items:stretch;height:auto;padding:20px 0 14px;gap:10px}
+  .cb-t{padding:0 20px;text-align:center;font-size:15px}
+  .cb-t b{display:inline;font-size:15px}
+  .cl-band .cm-row{border-left:0}
   .cm{height:44px;padding-inline:26px}
   .cm-logo img{height:calc(34px * var(--s));max-width:120px}
   .cm-name{font-size:19px}
