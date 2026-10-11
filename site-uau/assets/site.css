@@ -316,6 +316,24 @@ footer .logo img{height:44px}
 .team-photos .img:first-child{grid-row:span 2}
 .badge{display:inline-flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--line);border-radius:999px;padding:10px 18px;font-size:14px;align-self:flex-start}
 
+/* TIME: cartões individuais em P&B que ganham cor no mouse */
+.tm-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
+.tm{margin:0;position:relative;aspect-ratio:4/5;border-radius:20px;overflow:hidden;background:#D9D5DF;box-shadow:0 18px 40px rgba(20,18,23,.14)}
+.tm:nth-child(even){margin-top:36px}
+.tm img{width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05);transform:scale(1.02);transition:filter .5s,transform .7s cubic-bezier(.2,.7,.2,1)}
+.tm::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(15,14,17,.85));pointer-events:none}
+.tm::before{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--grad);z-index:2;transform:scaleX(0);transform-origin:left;transition:transform .5s}
+.tm figcaption{position:absolute;left:16px;right:16px;bottom:16px;z-index:1;display:flex;flex-direction:column;gap:2px;color:#fff;transition:transform .4s}
+.tm figcaption b{font-size:16px;font-weight:600}
+.tm figcaption span{font-size:12.5px;color:#D8D3E0}
+.tm .fill{color:#F2A04A}
+.tm:hover img{filter:none;transform:scale(1.07)}
+.tm:hover::before{transform:scaleX(1)}
+.tm:hover figcaption{transform:translateY(-4px)}
+.tm-strip{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:16px;margin-top:56px;position:relative}
+.tm-strip .img{height:220px;border-radius:18px}
+.tm-badge{position:absolute;left:20px;top:-18px;background:#fff;border-color:#DDD8E4}
+
 /* COMPARATIVO */
 .compare{display:flex;flex-direction:column;gap:12px}
 .cmp-row{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;align-items:stretch}
@@ -441,6 +459,12 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
+  .tm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .tm:nth-child(even){margin-top:24px}
+  .tm img{filter:none}
+  .tm-strip{grid-template-columns:1fr 1fr;margin-top:40px}
+  .tm-strip .img{height:140px}
+  .tm-strip .img:first-child{grid-column:1/-1}
   .cr-loop .cr-item{width:200px}
   .cr-loop-track{animation-duration:50s}
   .inst-loop .inst-card{width:300px;max-width:none}
