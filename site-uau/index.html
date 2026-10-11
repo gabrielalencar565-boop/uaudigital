@@ -180,30 +180,59 @@
   </div>
 </section>
 
-<!-- 6. PORTFÓLIO: pilha de cartas; a rolagem tira a carta de cima e revela a próxima -->
-<section class="pf pk" id="portfolio" style="--n:8">
-  <div class="pk-pin">
-    <div class="wrap pk-wrap">
-      <div class="pk-info">
+<!-- 6. PORTFÓLIO: primeiro os criativos (design e foto), depois os reels -->
+<section class="pf" id="portfolio">
+  <div class="wrap">
+    <div class="nums-head reveal">
+      <div class="head" style="margin:0">
         <span class="eyebrow">Portfólio</span>
         <h2>O que <b>sai daqui.</b></h2>
-        <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time.</p>
-        <div class="pk-now" aria-live="polite">
-          <span class="pk-count"><b id="pkidx">01</b> / 08</span>
-          <span class="pk-name" id="pkname">Conveniência</span>
-          <span class="pk-meta" id="pkmeta">Reels · Comércio</span>
-        </div>
-        <span class="pk-progress" aria-hidden="true"><i id="pkprog"></i></span>
       </div>
-      <div class="pk-deck" id="pkdeck">
-        <figure class="pk-card" data-name="Conveniência" data-meta="Reels · Comércio" data-type="v"><video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Diferro" data-meta="Institucional · Indústria" data-type="v"><video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Retrato profissional" data-meta="Foto" data-type="i"><img src="portfolio/retrato.jpg" alt="Retrato profissional" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Odontopediatria" data-meta="Reels · Saúde" data-type="v"><video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Doce Rio Gelato & Açaí" data-meta="Foto de produto · Alimentação" data-type="i"><img src="portfolio/doce-rio-produto.jpg" alt="Doce Rio Gelato & Açaí" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Clínica Bucall Center" data-meta="Design · Saúde" data-type="i"><img src="portfolio/bucall-carrossel.jpg" alt="Clínica Bucall Center" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Escola" data-meta="Reels · Educação" data-type="v"><video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
-        <figure class="pk-card" data-name="Dra. Luana" data-meta="Reels · Saúde" data-type="v"><video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+      <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time.</p>
+    </div>
+
+    <div class="ch reveal">
+      <div class="ch-head"><span class="ch-n">01</span><h3>Criativos</h3><span class="ch-sub">Design, foto e identidade para o feed</span></div>
+      <div class="cr">
+        <figure class="cr-item"><img src="portfolio/bucall-carrossel.jpg" alt="Post da Clínica Bucall Center criado pela UAU" loading="lazy"><figcaption><b>Clínica Bucall Center</b><span>Design</span></figcaption></figure>
+        <figure class="cr-item"><img src="portfolio/doce-rio-produto.jpg" alt="Foto de produto do Doce Rio Gelato e Açaí" loading="lazy"><figcaption><b>Doce Rio Gelato & Açaí</b><span>Foto de produto</span></figcaption></figure>
+        <figure class="cr-item"><img src="portfolio/retrato.jpg" alt="Retrato profissional de cliente da UAU" loading="lazy"><figcaption><b>Retrato profissional</b><span>Foto</span></figcaption></figure>
+      </div>
+    </div>
+
+    <div class="ch reveal">
+      <div class="ch-head"><span class="ch-n">02</span><h3>Reels</h3><span class="ch-sub">Roteiro, gravação e edição com equipe própria</span></div>
+      <div class="reels pf-reels">
+        <article class="reel pf-v">
+          <video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video>
+          <span class="reel-dur">29s</span>
+          <button type="button" class="reel-btn" aria-label="Ouvir o vídeo de Conveniência com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+          <div class="reel-who"><b>Conveniência</b><span>Comércio</span></div>
+        </article>
+        <article class="reel pf-v">
+          <video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video>
+          <span class="reel-dur">46s</span>
+          <button type="button" class="reel-btn" aria-label="Ouvir o vídeo de Diferro com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+          <div class="reel-who"><b>Diferro</b><span>Indústria</span></div>
+        </article>
+        <article class="reel pf-v">
+          <video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video>
+          <span class="reel-dur">24s</span>
+          <button type="button" class="reel-btn" aria-label="Ouvir o vídeo de Odontopediatria com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+          <div class="reel-who"><b>Odontopediatria</b><span>Saúde</span></div>
+        </article>
+        <article class="reel pf-v">
+          <video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video>
+          <span class="reel-dur">1min</span>
+          <button type="button" class="reel-btn" aria-label="Ouvir o vídeo de Escola com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+          <div class="reel-who"><b>Escola</b><span>Educação</span></div>
+        </article>
+        <article class="reel pf-v">
+          <video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video>
+          <span class="reel-dur">39s</span>
+          <button type="button" class="reel-btn" aria-label="Ouvir o vídeo de Dra. Luana com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+          <div class="reel-who"><b>Dra. Luana</b><span>Saúde</span></div>
+        </article>
       </div>
     </div>
   </div>

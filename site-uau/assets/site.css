@@ -265,27 +265,28 @@ footer .logo img{height:44px}
 
 /* BANDA DE TEXTO */
 
-/* PORTFÓLIO: pilha de cartas presa na tela; cada trecho de rolagem tira a carta de cima */
-.pk{padding:0;height:calc(100vh + var(--n) * 55vh)}
-.pk-pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;display:flex;align-items:center}
-.pk-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center;width:100%;padding-top:60px}
-.pk-info{display:flex;flex-direction:column;gap:18px;max-width:420px}
-.pk-now{display:flex;flex-direction:column;gap:6px;margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
-.pk-count{font-size:13px;color:var(--dim);letter-spacing:.08em;font-variant-numeric:tabular-nums}
-.pk-count b{color:var(--fg)}
-.pk-name{font-size:clamp(26px,2.8vw,38px);font-weight:600;letter-spacing:-.03em;line-height:1.1;transition:opacity .3s,transform .3s}
-.pk-meta{font-size:14px;color:var(--muted);transition:opacity .3s}
-.pk-now.swap .pk-name{opacity:0;transform:translateY(10px)}
-.pk-now.swap .pk-meta{opacity:0}
-.pk-progress{display:block;height:2px;background:var(--line);border-radius:2px;overflow:hidden;width:100%;margin-top:8px}
-.pk-progress i{display:block;height:100%;width:0;background:var(--grad)}
-.pk-deck{position:relative;height:min(74vh,700px);aspect-ratio:9/16;justify-self:center}
-.pk-card{position:absolute;inset:0;margin:0;border-radius:22px;overflow:hidden;background:#1F1C25;box-shadow:0 30px 70px rgba(0,0,0,.55);will-change:transform;transform-origin:50% 120%}
-.pk-card video,.pk-card img{width:100%;height:100%;object-fit:cover;display:block}
-.pk-card[data-type=i] img{object-position:center 30%}
-.pk-sound{position:absolute;top:14px;right:14px;z-index:2;font:600 12px var(--display);color:#141217;background:#fff;border:0;border-radius:999px;padding:8px 12px;cursor:pointer;opacity:0;transition:opacity .3s}
-.pk-card.top .pk-sound{opacity:1}
-.pk-sound[hidden]{display:none}
+/* PORTFÓLIO: dois capítulos — 01 Criativos e 02 Reels */
+.pf{padding-block:110px 120px}
+.ch{margin-top:64px}
+.ch-head{display:flex;align-items:baseline;gap:18px;padding-bottom:22px;margin-bottom:28px;border-bottom:1px solid var(--line)}
+.ch-n{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--lilac)}
+.ch-head h3{font-size:clamp(30px,3.6vw,48px);font-weight:600;letter-spacing:-.035em;line-height:1}
+.ch-sub{margin-left:auto;font-size:14px;color:var(--dim)}
+.cr{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:18px;align-items:start}
+.cr-item{margin:0;position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/5;background:var(--bg2);box-shadow:0 24px 50px rgba(0,0,0,.35)}
+.cr-item:nth-child(2){margin-top:56px}
+.cr-item:nth-child(3){margin-top:112px}
+.cr-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.cr-item:hover img{transform:scale(1.05)}
+.cr-item::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 62%,rgba(15,14,17,.85));pointer-events:none}
+.cr-item figcaption{position:absolute;left:20px;right:20px;bottom:18px;z-index:1;display:flex;flex-direction:column;gap:2px;color:#fff}
+.cr-item figcaption b{font-size:15px;font-weight:600}
+.cr-item figcaption span{font-size:12.5px;color:#B9B4C4}
+.pf-reels{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.pf-v{border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,.35)}
+.pf-v::after{background:linear-gradient(180deg,rgba(15,14,17,.3),transparent 20%,transparent 70%,rgba(15,14,17,.85))}
+.pf-v .reel-who b{font-size:13px}
+.pf-v .reel-btn{padding:6px 10px 6px 8px;font-size:11px}
 
 /* BASTIDORES */
 .team{display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:center}
@@ -420,15 +421,13 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
-  .pk{height:calc(100svh + var(--n) * 45svh)}
-  .pk-wrap{grid-template-columns:1fr;gap:18px;padding-top:70px;align-content:center}
-  .pk-info{gap:8px}
-  .pk-info h2{font-size:30px}
-  .pk-info > p{display:none}
-  .pk-now{margin-top:6px;padding-top:12px;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:12px;row-gap:2px}
-  .pk-name{font-size:20px}
-  .pk-meta{font-size:12px;flex-basis:100%}
-  .pk-deck{height:min(56svh,520px)}
+  .pf{padding-block:72px 80px}
+  .ch{margin-top:44px}
+  .ch-sub{display:none}
+  .cr{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin-inline:-20px;padding-inline:20px;scroll-padding-inline:20px;scrollbar-width:none}
+  .cr::-webkit-scrollbar{display:none}
+  .cr-item{flex:none;width:72vw;max-width:300px;scroll-snap-align:start;margin-top:0!important}
+  .pf-reels{display:flex}
   .vr{grid-template-columns:1fr;gap:36px}
   .vr-rings{width:min(78vw,320px)}
   .vr-step{gap:16px;padding:20px 0}

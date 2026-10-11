@@ -17,39 +17,6 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
   setInterval(()=>{ if(Date.now()-hold<6000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },3200);
 })();
 
-// portfólio (pilha): a seção fica presa e cada trecho de rolagem tira a carta de cima, que sai voando de lado
-(function(){
-  const sec=document.getElementById('portfolio'), deck=document.getElementById('pkdeck'); if(!sec||!deck) return;
-  const cards=[...deck.querySelectorAll('.pk-card')], n=cards.length;
-  const idx=document.getElementById('pkidx'), name=document.getElementById('pkname'), meta=document.getElementById('pkmeta'), prog=document.getElementById('pkprog'), now=name.parentElement;
-  const tilt=[0,-4,3,-2,4,-3,2,-4];
-  let top=-1;
-  const tick=()=>{
-    const r=sec.getBoundingClientRect(), span=Math.max(1,sec.offsetHeight-innerHeight);
-    const p=Math.min(1,Math.max(0,-r.top/span)), f=p*(n-1);          // f: quantas cartas já saíram (fracionário)
-    prog.style.width=(p*100)+'%';
-    cards.forEach((c,k)=>{
-      const out=Math.min(1,Math.max(0,f-k));                           // 0 = na pilha, 1 = saiu
-      const depth=Math.min(Math.max(0,k-f),2.4), dir=k%2?-1:1;
-      c.style.zIndex=n-k;
-      c.style.opacity=out>0 ? 1-out*out : (k-f>2.6?0:1);
-      c.style.transform=`translate(${depth*4+out*dir*120}%,${depth*2.4-out*6}%) rotate(${tilt[k%8]*Math.min(depth,1)+out*dir*24}deg) scale(${1-depth*.05})`;
-    });
-    const t=Math.min(n-1,Math.round(f));
-    if(t!==top){
-      cards.forEach((c,k)=>{ c.classList.toggle('top',k===t); const v=c.querySelector('video'); if(!v) return; if(k===t){ if(!reduce) v.play().catch(()=>{}); } else { v.pause(); v.muted=true; v.controls=false; } });
-      if(top>=0){ now.classList.add('swap'); setTimeout(()=>{ name.textContent=cards[t].dataset.name; meta.textContent=cards[t].dataset.meta; now.classList.remove('swap'); },200); }
-      idx.textContent=String(t+1).padStart(2,'0'); top=t;
-    }
-  };
-  cards.forEach(c=>{ const b=c.querySelector('.pk-sound'), v=c.querySelector('video'); if(!v) return;
-    b.addEventListener('click',()=>{ v.muted=false; v.controls=true; v.currentTime=0; v.play().catch(()=>{}); b.hidden=true; });
-    v.addEventListener('volumechange',()=>{ if(v.muted){ b.hidden=false; v.controls=false; } });
-  });
-  addEventListener('scroll',()=>requestAnimationFrame(tick),{passive:true});
-  addEventListener('resize',tick); tick();
-})();
-
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
 (function(){
   const slot=document.getElementById('clslot'); if(!slot) return;
