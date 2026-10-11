@@ -282,6 +282,18 @@ footer .logo img{height:44px}
 .cr-item figcaption{position:absolute;left:20px;right:20px;bottom:18px;z-index:1;display:flex;flex-direction:column;gap:2px;color:#fff}
 .cr-item figcaption b{font-size:15px;font-weight:600}
 .cr-item figcaption span{font-size:12.5px;color:#B9B4C4}
+/* institucional: quadro 16:9 (1920×1080); vídeo vertical fica centralizado sobre um fundo desfocado dele mesmo */
+.inst{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.inst-card{aspect-ratio:16/9;border-radius:22px;box-shadow:0 24px 50px rgba(0,0,0,.4);background:#0F0E11}
+.inst-card:only-child{grid-column:1/-1}
+.inst-bg{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(28px) brightness(.55) saturate(1.2);pointer-events:none}
+.reel.inst-card video{position:relative;z-index:1;display:block;height:100%;width:auto;max-width:100%;aspect-ratio:auto;margin:0 auto;object-fit:contain;inset:auto}
+.inst-card::after{z-index:1;background:linear-gradient(90deg,rgba(15,14,17,.75),transparent 35%,transparent 65%,rgba(15,14,17,.4)),linear-gradient(180deg,transparent 60%,rgba(15,14,17,.7))}
+.inst-card .reel-who{left:28px;bottom:26px;right:auto;max-width:40%}
+.inst-card .reel-who b{font-size:20px}
+.inst-card .reel-who span{font-size:13px}
+.inst-card .reel-dur{top:20px;left:24px}
+.inst-card .reel-btn{top:auto;bottom:26px;right:28px;padding:10px 16px 10px 13px;font-size:13px}
 .pf-reels{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px}
 .pf-reels::-webkit-scrollbar{display:none}
 .pf-reels .reel{flex:none;width:calc((100% - 56px)/5);scroll-snap-align:start}
@@ -426,6 +438,14 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
+  .inst{grid-template-columns:1fr}
+  .reel.inst-card{width:auto;max-width:none}
+  .inst-card{border-radius:16px}
+  .inst-card .reel-who{left:14px;bottom:12px;max-width:60%}
+  .inst-card .reel-who b{font-size:14px}
+  .inst-card .reel-who span{font-size:11px}
+  .inst-card .reel-btn{bottom:12px;right:12px;padding:6px 10px;font-size:11px}
+  .inst-card .reel-lbl{display:none}
   .pf{padding-block:72px 80px}
   .ch{margin-top:44px}
   .ch-sub{display:none}
