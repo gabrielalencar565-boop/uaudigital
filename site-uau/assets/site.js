@@ -142,7 +142,7 @@ document.querySelectorAll('[data-drag]').forEach(box=>{
   const frame=t=>{
     const dt=Math.min(64,t-prev); prev=t;
     if(!down){
-      const auto=reduce||hover||box.querySelector('.reel.sound')?0:-(half/((mob.matches?secs*.72:secs)*1000));
+      const auto=reduce||hover||document.body.classList.contains('lb-open')||box.querySelector('.reel.sound')?0:-(half/((mob.matches?secs*.72:secs)*1000));
       v+= (auto - v)*0.04;            // embalo do arrasto volta aos poucos para a velocidade normal
       x+=v*dt; wrap();
     }
@@ -226,3 +226,63 @@ if(bento && !reduce && 'IntersectionObserver' in window && bento.getBoundingClie
   },{threshold:.2});
   bo.observe(bento);
 }
+
+// criativos: clicar abre a peça grande, com fundo desfocado (sai do lugar e volta para ele ao fechar)
+(()=>{
+  const items=[...document.querySelectorAll('.cr-item')]; if(!items.length) return;
+  const list=[]; items.forEach(f=>{ const src=f.querySelector('img').getAttribute('src'); if(!list.some(i=>i.src===src)) list.push({src,alt:f.querySelector('img').alt,t:f.querySelector('b').textContent,s:f.querySelector('figcaption span').textContent}); });
+  const lb=document.createElement('div'); lb.className='lb'; lb.setAttribute('role','dialog'); lb.setAttribute('aria-modal','true'); lb.setAttribute('aria-label','Criativo ampliado'); lb.hidden=true;
+  lb.innerHTML=`<div class="lb-bg"></div><img class="lb-img" alt=""><div class="lb-cap"><b></b><span></span><i></i></div>
+    <button class="lb-x" aria-label="Fechar"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="lb-nav lb-prev" aria-label="Anterior"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="lb-nav lb-next" aria-label="Próximo"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+  document.body.appendChild(lb);
+  const img=lb.querySelector('.lb-img'), cap=lb.querySelector('.lb-cap');
+  let cur=0, origin=null, busy=false, last=null;
+  const ease='cubic-bezier(.2,.8,.2,1)';
+  const box=(w,h)=>{ const mob=innerWidth<700, mw=innerWidth*(mob?.9:.8), mh=innerHeight*(mob?.7:.78), k=Math.min(mw/w,mh/h); const W=w*k,H=h*k; return {W,H,L:(innerWidth-W)/2,T:(innerHeight-H)/2-(mob?24:20)}; };
+  const place=()=>{ const n=img.naturalWidth||900, m=img.naturalHeight||1125, b=box(n,m); Object.assign(img.style,{width:b.W+'px',height:b.H+'px',left:b.L+'px',top:b.T+'px'}); return b; };
+  const fill=i=>{ cur=(i+list.length)%list.length; const it=list[cur]; img.src=it.src; img.alt=it.alt; cap.querySelector('b').textContent=it.t; cap.querySelector('span').textContent=it.s; cap.querySelector('i').textContent=`${cur+1} / ${list.length}`; };
+  const from=(r,b)=>`translate(${r.left+r.width/2-(b.L+b.W/2)}px,${r.top+r.height/2-(b.T+b.H/2)}px) scale(${r.width/b.W},${r.height/b.H})`;
+  const visible=src=>items.map(f=>f.querySelector('img')).find(im=>{ if(im.getAttribute('src')!==src) return false; const r=im.getBoundingClientRect(); return r.right>0&&r.left<innerWidth&&r.bottom>0&&r.top<innerHeight; });
+  const open=async(f)=>{
+    if(busy||!lb.hidden) return; busy=true; last=document.activeElement;
+    const src=f.querySelector('img'); origin=src; fill(list.findIndex(i=>i.src===src.getAttribute('src')));
+    if(!img.complete) await new Promise(r=>{ img.onload=img.onerror=r; });
+    lb.hidden=false; document.body.classList.add('lb-open'); const b=place();
+    img.style.transition='none'; img.style.borderRadius='20px'; img.style.transform=reduce?'scale(.96)':from(src.getBoundingClientRect(),b); src.style.visibility='hidden';
+    lb.offsetWidth; lb.classList.add('on');
+    img.style.transition=`transform .6s ${ease}, border-radius .6s ${ease}, opacity .3s`; img.style.transform='none'; img.style.borderRadius='14px';
+    setTimeout(()=>{ busy=false; lb.querySelector('.lb-x').focus({preventScroll:true}); },600);
+  };
+  const close=()=>{
+    if(busy||lb.hidden) return; busy=true; lb.classList.remove('on');
+    const back=visible(list[cur].src), b=place();
+    if(origin&&origin!==back) origin.style.visibility='';
+    if(back&&!reduce){ back.style.visibility='hidden'; img.style.transform=from(back.getBoundingClientRect(),b); img.style.borderRadius='20px'; }
+    else { img.style.opacity='0'; img.style.transform='scale(.92)'; }
+    setTimeout(()=>{ lb.hidden=true; document.body.classList.remove('lb-open'); if(back) back.style.visibility=''; img.style.opacity=''; origin=null; busy=false; last&&last.focus&&last.focus({preventScroll:true}); },560);
+  };
+  const go=d=>{
+    if(busy) return; busy=true; const out=img.cloneNode(); out.classList.add('lb-out'); lb.insertBefore(out,img);
+    out.style.transition=`transform .45s ${ease}, opacity .35s`; img.style.transition='none';
+    if(origin){ origin.style.visibility=''; origin=null; }
+    fill(cur+d);
+    const show=()=>{ place(); img.style.opacity='0'; img.style.transform=`translateX(${d*60}px) scale(.96)`; img.offsetWidth;
+      img.style.transition=`transform .5s ${ease}, opacity .4s`; img.style.opacity='1'; img.style.transform='none';
+      out.style.opacity='0'; out.style.transform=`translateX(${-d*60}px) scale(.96)`;
+      setTimeout(()=>{ out.remove(); busy=false; },480); };
+    img.complete?show():(img.onload=show);
+  };
+  items.forEach(f=>{ f.tabIndex=f.getAttribute('aria-hidden')?-1:0; f.setAttribute('role','button'); f.addEventListener('click',()=>open(f)); f.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(f); } }); });
+  lb.querySelector('.lb-bg').onclick=close; lb.querySelector('.lb-x').onclick=close;
+  lb.querySelector('.lb-prev').onclick=()=>go(-1); lb.querySelector('.lb-next').onclick=()=>go(1);
+  addEventListener('keydown',e=>{ if(lb.hidden) return; if(e.key==='Escape') close(); else if(e.key==='ArrowRight') go(1); else if(e.key==='ArrowLeft') go(-1); else if(e.key==='Tab'){ const bs=[...lb.querySelectorAll('button')], i=bs.indexOf(document.activeElement); e.preventDefault(); bs[(i+(e.shiftKey?-1:1)+bs.length)%bs.length].focus(); } });
+  addEventListener('resize',()=>{ if(!lb.hidden&&!busy){ img.style.transition='none'; place(); } });
+  // arrastar para o lado troca a peça; para baixo fecha
+  let sx=0, sy=0, st=false;
+  img.addEventListener('pointerdown',e=>{ st=true; sx=e.clientX; sy=e.clientY; });
+  img.addEventListener('pointerup',e=>{ if(!st) return; st=false; const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) go(dx<0?1:-1); else if(dy>80) close(); });
+  img.addEventListener('dragstart',e=>e.preventDefault());
+})();
