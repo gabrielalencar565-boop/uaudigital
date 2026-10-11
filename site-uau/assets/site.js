@@ -120,6 +120,34 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   addEventListener('scroll',()=>requestAnimationFrame(tick),{passive:true}); addEventListener('resize',tick); tick();
 })();
 
+// faixas arrastáveis: passam sozinhas e dá para arrastar (mouse ou dedo) para adiantar ou voltar, com embalo
+document.querySelectorAll('[data-drag]').forEach(box=>{
+  const track=box.querySelector('.track'); if(!track) return;
+  const secs=+box.dataset.drag||60, mob=matchMedia('(max-width:900px)');
+  let x=0, half=1, v=0, down=false, lastX=0, lastT=0, hover=false, moved=0, prev=performance.now();
+  const measure=()=>{ half=track.scrollWidth/2||1; };
+  const wrap=()=>{ while(x<=-half) x+=half; while(x>0) x-=half; };
+  const frame=t=>{
+    const dt=Math.min(64,t-prev); prev=t;
+    if(!down){
+      const auto=reduce||hover?0:-(half/((mob.matches?secs*.72:secs)*1000));
+      v+= (auto - v)*0.04;            // embalo do arrasto volta aos poucos para a velocidade normal
+      x+=v*dt; wrap();
+    }
+    track.style.transform=`translate3d(${x}px,0,0)`;
+    requestAnimationFrame(frame);
+  };
+  box.addEventListener('pointerenter',e=>{ if(e.pointerType==='mouse') hover=true; });
+  box.addEventListener('pointerleave',()=>{ hover=false; });
+  box.addEventListener('pointerdown',e=>{ down=true; moved=0; lastX=e.clientX; lastT=performance.now(); v=0; box.classList.add('dragging'); box.setPointerCapture(e.pointerId); });
+  box.addEventListener('pointermove',e=>{ if(!down) return; const dx=e.clientX-lastX, now=performance.now(); x+=dx; wrap(); moved+=Math.abs(dx); v=dx/Math.max(1,now-lastT); lastX=e.clientX; lastT=now; });
+  const up=()=>{ if(!down) return; down=false; box.classList.remove('dragging'); v=Math.max(-3,Math.min(3,v)); };
+  box.addEventListener('pointerup',up); box.addEventListener('pointercancel',up);
+  box.addEventListener('click',e=>{ if(moved>6){ e.preventDefault(); e.stopPropagation(); } },true);
+  addEventListener('resize',measure); addEventListener('load',measure); measure();
+  requestAnimationFrame(frame);
+});
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
