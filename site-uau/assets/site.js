@@ -292,7 +292,7 @@ if(bento && !reduce && 'IntersectionObserver' in window && bento.getBoundingClie
 
 // formulário "Falar com a UAU": todos os botões de contato abrem esta janela
 // Para onde vão os pedidos: preencha o e-mail que recebe (via FormSubmit) e/ou o WhatsApp da UAU (só números, com 55 e DDD)
-const CONTATO={ email:'', whatsapp:'' };
+const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705' };
 (()=>{
   const opts=(l)=>l.map(o=>`<option>${o}</option>`).join('');
   const chips=['Posicionamento estratégico','Conteúdo e redes sociais','Produção de vídeo','Tráfego pago','Ainda não sei'];
@@ -349,7 +349,7 @@ const CONTATO={ email:'', whatsapp:'' };
     send.disabled=true; send.firstElementChild.textContent='Enviando...';
     try{
       if(CONTATO.email){ const r=await fetch(`https://formsubmit.co/ajax/${CONTATO.email}`,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
-        body:JSON.stringify({_subject:`Novo contato pelo site: ${d.nome} (${d.empresa})`,_template:'table',_captcha:'false',...d,origem:location.href})}); if(!r.ok) throw 0; }
+        body:JSON.stringify({_subject:`Novo contato pelo site: ${d.nome} (${d.empresa})`,_template:'table',_captcha:'false',...d,origem:location.href})}); const j=await r.json().catch(()=>({})); if(!r.ok||String(j.success)==='false') throw 0; }
       const nome=d.nome.trim().split(' ')[0];
       ok.querySelector('.lead-name').textContent=nome+'!';
       if(CONTATO.whatsapp){ const w=ok.querySelector('.lead-wa'); w.hidden=false;
