@@ -63,3 +63,9 @@ O site fica no ar como um projeto Vercel separado do Fluxo, apontando para esta 
 - Domínio: `www.uaucomunicacaodigital.com.br` (principal; o endereço sem www redireciona para ele), configurado em Settings → Domains do projeto; os registros DNS ficam no Registro.br.
 - `vercel.json` desta pasta deixa os endereços sem `.html` (`/sobre`, `/clientes`…), guarda imagens e vídeos em cache e liga cabeçalhos de segurança.
 - `robots.txt` e `sitemap.xml` já apontam para o domínio.
+
+## Formulário de contato
+Todos os botões "Falar com a UAU" / "Quero conversar" / "Agendar conversa" abrem o formulário (definido em `assets/site.js`).
+Para ele funcionar, preencha no topo do bloco `const CONTATO={ email:'', whatsapp:'' }`:
+- `email`: recebe cada pedido por e-mail (via FormSubmit; o primeiro envio pede para confirmar o e-mail);
+- `whatsapp`: número da UAU só com números (ex.: 5598999999999); aparece o botão "Adiantar pelo WhatsApp" com a mensagem pronta.
