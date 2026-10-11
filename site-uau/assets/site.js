@@ -94,15 +94,14 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   reels.forEach(r=>io.observe(r));
 })();
 
-// time em leque: mouse/toque/foco destaca uma carta; sem interação, o destaque passa sozinho
+// time: faixas que abrem; mouse/toque escolhe a pessoa, sem interação passa sozinho
 (function(){
-  const fan=document.getElementById('fan'); if(!fan) return;
-  const cards=[...fan.querySelectorAll('.fan-card')]; let i=Math.floor(cards.length/2), hold=0;
-  const go=k=>{ i=k; cards.forEach((c,j)=>c.classList.toggle('on',j===k)); fan.classList.add('has-on'); };
-  cards.forEach((c,k)=>{ ['mouseenter','focus','click'].forEach(ev=>c.addEventListener(ev,()=>{ hold=Date.now(); go(k); })); });
-  go(i);
+  const box=document.getElementById('accs'); if(!box) return;
+  const it=[...box.querySelectorAll('.acc')]; let i=0, hold=0;
+  const go=k=>{ i=k; it.forEach((c,j)=>{ const on=j===k; c.classList.toggle('on',on); c.setAttribute('aria-pressed',on); if(on){ c.style.animation='none'; void c.offsetWidth; c.style.animation=''; } }); };
+  it.forEach((c,k)=>{ ['mouseenter','click','focus'].forEach(ev=>c.addEventListener(ev,()=>{ hold=Date.now(); if(i!==k) go(k); })); });
   if(reduce) return;
-  setInterval(()=>{ if(Date.now()-hold<5000) return; const r=fan.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%cards.length); },2600);
+  setInterval(()=>{ if(Date.now()-hold<5000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%it.length); },3200);
 })();
 
 // filtro de clientes por segmento
