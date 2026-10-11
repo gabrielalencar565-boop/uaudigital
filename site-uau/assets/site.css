@@ -176,9 +176,14 @@ footer .logo img{height:44px}
 .cl-spot{display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center}
 .cl-line{font-size:clamp(30px,4.6vw,64px);font-weight:300;letter-spacing:-.035em;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.35em}
 .cl-slot{position:relative;display:inline-block;width:4.4em;height:1.6em;overflow:hidden;border-bottom:1px solid var(--line)}
-.cl-slot img{position:absolute;left:50%;top:50%;height:calc(1.08em * var(--s));max-width:100%;width:auto;object-fit:contain;transform:translate(-50%,60%);opacity:0;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
-.cl-slot img.on{transform:translate(-50%,-50%);opacity:1}
-.cl-slot img.out{transform:translate(-50%,-160%);opacity:0}
+.cl-slot>*{position:absolute;left:50%;top:50%;height:calc(1.08em * var(--s));max-width:100%;width:auto;object-fit:contain;transform:translate(-50%,60%);opacity:0;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
+.cl-slot>.on{transform:translate(-50%,-50%);opacity:1}
+.cl-slot>.out{transform:translate(-50%,-160%);opacity:0}
+.cl-person{display:flex;align-items:center;gap:.22em;white-space:nowrap}
+.cl-person img{width:1.08em;height:1.08em;border-radius:50%;object-fit:cover;flex:none;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 0 6px rgba(123,47,224,.35)}
+.cl-person span{display:flex;flex-direction:column;align-items:flex-start;font-size:.3em;line-height:1.12;letter-spacing:-.01em;text-align:left}
+.cl-person b{font-weight:600;color:var(--fg)}
+.cl-person b+b{font-weight:300}
 .cl-meta{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--dim);letter-spacing:.04em}
 .cl-meta #clseg{transition:opacity .35s}
 .cl-count{font-variant-numeric:tabular-nums;padding-left:18px;border-left:1px solid var(--line)}
