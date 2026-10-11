@@ -117,20 +117,31 @@
       </div>
       <p class="muted">Não somos nós que dizemos. São eles.</p>
     </div>
-    <div class="dp-stage reveal" id="dpstage">
-      <div class="dp-player vplayer"><video src="video/thamara-leal.mp4" poster="video/thamara-leal.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento">▶</button><span class="tag" id="dpdur">Vídeo · 35s</span></div>
-      <div class="dp-info">
-        <span class="dp-count"><b id="dpidx">01</b> / 04</span>
-        <span class="dp-mark" aria-hidden="true">“</span>
-        <q class="dp-quote fill" id="dpquote">[frase tirada do vídeo]</q>
-        <div class="dp-who"><b id="dpname">Dra. Thamara Leal</b><span id="dprole">Ginecologista e Obstetra</span></div>
-        <div class="dp-thumbs" role="group" aria-label="Escolher depoimento">
-          <button type="button" class="dp-thumb on" aria-pressed="true" data-src="video/thamara-leal.mp4" data-poster="video/thamara-leal.jpg" data-name="Dra. Thamara Leal" data-role="Ginecologista e Obstetra" data-dur="35s"><img src="video/thamara-leal.jpg" alt="" loading="lazy"><span><b>Dra. Thamara Leal</b><small>35s</small></span></button>
-          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/mariana-almeida.mp4" data-poster="video/mariana-almeida.jpg" data-name="Dra. Mariana Almeida" data-role="[especialidade]" data-dur="36s"><img src="video/mariana-almeida.jpg" alt="" loading="lazy"><span><b>Dra. Mariana Almeida</b><small>36s</small></span></button>
-          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/melri-ribeiro.mp4" data-poster="video/melri-ribeiro.jpg" data-name="Dra. Melri Ribeiro" data-role="Ultrassonografista" data-dur="1min"><img src="video/melri-ribeiro.jpg" alt="" loading="lazy"><span><b>Dra. Melri Ribeiro</b><small>1min</small></span></button>
-          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/depoimento-4.mp4" data-poster="video/depoimento-4.jpg" data-name="[Nome da cliente]" data-role="[profissão]" data-dur="44s"><img src="video/depoimento-4.jpg" alt="" loading="lazy"><span><b>Cliente</b><small>44s</small></span></button>
-        </div>
-      </div>
+    <div class="reels reveal" id="reels">
+      <article class="reel">
+        <video src="video/thamara-leal.mp4" poster="video/thamara-leal.jpg" muted loop playsinline preload="none"></video>
+        <span class="reel-dur">35s</span>
+        <button type="button" class="reel-btn" aria-label="Assistir depoimento de Dra. Thamara Leal com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+        <div class="reel-who"><b class="">Dra. Thamara Leal</b><span class="">Ginecologista e Obstetra</span></div>
+      </article>
+      <article class="reel">
+        <video src="video/mariana-almeida.mp4" poster="video/mariana-almeida.jpg" muted loop playsinline preload="none"></video>
+        <span class="reel-dur">36s</span>
+        <button type="button" class="reel-btn" aria-label="Assistir depoimento de Dra. Mariana Almeida com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+        <div class="reel-who"><b class="">Dra. Mariana Almeida</b><span class="fill">[especialidade]</span></div>
+      </article>
+      <article class="reel">
+        <video src="video/melri-ribeiro.mp4" poster="video/melri-ribeiro.jpg" muted loop playsinline preload="none"></video>
+        <span class="reel-dur">1min</span>
+        <button type="button" class="reel-btn" aria-label="Assistir depoimento de Dra. Melri Ribeiro com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+        <div class="reel-who"><b class="">Dra. Melri Ribeiro</b><span class="">Ultrassonografista</span></div>
+      </article>
+      <article class="reel">
+        <video src="video/depoimento-4.mp4" poster="video/depoimento-4.jpg" muted loop playsinline preload="none"></video>
+        <span class="reel-dur">44s</span>
+        <button type="button" class="reel-btn" aria-label="Assistir depoimento de cliente com som"><span class="reel-ico" aria-hidden="true">▶</span><span class="reel-lbl">Ouvir</span></button>
+        <div class="reel-who"><b class="fill">[Nome da cliente]</b><span class="fill">[profissão]</span></div>
+      </article>
     </div>
   </div>
 </section>

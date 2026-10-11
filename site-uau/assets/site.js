@@ -76,23 +76,27 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   v.addEventListener('play',()=>{ document.querySelectorAll('.vplayer video').forEach(o=>{ if(o!==v) o.pause(); }); });
 });
 
-// depoimentos: as miniaturas trocam o vídeo em destaque
+// depoimentos (reels): prévia sem som enquanto estão na tela; o botão toca do começo com som
 (function(){
-  const stage=document.getElementById('dpstage'); if(!stage) return;
-  const box=stage.querySelector('.vplayer'), v=box.querySelector('video'), thumbs=[...stage.querySelectorAll('.dp-thumb')];
-  const set=(id,t)=>{ const el=document.getElementById(id); el.textContent=t; el.classList.toggle('fill',t.startsWith('[')); };
-  thumbs.forEach((t,k)=>t.addEventListener('click',()=>{
-    if(t.classList.contains('on')) return;
-    thumbs.forEach(o=>{ o.classList.toggle('on',o===t); o.setAttribute('aria-pressed',o===t); });
-    const wasPlaying=!v.paused;
-    v.pause(); box.classList.remove('playing'); v.controls=false;
-    v.poster=t.dataset.poster; v.src=t.dataset.src;
-    document.getElementById('dpdur').textContent='Vídeo · '+t.dataset.dur;
-    document.getElementById('dpidx').textContent=String(k+1).padStart(2,'0');
-    stage.classList.add('swap');
-    setTimeout(()=>{ set('dpname',t.dataset.name); set('dprole',t.dataset.role); stage.classList.remove('swap'); },250);
-    if(wasPlaying) box.querySelector('.play').click();
-  }));
+  const wrap=document.getElementById('reels'); if(!wrap) return;
+  const reels=[...wrap.querySelectorAll('.reel')];
+  const stopSound=r=>{ const v=r.querySelector('video'); r.classList.remove('sound'); v.muted=true; v.controls=false; };
+  reels.forEach(r=>{
+    const v=r.querySelector('video');
+    r.querySelector('.reel-btn').addEventListener('click',()=>{
+      reels.forEach(o=>{ if(o!==r){ stopSound(o); if(reduce) o.querySelector('video').pause(); } });
+      r.classList.add('sound'); v.muted=false; v.controls=true; v.loop=false; v.currentTime=0; v.play().catch(()=>stopSound(r));
+    });
+    v.addEventListener('ended',()=>{ stopSound(r); v.loop=true; if(!reduce) v.play().catch(()=>{}); });
+    v.addEventListener('volumechange',()=>{ if(v.muted && r.classList.contains('sound')) stopSound(r); });
+  });
+  if(reduce || !('IntersectionObserver' in window)) return;
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    const r=e.target, v=r.querySelector('video');
+    if(e.isIntersecting){ if(v.paused) v.play().catch(()=>{}); }
+    else { v.pause(); stopSound(r); v.loop=true; }
+  }),{threshold:.35});
+  reels.forEach(r=>io.observe(r));
 })();
 
 // filtro de clientes por segmento
