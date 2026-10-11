@@ -54,3 +54,12 @@ Este pacote tem tudo o que foi feito até 10/10/2026 no site institucional da UA
 ## Como pedir para outro Claude continuar
 
 Envie este .zip e diga, por exemplo: *"Leia o LEIA-ME.md e continue o site da UAU a partir do index.html, mantendo as decisões já tomadas."*
+
+## Publicação (Vercel)
+
+O site fica no ar como um projeto Vercel separado do Fluxo, apontando para esta pasta:
+
+- Projeto novo na Vercel → importar o repositório `uaudigital` → **Root Directory: `site-uau`** → Framework: **Other** (sem comando de build).
+- Domínio: `uaucomunicacaodigital.com.br` (e `www.`), configurado em Settings → Domains do projeto; os registros DNS ficam no Registro.br.
+- `vercel.json` desta pasta deixa os endereços sem `.html` (`/sobre`, `/clientes`…), guarda imagens e vídeos em cache e liga cabeçalhos de segurança.
+- `robots.txt` e `sitemap.xml` já apontam para o domínio.

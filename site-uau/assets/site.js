@@ -36,8 +36,9 @@ loop('quotes', q.repeat(5));
 const quoteGrid=document.getElementById('quote-grid'); if(quoteGrid) quoteGrid.innerHTML=q.repeat(6);
 
 // marca no menu a página atual
-const here=location.pathname.split('/').pop()||'index.html';
-document.querySelectorAll('.menu a, .drawer a').forEach(a=>{ if(a.getAttribute('href')===here) a.setAttribute('aria-current','page'); });
+// funciona com e sem .html no endereço (no ar, /sobre e /sobre.html são a mesma página)
+const here=(location.pathname.split('/').pop()||'index').replace(/\.html$/,'');
+document.querySelectorAll('.menu a, .drawer a').forEach(a=>{ if((a.getAttribute('href')||'').replace(/\.html$/,'')===here) a.setAttribute('aria-current','page'); });
 
 // nav fica sólida ao rolar
 const nav=document.getElementById('nav');
