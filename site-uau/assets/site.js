@@ -34,9 +34,6 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
 const q='<div class="quote"><span class="stars">★★★★★</span><p class="fill">“[Depoimento do cliente em 2 a 3 linhas, tirado do Google ou do WhatsApp com autorização.]”</p><div class="who"><span class="avatar"></span><span><b>Nome</b><br><span style="color:#5A5563">Profissão ou empresa</span></span></div></div>';
 loop('quotes', q.repeat(5));
 const quoteGrid=document.getElementById('quote-grid'); if(quoteGrid) quoteGrid.innerHTML=q.repeat(6);
-const port=['Vídeo','Post','Foto','Design','Reels','Campanha','Carrossel','Ensaio'];
-loop('p1', port.map((t,i)=>`<div class="img ${v[i%4]} ${i%3===1?'w':''}"><span>${t}</span></div>`).join(''));
-loop('p2', port.slice().reverse().map((t,i)=>`<div class="img ${v[(i+1)%4]} ${i%3===0?'w':''}"><span>${t}</span></div>`).join(''));
 
 // marca no menu a página atual
 const here=location.pathname.split('/').pop()||'index.html';
@@ -77,8 +74,7 @@ document.querySelectorAll('.vplayer').forEach(box=>{
 
 // depoimentos (reels): prévia sem som enquanto estão na tela; o botão toca do começo com som
 (function(){
-  const wrap=document.getElementById('reels'); if(!wrap) return;
-  const reels=[...wrap.querySelectorAll('.reel')];
+  const reels=[...document.querySelectorAll('.reel')]; if(!reels.length) return;
   const stopSound=r=>{ const v=r.querySelector('video'); r.classList.remove('sound'); v.muted=true; v.controls=false; };
   reels.forEach(r=>{
     const v=r.querySelector('video');
