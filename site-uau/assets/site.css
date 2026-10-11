@@ -526,7 +526,8 @@ body.locked{overflow:hidden}
   .collage{height:440px}
   .hero{min-height:calc(100svh - 55px)}
   .hx-marca{flex-basis:100%;text-align:center}
-  .hero .hx-title{font-size:clamp(40px,16vw,96px)}
+  .hero .hx-title{font-size:clamp(44px,18.5vw,100px);line-height:.84}
+  .hx-title .rotator{padding-bottom:.12em}
   .hx-line{flex-wrap:wrap}
   .hx-line2{flex-wrap:nowrap}
   .pill{width:1.35em}
