@@ -289,3 +289,73 @@ if(bento && !reduce && 'IntersectionObserver' in window && bento.getBoundingClie
     group(wrap.querySelectorAll('.reel'),r=>{ const v=r.querySelector('video'), wide=r.classList.contains('inst-card'), who=r.querySelector('.reel-who');
       return {key:v.getAttribute('src'),video:v.getAttribute('src'),thumb:v.getAttribute('poster'),w:wide?16:9,h:wide?9:16,t:who.querySelector('b').textContent,s:who.querySelector('span').textContent}; }); });
 })();
+
+// formulário "Falar com a UAU": todos os botões de contato abrem esta janela
+// Para onde vão os pedidos: preencha o e-mail que recebe (via FormSubmit) e/ou o WhatsApp da UAU (só números, com 55 e DDD)
+const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705' };
+(()=>{
+  const opts=(l)=>l.map(o=>`<option>${o}</option>`).join('');
+  const chips=['Posicionamento estratégico','Conteúdo e redes sociais','Produção de vídeo','Tráfego pago','Ainda não sei'];
+  const m=document.createElement('div'); m.className='lead'; m.hidden=true; m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true'); m.setAttribute('aria-labelledby','lead-t');
+  m.innerHTML=`<div class="lead-bg"></div>
+  <div class="lead-card">
+    <button class="lead-x" type="button" aria-label="Fechar"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <form class="lead-form" novalidate>
+      <div class="lead-head"><span class="eyebrow">Vamos conversar</span><h2 id="lead-t">Conte sobre a <b class="grad-text">sua marca.</b></h2><p class="muted">Leva menos de um minuto. O nosso time responde em até 1 dia útil.</p></div>
+      <div class="lead-grid">
+        <label class="f"><span>Seu nome</span><input name="nome" autocomplete="name" required placeholder="Como podemos te chamar?"></label>
+        <label class="f"><span>WhatsApp</span><input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(99) 99999-9999"></label>
+        <label class="f"><span>E-mail</span><input name="email" type="email" autocomplete="email" required placeholder="voce@empresa.com"></label>
+        <label class="f"><span>Empresa ou profissão</span><input name="empresa" autocomplete="organization" required placeholder="Ex.: Clínica Sorriso, advogada"></label>
+        <label class="f"><span>Segmento</span><select name="segmento" required><option value="">Selecione</option>${opts(['Saúde','Jurídico','Comércio e varejo','Alimentação','Indústria','Educação','Serviços','Imobiliário','Beleza e estética','Outro'])}</select></label>
+        <label class="f"><span>Faturamento mensal</span><select name="faturamento" required><option value="">Selecione</option>${opts(['Até R$ 10 mil','R$ 10 mil a R$ 30 mil','R$ 30 mil a R$ 100 mil','R$ 100 mil a R$ 300 mil','Acima de R$ 300 mil','Prefiro não informar'])}</select></label>
+        <label class="f f-full"><span>Instagram <em>(opcional)</em></span><input name="instagram" autocomplete="off" placeholder="@suamarca"></label>
+        <fieldset class="f f-full"><legend>O que você procura? <em>(pode marcar mais de um)</em></legend><div class="chips">${chips.map(c=>`<label class="chip"><input type="checkbox" name="interesse" value="${c}"><span>${c}</span></label>`).join('')}</div></fieldset>
+        <label class="f f-full"><span>Como está a sua marca hoje? <em>(opcional)</em></span><textarea name="mensagem" rows="3" placeholder="Seu momento, objetivos, o que já tentou..."></textarea></label>
+        <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="lead-hp" aria-hidden="true">
+      </div>
+      <p class="lead-err" role="alert"></p>
+      <button class="btn btn-main lead-send" type="submit"><span>Enviar e falar com a UAU</span> <span class="arr">↗</span></button>
+      <p class="lead-note">Seus dados ficam só com a UAU e são usados apenas para este contato.</p>
+    </form>
+    <div class="lead-ok" hidden>
+      <div class="lead-check"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>Recebemos, <b class="grad-text lead-name"></b></h2>
+      <p class="muted">Em breve alguém do nosso time chama você no WhatsApp para marcar a conversa.</p>
+      <a class="btn btn-main lead-wa" target="_blank" rel="noopener" hidden>Adiantar pelo WhatsApp <span class="arr">↗</span></a>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  const f=m.querySelector('form'), err=m.querySelector('.lead-err'), send=m.querySelector('.lead-send'), ok=m.querySelector('.lead-ok');
+  let last=null;
+  const open=()=>{ last=document.activeElement; m.hidden=false; document.body.classList.add('lb-open'); m.offsetWidth; m.classList.add('on'); setTimeout(()=>f.querySelector('input').focus({preventScroll:true}),350); };
+  const close=()=>{ m.classList.remove('on'); setTimeout(()=>{ m.hidden=true; document.body.classList.remove('lb-open'); last&&last.focus&&last.focus({preventScroll:true}); },400); };
+  document.addEventListener('click',e=>{ const a=e.target.closest('a[href$="#contato"],a[data-lead]'); if(!a) return; e.preventDefault(); if(!drawer.hidden) setDrawer(false); open(); });
+  m.querySelector('.lead-bg').onclick=close; m.querySelector('.lead-x').onclick=close;
+  addEventListener('keydown',e=>{ if(m.hidden) return; if(e.key==='Escape') close();
+    if(e.key==='Tab'){ const fs=[...m.querySelectorAll('button,input:not(.lead-hp),select,textarea,a[href]')].filter(x=>x.offsetParent); const i=fs.indexOf(document.activeElement);
+      if(e.shiftKey&&i<=0){ e.preventDefault(); fs[fs.length-1].focus(); } else if(!e.shiftKey&&i===fs.length-1){ e.preventDefault(); fs[0].focus(); } } });
+  // máscara do WhatsApp
+  const tel=f.whatsapp; tel.addEventListener('input',()=>{ const d=tel.value.replace(/\D/g,'').slice(0,11); tel.value=d.length>6?`(${d.slice(0,2)}) ${d.slice(2,d.length-4)}-${d.slice(-4)}`:d.length>2?`(${d.slice(0,2)}) ${d.slice(2)}`:d; });
+  f.addEventListener('input',e=>e.target.closest('.f')?.classList.remove('bad'));
+  f.addEventListener('submit',async e=>{
+    e.preventDefault(); err.textContent='';
+    const bad=[...f.querySelectorAll('[required]')].filter(x=>!x.value.trim()||(x.type==='email'&&!/^\S+@\S+\.\S+$/.test(x.value))||(x.name==='whatsapp'&&x.value.replace(/\D/g,'').length<10));
+    f.querySelectorAll('.f').forEach(x=>x.classList.remove('bad')); bad.forEach(x=>x.closest('.f').classList.add('bad'));
+    if(bad.length){ err.textContent='Confira os campos destacados.'; bad[0].focus(); return; }
+    if(f._honey.value) return;
+    const d=Object.fromEntries(new FormData(f)); d.interesse=[...f.querySelectorAll('[name=interesse]:checked')].map(x=>x.value).join(', ')||'Não informado'; delete d._honey;
+    if(!CONTATO.email&&!CONTATO.whatsapp){ err.textContent='O envio ainda não foi configurado.'; return; }
+    send.disabled=true; send.firstElementChild.textContent='Enviando...';
+    try{
+      if(CONTATO.email){ const r=await fetch(`https://formsubmit.co/ajax/${CONTATO.email}`,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
+        body:JSON.stringify({_subject:`Novo contato pelo site: ${d.nome} (${d.empresa})`,_template:'table',_captcha:'false',...d,origem:location.href})}); const j=await r.json().catch(()=>({})); if(!r.ok||String(j.success)==='false') throw 0; }
+      const nome=d.nome.trim().split(' ')[0];
+      ok.querySelector('.lead-name').textContent=nome+'!';
+      if(CONTATO.whatsapp){ const w=ok.querySelector('.lead-wa'); w.hidden=false;
+        w.href=`https://wa.me/${CONTATO.whatsapp}?text=${encodeURIComponent(`Olá, UAU! Sou ${d.nome}, da ${d.empresa} (${d.segmento}). Acabei de preencher o formulário no site e quero conversar sobre: ${d.interesse}.`)}`; }
+      f.hidden=true; ok.hidden=false;
+    }catch(_){ err.textContent='Não conseguimos enviar agora. Tente de novo em instantes.'; }
+    send.disabled=false; send.firstElementChild.textContent='Enviar e falar com a UAU';
+  });
+})();
