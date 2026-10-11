@@ -97,11 +97,21 @@ document.querySelectorAll('.vplayer').forEach(box=>{
 // time: faixas que abrem; mouse/toque escolhe a pessoa, sem interação passa sozinho
 (function(){
   const box=document.getElementById('accs'); if(!box) return;
-  const it=[...box.querySelectorAll('.acc')]; let i=0, hold=0;
-  const go=k=>{ i=k; it.forEach((c,j)=>{ const on=j===k; c.classList.toggle('on',on); c.setAttribute('aria-pressed',on); if(on){ c.style.animation='none'; void c.offsetWidth; c.style.animation=''; } }); };
+  const it=[...box.querySelectorAll('.acc')], bar=document.getElementById('tmbar'), now=document.getElementById('tmname').parentElement;
+  const nm=document.getElementById('tmname'), rl=document.getElementById('tmrole'), idx=document.getElementById('tmidx');
+  const STEP=2200; let i=0, hold=0;
+  const set=(el,t)=>{ el.textContent=t; el.classList.toggle('fill',t.startsWith('[')); };
+  const go=k=>{
+    i=k; it.forEach((c,j)=>{ c.classList.toggle('on',j===k); c.setAttribute('aria-pressed',j===k); });
+    idx.textContent=String(k+1).padStart(2,'0');
+    now.classList.add('swap'); setTimeout(()=>{ set(nm,it[k].dataset.name); set(rl,it[k].dataset.role); now.classList.remove('swap'); },200);
+    bar.classList.remove('run'); void bar.offsetWidth; if(!reduce) bar.classList.add('run');
+  };
+  bar.style.setProperty('--t',STEP/1000+'s');
   it.forEach((c,k)=>{ ['mouseenter','click','focus'].forEach(ev=>c.addEventListener(ev,()=>{ hold=Date.now(); if(i!==k) go(k); })); });
+  go(0);
   if(reduce) return;
-  setInterval(()=>{ if(Date.now()-hold<5000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%it.length); },3200);
+  setInterval(()=>{ if(Date.now()-hold<3000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%it.length); },STEP);
 })();
 
 // filtro de clientes por segmento
