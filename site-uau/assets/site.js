@@ -85,13 +85,23 @@ document.querySelectorAll('.vplayer').forEach(box=>{
     v.addEventListener('ended',()=>{ stopSound(r); v.loop=true; if(!reduce) v.play().catch(()=>{}); });
     v.addEventListener('volumechange',()=>{ if(v.muted && r.classList.contains('sound')) stopSound(r); });
   });
-  if(reduce || !('IntersectionObserver' in window)) return;
+  // prévia sem som: no celular (iPhone/Android) o vídeo só toca sozinho se estiver mudo e "inline",
+  // e o modo economia de energia pode bloquear; aí tentamos de novo no primeiro toque na tela
+  const visible=new Set();
+  const preview=r=>{ const v=r.querySelector('video'); if(r.classList.contains('sound')) return;
+    v.muted=true; v.defaultMuted=true; v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
+    if(v.preload==='none') v.preload='metadata';
+    if(v.paused) v.play().catch(()=>{}); };
+  if(!('IntersectionObserver' in window)) return;
   const io=new IntersectionObserver(es=>es.forEach(e=>{
     const r=e.target, v=r.querySelector('video');
-    if(e.isIntersecting){ if(v.paused) v.play().catch(()=>{}); }
-    else { v.pause(); stopSound(r); v.loop=true; }
-  }),{threshold:.35});
+    if(e.isIntersecting){ visible.add(r); preview(r); }
+    else { visible.delete(r); v.pause(); stopSound(r); v.loop=true; }
+  }),{threshold:.2});
   reels.forEach(r=>io.observe(r));
+  const retry=()=>visible.forEach(preview);
+  ['touchstart','pointerdown','scroll'].forEach(ev=>addEventListener(ev,retry,{passive:true,once:ev!=='scroll'}));
+  setInterval(retry,2500);
 })();
 
 // time em cápsulas: as colunas trocam qual cápsula é grande, uma de cada vez, em onda
@@ -130,7 +140,7 @@ document.querySelectorAll('[data-drag]').forEach(box=>{
   const frame=t=>{
     const dt=Math.min(64,t-prev); prev=t;
     if(!down){
-      const auto=reduce||hover?0:-(half/((mob.matches?secs*.72:secs)*1000));
+      const auto=reduce||hover||box.querySelector('.reel.sound')?0:-(half/((mob.matches?secs*.72:secs)*1000));
       v+= (auto - v)*0.04;            // embalo do arrasto volta aos poucos para a velocidade normal
       x+=v*dt; wrap();
     }
@@ -139,8 +149,9 @@ document.querySelectorAll('[data-drag]').forEach(box=>{
   };
   box.addEventListener('pointerenter',e=>{ if(e.pointerType==='mouse') hover=true; });
   box.addEventListener('pointerleave',()=>{ hover=false; });
-  box.addEventListener('pointerdown',e=>{ down=true; moved=0; lastX=e.clientX; lastT=performance.now(); v=0; box.classList.add('dragging'); box.setPointerCapture(e.pointerId); });
-  box.addEventListener('pointermove',e=>{ if(!down) return; const dx=e.clientX-lastX, now=performance.now(); x+=dx; wrap(); moved+=Math.abs(dx); v=dx/Math.max(1,now-lastT); lastX=e.clientX; lastT=now; });
+  box.addEventListener('pointerdown',e=>{ down=true; moved=0; lastX=e.clientX; lastT=performance.now(); v=0; box.classList.add('dragging'); });
+  // só captura o ponteiro depois que vira arrasto, para os botões (Ouvir/Assistir) continuarem clicáveis
+  box.addEventListener('pointermove',e=>{ if(!down) return; const dx=e.clientX-lastX, now=performance.now(); x+=dx; wrap(); moved+=Math.abs(dx); if(moved>6 && !box.hasPointerCapture(e.pointerId)) box.setPointerCapture(e.pointerId); v=dx/Math.max(1,now-lastT); lastX=e.clientX; lastT=now; });
   const up=()=>{ if(!down) return; down=false; box.classList.remove('dragging'); v=Math.max(-3,Math.min(3,v)); };
   box.addEventListener('pointerup',up); box.addEventListener('pointercancel',up);
   box.addEventListener('click',e=>{ if(moved>6){ e.preventDefault(); e.stopPropagation(); } },true);
