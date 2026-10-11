@@ -265,35 +265,27 @@ footer .logo img{height:44px}
 
 /* BANDA DE TEXTO */
 
-/* PORTFÓLIO: lista tipográfica; no computador a prévia segue o cursor, no clique abre grande */
-.pf{padding-block:110px 120px}
-.pl{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-.pl li{border-bottom:1px solid var(--line)}
-.pl-row{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:56px 1fr 180px 140px 40px;align-items:center;gap:16px;padding:26px 0;position:relative;transition:color .3s}
-.pl-row::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(123,47,224,.14),rgba(201,48,122,.08) 60%,transparent);opacity:0;transition:opacity .35s;pointer-events:none}
-.pl-n{font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--dim)}
-.pl-name{font-size:clamp(28px,4.4vw,60px);font-weight:300;letter-spacing:-.04em;line-height:1;transition:transform .45s cubic-bezier(.2,.7,.2,1),color .3s}
-.pl-kind,.pl-seg{font-size:13px;color:var(--dim);letter-spacing:.04em}
-.pl-kind{color:var(--muted)}
-.pl-arr{font-size:22px;color:var(--dim);justify-self:end;transition:transform .35s,color .3s}
-.pl-inline{display:none}
-.pf-tip-m{display:none}
-.pl-row:hover::before,.pl-row:focus-visible::before{opacity:1}
-.pl-row:hover .pl-name,.pl-row:focus-visible .pl-name{transform:translateX(18px);font-weight:600;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.pl-row:hover .pl-arr{transform:rotate(45deg);color:var(--fg)}
-.pl:hover .pl-row:not(:hover) .pl-name{color:#5A5563}
-.pl-row:focus-visible{outline:2px solid var(--orange);outline-offset:4px}
-.pl-float{position:fixed;left:0;top:0;width:220px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;pointer-events:none;z-index:20;opacity:0;scale:.6;rotate:-6deg;transition:opacity .3s,scale .35s cubic-bezier(.2,.7,.2,1),rotate .45s cubic-bezier(.2,.7,.2,1);box-shadow:0 30px 70px rgba(0,0,0,.6);background:#1F1C25}
-.pl-float.is-img{aspect-ratio:4/5;width:260px}
-.pl-float.on{opacity:1;scale:1;rotate:var(--tilt,3deg)}
-.pl-float video,.pl-float img{width:100%;height:100%;object-fit:cover;display:block}
-.pl-modal{position:fixed;inset:0;z-index:60;background:rgba(10,9,12,.92);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
-.pl-modal[hidden]{display:none}
-.pl-stage{height:min(80vh,820px);aspect-ratio:9/16;max-width:92vw;border-radius:20px;overflow:hidden;background:#000}
-.pl-stage.is-img{aspect-ratio:4/5}
-.pl-stage video,.pl-stage img{width:100%;height:100%;object-fit:cover;display:block}
-.pl-cap{font-size:14px;color:var(--muted)}
-.pl-close{position:absolute;top:20px;right:20px;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);color:#fff;font-size:18px;cursor:pointer}
+/* PORTFÓLIO: pilha de cartas presa na tela; cada trecho de rolagem tira a carta de cima */
+.pk{padding:0;height:calc(100vh + var(--n) * 55vh)}
+.pk-pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;display:flex;align-items:center}
+.pk-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center;width:100%;padding-top:60px}
+.pk-info{display:flex;flex-direction:column;gap:18px;max-width:420px}
+.pk-now{display:flex;flex-direction:column;gap:6px;margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
+.pk-count{font-size:13px;color:var(--dim);letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.pk-count b{color:var(--fg)}
+.pk-name{font-size:clamp(26px,2.8vw,38px);font-weight:600;letter-spacing:-.03em;line-height:1.1;transition:opacity .3s,transform .3s}
+.pk-meta{font-size:14px;color:var(--muted);transition:opacity .3s}
+.pk-now.swap .pk-name{opacity:0;transform:translateY(10px)}
+.pk-now.swap .pk-meta{opacity:0}
+.pk-progress{display:block;height:2px;background:var(--line);border-radius:2px;overflow:hidden;width:100%;margin-top:8px}
+.pk-progress i{display:block;height:100%;width:0;background:var(--grad)}
+.pk-deck{position:relative;height:min(74vh,700px);aspect-ratio:9/16;justify-self:center}
+.pk-card{position:absolute;inset:0;margin:0;border-radius:22px;overflow:hidden;background:#1F1C25;box-shadow:0 30px 70px rgba(0,0,0,.55);will-change:transform;transform-origin:50% 120%}
+.pk-card video,.pk-card img{width:100%;height:100%;object-fit:cover;display:block}
+.pk-card[data-type=i] img{object-position:center 30%}
+.pk-sound{position:absolute;top:14px;right:14px;z-index:2;font:600 12px var(--display);color:#141217;background:#fff;border:0;border-radius:999px;padding:8px 12px;cursor:pointer;opacity:0;transition:opacity .3s}
+.pk-card.top .pk-sound{opacity:1}
+.pk-sound[hidden]{display:none}
 
 /* BASTIDORES */
 .team{display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:center}
@@ -428,22 +420,15 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
-  .pf{padding-block:72px 80px}
-  .pl-row{grid-template-columns:34px 1fr 28px;row-gap:6px;padding:18px 0}
-  .pl-n{grid-column:1;grid-row:1}
-  .pl-name{grid-column:2;grid-row:1}
-  .pl-arr{grid-column:3;grid-row:1}
-  .pl-kind{grid-column:2;grid-row:2;font-size:12px}
-  .pl-seg{display:none}
-  .pl-row.open .pl-inline{grid-row:3}
-  .pf-tip-d{display:none}
-  .pf-tip-m{display:inline}
-  .pl-name{font-size:26px}
-  .pl-row.open .pl-inline{display:block;grid-column:1/-1;margin-top:12px;width:62%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;justify-self:center}
-  .pl-row.open[data-type=i] .pl-inline{aspect-ratio:4/5;width:72%}
-  .pl-inline video,.pl-inline img{width:100%;height:100%;object-fit:cover;display:block}
-  .pl-row.open .pl-arr{transform:rotate(90deg)}
-  .pl-float{display:none}
+  .pk{height:calc(100svh + var(--n) * 45svh)}
+  .pk-wrap{grid-template-columns:1fr;gap:18px;padding-top:70px;align-content:center}
+  .pk-info{gap:8px}
+  .pk-info h2{font-size:30px}
+  .pk-info > p{display:none}
+  .pk-now{margin-top:6px;padding-top:12px;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:12px;row-gap:2px}
+  .pk-name{font-size:20px}
+  .pk-meta{font-size:12px;flex-basis:100%}
+  .pk-deck{height:min(56svh,520px)}
   .vr{grid-template-columns:1fr;gap:36px}
   .vr-rings{width:min(78vw,320px)}
   .vr-step{gap:16px;padding:20px 0}

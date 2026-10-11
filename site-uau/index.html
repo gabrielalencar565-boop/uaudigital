@@ -180,56 +180,32 @@
   </div>
 </section>
 
-<!-- 6. PORTFÓLIO: lista tipográfica, a prévia aparece junto do cursor -->
-<section class="pf" id="portfolio">
-  <div class="wrap">
-    <div class="nums-head reveal">
-      <div class="head" style="margin:0">
+<!-- 6. PORTFÓLIO: pilha de cartas; a rolagem tira a carta de cima e revela a próxima -->
+<section class="pf pk" id="portfolio" style="--n:8">
+  <div class="pk-pin">
+    <div class="wrap pk-wrap">
+      <div class="pk-info">
         <span class="eyebrow">Portfólio</span>
         <h2>O que <b>sai daqui.</b></h2>
+        <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time.</p>
+        <div class="pk-now" aria-live="polite">
+          <span class="pk-count"><b id="pkidx">01</b> / 08</span>
+          <span class="pk-name" id="pkname">Conveniência</span>
+          <span class="pk-meta" id="pkmeta">Reels · Comércio</span>
+        </div>
+        <span class="pk-progress" aria-hidden="true"><i id="pkprog"></i></span>
       </div>
-      <p class="muted">Roteiro, gravação, edição e design feitos pelo nosso time. <span class="pf-tip-d">Passe o mouse para ver, clique para abrir.</span><span class="pf-tip-m">Toque para ver.</span></p>
+      <div class="pk-deck" id="pkdeck">
+        <figure class="pk-card" data-name="Conveniência" data-meta="Reels · Comércio" data-type="v"><video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Diferro" data-meta="Institucional · Indústria" data-type="v"><video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Retrato profissional" data-meta="Foto" data-type="i"><img src="portfolio/retrato.jpg" alt="Retrato profissional" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Odontopediatria" data-meta="Reels · Saúde" data-type="v"><video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Doce Rio Gelato & Açaí" data-meta="Foto de produto · Alimentação" data-type="i"><img src="portfolio/doce-rio-produto.jpg" alt="Doce Rio Gelato & Açaí" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Clínica Bucall Center" data-meta="Design · Saúde" data-type="i"><img src="portfolio/bucall-carrossel.jpg" alt="Clínica Bucall Center" loading="lazy"><button type="button" class="pk-sound" aria-label="Ouvir com som" hidden>▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Escola" data-meta="Reels · Educação" data-type="v"><video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+        <figure class="pk-card" data-name="Dra. Luana" data-meta="Reels · Saúde" data-type="v"><video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video><button type="button" class="pk-sound" aria-label="Ouvir com som" >▶ Ouvir</button></figure>
+      </div>
     </div>
-    <ul class="pl" id="pflist">
-      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/conveniencia.mp4" data-poster="portfolio/conveniencia.jpg" data-name="Conveniência">
-        <span class="pl-n">01</span><span class="pl-name">Conveniência</span><span class="pl-kind">Reels</span><span class="pl-seg">Comércio</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><video src="portfolio/conveniencia.mp4" poster="portfolio/conveniencia.jpg" muted loop playsinline preload="none"></video></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/diferro.mp4" data-poster="portfolio/diferro.jpg" data-name="Diferro">
-        <span class="pl-n">02</span><span class="pl-name">Diferro</span><span class="pl-kind">Institucional</span><span class="pl-seg">Indústria</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><video src="portfolio/diferro.mp4" poster="portfolio/diferro.jpg" muted loop playsinline preload="none"></video></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/retrato.jpg" data-poster="portfolio/retrato.jpg" data-name="Retrato profissional">
-        <span class="pl-n">03</span><span class="pl-name">Retrato profissional</span><span class="pl-kind">Foto</span><span class="pl-seg">Ensaio</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><img src="portfolio/retrato.jpg" alt="" loading="lazy"></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/odontopediatria.mp4" data-poster="portfolio/odontopediatria.jpg" data-name="Odontopediatria">
-        <span class="pl-n">04</span><span class="pl-name">Odontopediatria</span><span class="pl-kind">Reels</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><video src="portfolio/odontopediatria.mp4" poster="portfolio/odontopediatria.jpg" muted loop playsinline preload="none"></video></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/doce-rio-produto.jpg" data-poster="portfolio/doce-rio-produto.jpg" data-name="Doce Rio Gelato & Açaí">
-        <span class="pl-n">05</span><span class="pl-name">Doce Rio Gelato & Açaí</span><span class="pl-kind">Foto de produto</span><span class="pl-seg">Alimentação</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><img src="portfolio/doce-rio-produto.jpg" alt="" loading="lazy"></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="i" data-src="portfolio/bucall-carrossel.jpg" data-poster="portfolio/bucall-carrossel.jpg" data-name="Clínica Bucall Center">
-        <span class="pl-n">06</span><span class="pl-name">Clínica Bucall Center</span><span class="pl-kind">Design</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><img src="portfolio/bucall-carrossel.jpg" alt="" loading="lazy"></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/educacao.mp4" data-poster="portfolio/educacao.jpg" data-name="Escola">
-        <span class="pl-n">07</span><span class="pl-name">Escola</span><span class="pl-kind">Reels</span><span class="pl-seg">Educação</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><video src="portfolio/educacao.mp4" poster="portfolio/educacao.jpg" muted loop playsinline preload="none"></video></span>
-      </button></li>
-      <li><button type="button" class="pl-row" data-type="v" data-src="portfolio/dra-luana.mp4" data-poster="portfolio/dra-luana.jpg" data-name="Dra. Luana">
-        <span class="pl-n">08</span><span class="pl-name">Dra. Luana</span><span class="pl-kind">Reels</span><span class="pl-seg">Saúde</span><span class="pl-arr" aria-hidden="true">↗</span>
-        <span class="pl-inline" aria-hidden="true"><video src="portfolio/dra-luana.mp4" poster="portfolio/dra-luana.jpg" muted loop playsinline preload="none"></video></span>
-      </button></li>
-    </ul>
-  </div>
-  <div class="pl-float" id="pffloat" aria-hidden="true"></div>
-  <div class="pl-modal" id="pfmodal" hidden>
-    <button type="button" class="pl-close" aria-label="Fechar">✕</button>
-    <div class="pl-stage"></div>
-    <p class="pl-cap"></p>
   </div>
 </section>
 
