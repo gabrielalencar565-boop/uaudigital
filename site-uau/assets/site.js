@@ -94,6 +94,14 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   reels.forEach(r=>io.observe(r));
 })();
 
+// portfólio: setas do carrossel de reels
+(function(){
+  const row=document.getElementById('pfreels'); if(!row) return;
+  const step=()=>{ const c=row.querySelector('.reel'); return c ? c.offsetWidth+14 : 300; };
+  document.getElementById('rnext').onclick=()=>row.scrollBy({left:step(),behavior:reduce?'auto':'smooth'});
+  document.getElementById('rprev').onclick=()=>row.scrollBy({left:-step(),behavior:reduce?'auto':'smooth'});
+})();
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
