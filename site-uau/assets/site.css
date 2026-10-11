@@ -206,7 +206,7 @@ footer .logo img{height:44px}
 .play{font-family:inherit;cursor:pointer;padding:0 0 0 4px;width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;position:relative;z-index:1;transition:transform .2s,opacity .3s}
 .vplayer:hover .play{transform:scale(1.1)}
 .video .tag{position:absolute;left:14px;bottom:14px;z-index:1;font-size:12px;color:#fff;transition:opacity .3s}
-.video q{font-size:18px;font-style:italic;quotes:"“" "”"}
+.video q{font-size:16px;font-style:italic;quotes:"“" "”"}
 .video small{font-size:14px}
 .written{margin-top:64px}
 .written .track{animation-duration:45s;gap:18px}
@@ -228,9 +228,9 @@ footer .logo img{height:44px}
 .reel-btn:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
 .reel-ico{font-size:10px}
 .reel-who{position:absolute;left:18px;right:18px;bottom:18px;z-index:2;display:flex;flex-direction:column;gap:2px;color:#fff;transition:opacity .3s}
-.reel-who q{font-size:17px;font-weight:500;line-height:1.35;letter-spacing:-.01em;margin-bottom:12px;quotes:"“" "”";text-wrap:pretty}
-.reel-who b{font-size:14px;line-height:1.3;font-weight:600}
-.reel-who span{font-size:12.5px;color:#B9B4C4}
+.reel-who q{font-size:14.5px;font-weight:500;line-height:1.35;letter-spacing:-.01em;margin-bottom:12px;quotes:"“" "”";text-wrap:pretty}
+.reel-who b{font-size:13px;line-height:1.3;font-weight:600}
+.reel-who span{font-size:11.5px;color:#B9B4C4}
 .reel .fill{color:#F2A04A}
 .reel.sound::after,.reel.sound .reel-who,.reel.sound .reel-dur,.reel.sound .reel-btn{opacity:0;pointer-events:none}
 
