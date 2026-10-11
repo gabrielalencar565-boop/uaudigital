@@ -683,9 +683,9 @@ body.lb-open{overflow:hidden}
 /* clientes: faixa roxa compacta */
 .cl-band{padding:0;background:linear-gradient(90deg,#5B1DB8,#7B2FE0 55%,#8B3BE8);color:#fff;overflow:hidden}
 .cb-in{display:flex;align-items:center;height:112px}
-.cb-t{flex:none;padding:0 36px 0 max(20px,calc((100vw - 1180px)/2 + 20px));font-size:20px;font-weight:300;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
-.cb-t b{display:block;font-size:30px;font-weight:800;letter-spacing:-.04em}
-.cl-band .cm-row{flex:1;min-width:0;border-left:1px solid rgba(255,255,255,.22)}
+.cb-t{flex:none;padding:0 max(20px,calc((100vw - 1180px)/2 + 20px)) 0 36px;font-size:22px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
+.cb-t span{font-weight:300;opacity:.85}
+.cl-band .cm-row{flex:1;min-width:0;border-right:1px solid rgba(255,255,255,.22)}
 .cm-wall{display:flex;flex-direction:column;gap:30px}
 .cm-row{mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
 .cm-row .track{gap:0;align-items:center}
@@ -694,10 +694,9 @@ body.lb-open{overflow:hidden}
 .cm-logo img{height:calc(38px * var(--s));max-width:150px;width:auto;object-fit:contain}
 .cm-name{font-size:21px;font-weight:300;letter-spacing:-.03em;white-space:nowrap}
 @media (max-width:700px){
-  .cb-in{flex-direction:column;align-items:stretch;height:auto;padding:20px 0 14px;gap:10px}
-  .cb-t{padding:0 20px;text-align:center;font-size:15px}
-  .cb-t b{display:inline;font-size:15px}
-  .cl-band .cm-row{border-left:0}
+  .cb-in{flex-direction:column;align-items:stretch;height:auto;padding:14px 0 20px;gap:8px}
+  .cb-t{padding:0 20px;text-align:center;font-size:16px}
+  .cl-band .cm-row{border-right:0}
   .cm{height:44px;padding-inline:26px}
   .cm-logo img{height:calc(34px * var(--s));max-width:120px}
   .cm-name{font-size:19px}
