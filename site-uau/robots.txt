@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://uaucomunicacaodigital.com.br/sitemap.xml
+Sitemap: https://www.uaucomunicacaodigital.com.br/sitemap.xml
