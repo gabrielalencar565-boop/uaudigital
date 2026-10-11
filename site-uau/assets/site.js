@@ -94,6 +94,13 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   reels.forEach(r=>io.observe(r));
 })();
 
+// time em cápsulas: as colunas trocam qual cápsula é grande, uma de cada vez, em onda
+(function(){
+  const box=document.getElementById('pills'); if(!box || reduce) return;
+  const cols=[...box.querySelectorAll('.pcol')]; let k=0;
+  setInterval(()=>{ const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; cols[k%cols.length].classList.toggle('flip'); k++; },1400);
+})();
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
