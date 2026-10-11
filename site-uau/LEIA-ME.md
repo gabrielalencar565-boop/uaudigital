@@ -65,6 +65,8 @@ O site fica no ar como um projeto Vercel separado do Fluxo, apontando para esta 
 - `robots.txt` e `sitemap.xml` já apontam para o domínio.
 
 ## Formulário de contato
+No momento os botões levam direto ao WhatsApp (`modo:'whatsapp'` no `CONTATO`). Para voltar a abrir o formulário, troque para `modo:'formulario'`.
+
 Todos os botões "Falar com a UAU" / "Quero conversar" / "Agendar conversa" abrem o formulário (definido em `assets/site.js`).
 Para ele funcionar, está configurado em `const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705' }`:
 - `email`: recebe cada pedido por e-mail (via FormSubmit; o primeiro envio pede para confirmar o e-mail);

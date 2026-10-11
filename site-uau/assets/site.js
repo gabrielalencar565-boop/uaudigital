@@ -292,7 +292,10 @@ if(bento && !reduce && 'IntersectionObserver' in window && bento.getBoundingClie
 
 // formulário "Falar com a UAU": todos os botões de contato abrem esta janela
 // Para onde vão os pedidos: preencha o e-mail que recebe (via FormSubmit) e/ou o WhatsApp da UAU (só números, com 55 e DDD)
-const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705' };
+const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705',
+  // 'whatsapp': os botões levam direto para o link abaixo | 'formulario': os botões abrem o formulário
+  modo:'whatsapp',
+  link:'https://api.whatsapp.com/send/?phone=5599984344705&text=Oi%2C+vi+o+trabalho+da+Uau+Digital+no+Instagram+e+gostaria+de+saber+como+voc%C3%AAs+podem+ajudar+meu+neg%C3%B3cio%21&type=phone_number&app_absent=0' };
 (()=>{
   const opts=(l)=>l.map(o=>`<option>${o}</option>`).join('');
   const chips=['Posicionamento estratégico','Conteúdo e redes sociais','Produção de vídeo','Tráfego pago','Ainda não sei'];
@@ -330,7 +333,7 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
   let last=null;
   const open=()=>{ last=document.activeElement; m.hidden=false; document.body.classList.add('lb-open'); m.offsetWidth; m.classList.add('on'); setTimeout(()=>f.querySelector('input').focus({preventScroll:true}),350); };
   const close=()=>{ m.classList.remove('on'); setTimeout(()=>{ m.hidden=true; document.body.classList.remove('lb-open'); last&&last.focus&&last.focus({preventScroll:true}); },400); };
-  document.addEventListener('click',e=>{ const a=e.target.closest('a[href$="#contato"],a[data-lead]'); if(!a) return; e.preventDefault(); if(!drawer.hidden) setDrawer(false); open(); });
+  document.addEventListener('click',e=>{ const a=e.target.closest('a[href$="#contato"],a[data-lead]'); if(!a) return; e.preventDefault(); if(!drawer.hidden) setDrawer(false); if(CONTATO.modo==='whatsapp'){ const w=window.open(CONTATO.link,'_blank'); if(w) w.opener=null; else location.href=CONTATO.link; return; } open(); });
   m.querySelector('.lead-bg').onclick=close; m.querySelector('.lead-x').onclick=close;
   addEventListener('keydown',e=>{ if(m.hidden) return; if(e.key==='Escape') close();
     if(e.key==='Tab'){ const fs=[...m.querySelectorAll('button,input:not(.lead-hp),select,textarea,a[href]')].filter(x=>x.offsetParent); const i=fs.indexOf(document.activeElement);
