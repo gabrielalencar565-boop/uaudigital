@@ -288,6 +288,7 @@ footer .logo img{height:44px}
 .inst{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .inst-card{aspect-ratio:16/9;border-radius:22px;box-shadow:0 24px 50px rgba(0,0,0,.4);background:#0F0E11}
 .inst-card:only-child{grid-column:1/-1}
+.inst:has(> .inst-card:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
 .reel.inst-card video{object-fit:cover;object-position:center 30%}
 .inst-card::after{background:linear-gradient(180deg,rgba(15,14,17,.25),transparent 25%,transparent 60%,rgba(15,14,17,.8))}
 .inst-card .reel-who{left:18px;bottom:16px;right:auto;max-width:55%}
