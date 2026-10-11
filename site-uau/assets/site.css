@@ -569,6 +569,15 @@ body.locked{overflow:hidden}
   .video{width:240px}
   .quote{width:280px}
 }
+/* depoimentos: cabeçalho */
+.dep-top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;margin-bottom:52px}
+.dep-top h2{font-size:clamp(36px,5.6vw,72px);line-height:1;letter-spacing:-.04em}
+.dep-top h2 b{font-weight:800}
+.dep-badge{display:inline-flex;align-items:center;gap:12px;padding:6px 18px 6px 6px;border-radius:999px;background:#fff;box-shadow:0 8px 28px rgba(20,18,23,.08);font-size:14px;font-weight:600;color:var(--ink)}
+.dep-faces{display:flex}
+.dep-faces img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;margin-left:-10px}
+.dep-faces img:first-child{margin-left:0}
+@media (max-width:700px){ .dep-top{margin-bottom:32px;gap:18px} .dep-top h2{font-size:clamp(34px,10vw,44px)} .dep-faces img{width:30px;height:30px} .dep-badge{font-size:13px} }
 /* criativo ampliado */
 .cr-item{cursor:zoom-in}
 .cr-item:focus-visible{outline:2px solid #C9307A;outline-offset:3px}
