@@ -102,7 +102,7 @@ footer .logo img{height:44px}
 .marquee{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 
 /* HERO EDITORIAL: título gigante com a foto do time dentro da frase */
-.hero{display:flex;align-items:center;padding-block:124px 64px}
+.hero{display:flex;align-items:center;padding-block:124px 64px;min-height:calc(100vh - 77px);min-height:calc(100svh - 77px)}
 .hero .wrap.hx{display:flex;flex-direction:column;align-items:stretch;gap:28px;width:100%}
 .hero .hx-title{font-size:clamp(48px,7.6vw,116px);font-weight:300;line-height:.94;letter-spacing:-.055em;display:flex;flex-direction:column}
 .hx-line{display:flex;align-items:center;justify-content:center;gap:.18em;flex-wrap:nowrap;white-space:nowrap}
@@ -524,8 +524,9 @@ body.locked{overflow:hidden}
   .hx-mark{height:34px;margin-bottom:4px}
   .hero .wrap{grid-template-columns:1fr;gap:48px}
   .collage{height:440px}
-  .hero{min-height:auto}
-  .hero .hx-title{font-size:clamp(40px,14vw,96px)}
+  .hero{min-height:calc(100svh - 55px)}
+  .hx-marca{flex-basis:100%;text-align:center}
+  .hero .hx-title{font-size:clamp(40px,16vw,96px)}
   .hx-line{flex-wrap:wrap}
   .hx-line2{flex-wrap:nowrap}
   .pill{width:1.35em}
