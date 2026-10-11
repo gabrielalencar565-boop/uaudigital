@@ -293,12 +293,11 @@ footer .logo img{height:44px}
 .inst-card .reel-who span{font-size:13px}
 .inst-card .reel-dur{top:20px;left:24px}
 .inst-card .reel-btn{top:auto;bottom:22px;right:24px;padding:10px 16px 10px 13px;font-size:13px}
-.pf-reels{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px}
-.pf-reels::-webkit-scrollbar{display:none}
-.pf-reels .reel{flex:none;width:calc((100% - 56px)/5);scroll-snap-align:start}
-.ch-arrows{margin-left:18px;display:flex;gap:8px}
-.ch-arrows button{width:42px;height:42px;font-size:16px;border-color:var(--line);color:var(--fg)}
-.ch-arrows button:hover{background:var(--fg);color:var(--ink)}
+/* reels do portfólio passando em loop contínuo, como a faixa de serviços */
+.pf-loop{margin-inline:calc(50% - 50vw);padding-block:4px 10px}
+.pf-loop-track{gap:14px;animation-duration:60s}
+.pf-loop .reel{flex:none;width:240px}
+.pf-loop:hover .pf-loop-track,.pf-loop:has(.reel.sound) .pf-loop-track{animation-play-state:paused}
 .pf-v{border-radius:18px;box-shadow:0 20px 40px rgba(0,0,0,.35)}
 .pf-v::after{background:linear-gradient(180deg,rgba(15,14,17,.3),transparent 20%,transparent 70%,rgba(15,14,17,.85))}
 .pf-v .reel-who b{font-size:13px}
@@ -451,9 +450,8 @@ body.locked{overflow:hidden}
   .cr{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin-inline:-20px;padding-inline:20px;scroll-padding-inline:20px;scrollbar-width:none}
   .cr::-webkit-scrollbar{display:none}
   .cr-item{flex:none;width:72vw;max-width:300px;scroll-snap-align:start;margin-top:0!important}
-  .pf-reels{margin-inline:-20px;padding-inline:20px;scroll-padding-inline:20px}
-  .pf-reels .reel{width:62vw;max-width:260px}
-  .ch-arrows{display:none}
+  .pf-loop .reel{width:190px;max-width:none}
+  .pf-loop-track{animation-duration:45s}
   .vr{grid-template-columns:1fr;gap:36px}
   .vr-rings{width:min(78vw,320px)}
   .vr-step{gap:16px;padding:20px 0}

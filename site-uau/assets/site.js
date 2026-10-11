@@ -94,26 +94,6 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   reels.forEach(r=>io.observe(r));
 })();
 
-// portfólio: setas do carrossel de reels
-(function(){
-  const row=document.getElementById('pfreels'); if(!row) return;
-  const step=()=>{ const c=row.querySelector('.reel'); return c ? c.offsetWidth+14 : 300; };
-  const next=()=>{ const end=row.scrollLeft+row.clientWidth>=row.scrollWidth-4; row.scrollTo({left:end?0:row.scrollLeft+step(),behavior:reduce?'auto':'smooth'}); };
-  let hold=0;
-  const pause=()=>{ hold=Date.now(); };
-  document.getElementById('rnext').onclick=()=>{ pause(); next(); };
-  document.getElementById('rprev').onclick=()=>{ pause(); row.scrollBy({left:-step(),behavior:reduce?'auto':'smooth'}); };
-  // passa sozinho a cada 3s; para enquanto o mouse está em cima, depois de um toque/seta, ou com um vídeo tocando com som
-  ['pointerenter','pointerdown','touchstart','wheel'].forEach(ev=>row.addEventListener(ev,pause,{passive:true}));
-  let over=false; row.addEventListener('pointerenter',()=>over=true); row.addEventListener('pointerleave',()=>{ over=false; pause(); });
-  if(reduce) return;
-  setInterval(()=>{
-    if(over || Date.now()-hold<5000 || row.querySelector('.reel.sound')) return;
-    const r=row.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return;
-    next();
-  },3000);
-})();
-
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
