@@ -338,16 +338,18 @@ footer .logo img{height:44px}
 .tm-pills .nums-head .head{align-items:center}
 .tm-pills .nums-head p{max-width:520px}
 
-/* COMPARATIVO */
-.compare{display:flex;flex-direction:column;gap:12px}
-.cmp-row{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;align-items:stretch}
-.cmp-row > *{border-radius:18px;padding:22px 24px;min-width:0}
-.cmp-label{background:transparent;font-weight:700;font-size:18px;display:flex;align-items:center;padding-left:0}
-.cmp-other{background:var(--bg2);color:var(--dim);text-decoration:line-through;text-decoration-color:#5A5563}
-.cmp-uau{background:linear-gradient(120deg,rgba(123,47,224,.28),rgba(201,48,122,.2));border:1px solid #4B3A66;font-weight:600}
-.cmp-head{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding-inline:0 24px}
-.cmp-head span:last-child{color:var(--lilac);padding-left:24px}
-.cmp-head span:nth-child(2){padding-left:24px}
+/* COMPARATIVO: lista limpa — o comum riscado em cinza, a UAU em destaque */
+.df-wrap{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:72px;align-items:start}
+.df-side{position:sticky;top:110px;display:flex;flex-direction:column;gap:20px;align-items:flex-start}
+.df-side p{font-size:15px;max-width:340px}
+.df-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.df{display:flex;flex-direction:column;gap:6px;padding:28px 0;border-bottom:1px solid var(--line)}
+.df-n{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--lilac)}
+.df-old{font-size:15px;color:var(--dim)}
+.df-old s{text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 55%/0% 1px no-repeat;transition:background-size .8s cubic-bezier(.7,0,.2,1) .2s}
+.df:not(.pre) .df-old s{background-size:100% 1px}
+.df-new{font-size:clamp(24px,2.6vw,34px);font-weight:600;letter-spacing:-.03em;line-height:1.15;transition:color .3s}
+.df:hover .df-new{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 /* GRUPO */
 .group{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -463,6 +465,10 @@ body.locked{overflow:hidden}
 .close-cta .wrap{display:flex;flex-direction:column;align-items:center;gap:24px}
 
 @media (max-width:900px){
+  .df-wrap{grid-template-columns:1fr;gap:28px}
+  .df-side{position:static}
+  .df{padding:22px 0}
+  .df-new{font-size:22px}
   .pills{height:440px;gap:7px}
   .pcol{gap:7px}
   .cap{border-radius:18px}
@@ -501,21 +507,6 @@ body.locked{overflow:hidden}
   .t-team{grid-column:1 / -1;min-height:240px}
   .tile{min-height:200px}
   .group,.team{grid-template-columns:1fr}
-  /* comparativo no celular: um cartão por tema, UAU em destaque e a agência comum embaixo, menor */
-  .compare{gap:10px}
-  .cmp-row{display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:18px 20px}
-  .cmp-row > *{padding:0;border-radius:0;background:none;border:0}
-  .cmp-label{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-  .cmp-uau{order:2;display:flex;gap:10px;align-items:flex-start;font-size:16px;line-height:1.4;color:var(--fg)}
-  .cmp-uau::before{content:"✓";flex:none;width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
-  .cmp-other{order:3;display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.4;padding-top:10px;border-top:1px dashed var(--line);text-decoration:none}
-  .cmp-other::before{content:"✕";flex:none;width:22px;height:22px;border-radius:50%;border:1px solid #3A3542;color:var(--dim);font-size:10px;display:flex;align-items:center;justify-content:center}
-  .cmp-head{display:flex;gap:18px;font-size:11px;padding:0 0 6px;letter-spacing:.14em}
-  .cmp-head span{padding:0!important;display:flex;align-items:center;gap:7px}
-  .cmp-head span:first-child{display:none}
-  .cmp-head span:last-child{order:-1}
-  .cmp-head span:last-child::before{content:"✓";width:16px;height:16px;border-radius:50%;background:var(--grad);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center}
-  .cmp-head span:nth-child(2)::before{content:"✕";width:16px;height:16px;border-radius:50%;border:1px solid #3A3542;font-size:8px;display:flex;align-items:center;justify-content:center}
   footer .wrap{grid-template-columns:1fr}
   .split,.values,.brand-row{grid-template-columns:1fr}
   .people{grid-template-columns:repeat(2,1fr)}
