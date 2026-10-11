@@ -110,24 +110,28 @@
 <!-- 4. DEPOIMENTOS -->
 <section class="light" id="depoimentos">
   <div class="wrap">
-    <div class="dep-head reveal">
+    <div class="nums-head reveal">
       <div class="head" style="margin:0">
         <span class="eyebrow">Depoimentos</span>
         <h2>Quem já é UAU, <b>fala.</b></h2>
-        <p class="muted">Não somos nós que dizemos. São eles.</p>
       </div>
-      <div class="arrows"><button id="prev" aria-label="Anterior">←</button><button id="next" aria-label="Próximo">→</button></div>
+      <p class="muted">Não somos nós que dizemos. São eles.</p>
     </div>
-    <div class="videos" id="videos">
-      <div class="video"><div class="vplayer"><video src="video/thamara-leal.mp4" poster="video/thamara-leal.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento de Dra. Thamara Leal">▶</button><span class="tag">Vídeo · 35s</span></div><q class="fill">[frase tirada do vídeo]</q><span><b>Dra. Thamara Leal</b> · <small class="muted">Ginecologista e Obstetra</small></span></div>
-      <div class="video"><div class="vplayer"><video src="video/mariana-almeida.mp4" poster="video/mariana-almeida.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento de Dra. Mariana Almeida">▶</button><span class="tag">Vídeo · 36s</span></div><q class="fill">[frase tirada do vídeo]</q><span><b>Dra. Mariana Almeida</b> · <small class="fill">[especialidade]</small></span></div>
-      <div class="video"><div class="vplayer"><video src="video/melri-ribeiro.mp4" poster="video/melri-ribeiro.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento de Dra. Melri Ribeiro">▶</button><span class="tag">Vídeo · 1min</span></div><q class="fill">[frase tirada do vídeo]</q><span><b>Dra. Melri Ribeiro</b> · <small class="muted">Ultrassonografista</small></span></div>
-      <div class="video"><div class="vplayer"><video src="video/depoimento-4.mp4" poster="video/depoimento-4.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento de cliente">▶</button><span class="tag">Vídeo · 44s</span></div><q class="fill">[frase tirada do vídeo]</q><span><b class="fill">[Nome da cliente]</b> · <small class="fill">[profissão]</small></span></div>
+    <div class="dp-stage reveal" id="dpstage">
+      <div class="dp-player vplayer"><video src="video/thamara-leal.mp4" poster="video/thamara-leal.jpg" preload="none" playsinline></video><button type="button" class="play" aria-label="Assistir depoimento">▶</button><span class="tag" id="dpdur">Vídeo · 35s</span></div>
+      <div class="dp-info">
+        <span class="dp-count"><b id="dpidx">01</b> / 04</span>
+        <span class="dp-mark" aria-hidden="true">“</span>
+        <q class="dp-quote fill" id="dpquote">[frase tirada do vídeo]</q>
+        <div class="dp-who"><b id="dpname">Dra. Thamara Leal</b><span id="dprole">Ginecologista e Obstetra</span></div>
+        <div class="dp-thumbs" role="group" aria-label="Escolher depoimento">
+          <button type="button" class="dp-thumb on" aria-pressed="true" data-src="video/thamara-leal.mp4" data-poster="video/thamara-leal.jpg" data-name="Dra. Thamara Leal" data-role="Ginecologista e Obstetra" data-dur="35s"><img src="video/thamara-leal.jpg" alt="" loading="lazy"><span><b>Dra. Thamara Leal</b><small>35s</small></span></button>
+          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/mariana-almeida.mp4" data-poster="video/mariana-almeida.jpg" data-name="Dra. Mariana Almeida" data-role="[especialidade]" data-dur="36s"><img src="video/mariana-almeida.jpg" alt="" loading="lazy"><span><b>Dra. Mariana Almeida</b><small>36s</small></span></button>
+          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/melri-ribeiro.mp4" data-poster="video/melri-ribeiro.jpg" data-name="Dra. Melri Ribeiro" data-role="Ultrassonografista" data-dur="1min"><img src="video/melri-ribeiro.jpg" alt="" loading="lazy"><span><b>Dra. Melri Ribeiro</b><small>1min</small></span></button>
+          <button type="button" class="dp-thumb" aria-pressed="false" data-src="video/depoimento-4.mp4" data-poster="video/depoimento-4.jpg" data-name="[Nome da cliente]" data-role="[profissão]" data-dur="44s"><img src="video/depoimento-4.jpg" alt="" loading="lazy"><span><b>Cliente</b><small>44s</small></span></button>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="written">
-    <div class="wrap"><p class="eyebrow" style="margin-bottom:20px">Por escrito</p></div>
-    <div class="marquee"><div class="track" id="quotes"></div></div>
   </div>
 </section>
 

@@ -76,6 +76,25 @@ document.querySelectorAll('.vplayer').forEach(box=>{
   v.addEventListener('play',()=>{ document.querySelectorAll('.vplayer video').forEach(o=>{ if(o!==v) o.pause(); }); });
 });
 
+// depoimentos: as miniaturas trocam o vídeo em destaque
+(function(){
+  const stage=document.getElementById('dpstage'); if(!stage) return;
+  const box=stage.querySelector('.vplayer'), v=box.querySelector('video'), thumbs=[...stage.querySelectorAll('.dp-thumb')];
+  const set=(id,t)=>{ const el=document.getElementById(id); el.textContent=t; el.classList.toggle('fill',t.startsWith('[')); };
+  thumbs.forEach((t,k)=>t.addEventListener('click',()=>{
+    if(t.classList.contains('on')) return;
+    thumbs.forEach(o=>{ o.classList.toggle('on',o===t); o.setAttribute('aria-pressed',o===t); });
+    const wasPlaying=!v.paused;
+    v.pause(); box.classList.remove('playing'); v.controls=false;
+    v.poster=t.dataset.poster; v.src=t.dataset.src;
+    document.getElementById('dpdur').textContent='Vídeo · '+t.dataset.dur;
+    document.getElementById('dpidx').textContent=String(k+1).padStart(2,'0');
+    stage.classList.add('swap');
+    setTimeout(()=>{ set('dpname',t.dataset.name); set('dprole',t.dataset.role); stage.classList.remove('swap'); },250);
+    if(wasPlaying) box.querySelector('.play').click();
+  }));
+})();
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
