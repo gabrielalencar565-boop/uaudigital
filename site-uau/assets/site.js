@@ -63,6 +63,19 @@ if(vids){
   document.getElementById('prev').onclick=()=>vids.scrollBy({left:-320,behavior:reduce?'auto':'smooth'});
 }
 
+// depoimentos em vídeo: tocam no clique, com som e controles; só um toca por vez
+document.querySelectorAll('.vplayer').forEach(box=>{
+  const v=box.querySelector('video'), btn=box.querySelector('.play');
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.vplayer video').forEach(o=>{ if(o!==v) o.pause(); });
+    v.controls=true; box.classList.add('playing');
+    v.play().catch(()=>{ box.classList.remove('playing'); v.controls=false; });
+  });
+  v.addEventListener('pause',()=>{ if(v.ended||v.currentTime===0) { box.classList.remove('playing'); v.controls=false; } });
+  v.addEventListener('ended',()=>{ box.classList.remove('playing'); v.controls=false; v.currentTime=0; v.load(); });
+  v.addEventListener('play',()=>{ document.querySelectorAll('.vplayer video').forEach(o=>{ if(o!==v) o.pause(); }); });
+});
+
 // filtro de clientes por segmento
 const filters=document.getElementById('filters');
 if(filters){
