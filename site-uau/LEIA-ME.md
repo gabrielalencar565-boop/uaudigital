@@ -69,3 +69,6 @@ Todos os botões "Falar com a UAU" / "Quero conversar" / "Agendar conversa" abre
 Para ele funcionar, está configurado em `const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705' }`:
 - `email`: recebe cada pedido por e-mail (via FormSubmit; o primeiro envio pede para confirmar o e-mail);
 - `whatsapp`: número da UAU só com números (ex.: 5598999999999); aparece o botão "Adiantar pelo WhatsApp" com a mensagem pronta.
+
+## Cache
+O `site.css` e o `site.js` são chamados com `?v=` (pedaço do hash do arquivo). Ao alterar um deles, atualize o `?v=` nas 6 páginas para todo mundo receber a versão nova na hora.
