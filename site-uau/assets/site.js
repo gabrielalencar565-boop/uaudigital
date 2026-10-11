@@ -17,30 +17,13 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
   setInterval(()=>{ if(Date.now()-hold<6000) return; const r=box.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return; go((i+1)%steps.length); },3200);
 })();
 
-// portfólio: a seção trava e a rolagem vertical move a galeria para o lado, cada peça numa velocidade
+// portfólio (mosaico): as peças entram em sequência quando o mural aparece
 (function(){
-  const sec=document.getElementById('portfolio'), track=document.getElementById('pftrack'); if(!sec||!track) return;
-  const items=[...track.querySelectorAll('.pf-item')], idx=document.getElementById('pfidx'), prog=document.getElementById('pfprog');
-  const desk=matchMedia('(min-width:901px)');
-  let dist=0;
-  const size=()=>{
-    if(!desk.matches){ sec.style.height=''; track.style.transform=''; return; }
-    dist=Math.max(0,track.scrollWidth-innerWidth);
-    sec.style.height=(innerHeight+dist)+'px';
-    tick();
-  };
-  const tick=()=>{
-    if(!desk.matches) return;
-    const r=sec.getBoundingClientRect(), p=Math.min(1,Math.max(0,-r.top/Math.max(1,dist)));
-    const x=-p*dist; track.style.transform=`translate3d(${x}px,0,0)`;
-    prog.style.width=(p*100)+'%';
-    let k=0; items.forEach((el,j)=>{ const b=el.getBoundingClientRect(); if(b.left<innerWidth*.6) k=j;
-      if(!reduce){ const c=(b.left+b.width/2-innerWidth/2)/innerWidth; el.style.transform=`translate3d(0,${c*(+el.dataset.speed)*-260}px,0) rotate(${c*(+el.dataset.speed)*-14}deg)`; } });
-    idx.textContent=String(k+1).padStart(2,'0');
-  };
-  addEventListener('scroll',()=>requestAnimationFrame(tick),{passive:true});
-  addEventListener('resize',size); desk.addEventListener('change',size);
-  addEventListener('load',size); size();
+  const mural=document.getElementById('mural'); if(!mural || reduce || !('IntersectionObserver' in window)) return;
+  if(mural.getBoundingClientRect().top<innerHeight) return;
+  const items=[...mural.children]; items.forEach(el=>el.classList.add('pre'));
+  const io=new IntersectionObserver(es=>{ if(!es[0].isIntersecting) return; io.disconnect(); items.forEach(el=>el.classList.remove('pre')); },{threshold:.12});
+  io.observe(mural);
 })();
 
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
