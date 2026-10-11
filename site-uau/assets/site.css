@@ -351,7 +351,7 @@ footer .logo img{height:44px}
 .tm-pills .nums-head p{max-width:520px}
 
 /* COMPARATIVO: dois cartões lado a lado — agência tradicional (apagada) x UAU (em destaque) */
-.vs{display:grid;grid-template-columns:1fr auto 1.08fr;gap:22px;align-items:center;max-width:1000px;margin-inline:auto}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:22px;align-items:stretch;max-width:1000px;margin-inline:auto}
 .vs-card{border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;gap:22px}
 .vs-old{background:var(--bg2);border:1px solid var(--line)}
 .vs-uau{position:relative;background:radial-gradient(circle at 100% 0%,rgba(201,48,122,.28),transparent 55%),radial-gradient(circle at 0% 100%,rgba(123,47,224,.3),transparent 55%),#17131F;box-shadow:0 30px 70px rgba(123,47,224,.25)}
@@ -364,12 +364,13 @@ footer .logo img{height:44px}
 .vs-card li{display:flex;flex-direction:column;gap:3px;padding:14px 0;border-top:1px solid var(--line)}
 .vs-uau li{border-color:rgba(255,255,255,.08)}
 .vs-t{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-.vs-old .vs-x{font-size:15px;color:#6E6878;text-decoration:line-through;text-decoration-color:#4A4552}
+.vs-old .vs-x{font-size:17px;line-height:20px;color:#6E6878;text-decoration:line-through;text-decoration-color:#4A4552}
 .vs-uau .vs-t{color:var(--lilac)}
-.vs-uau .vs-x{font-size:17px;font-weight:600;color:#fff;display:flex;gap:10px;align-items:center}
+.vs-uau .vs-x{font-size:17px;line-height:20px;font-weight:600;color:#fff;display:flex;gap:10px;align-items:center}
 .vs-uau .vs-x::before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;background:var(--grad);font-size:11px;display:flex;align-items:center;justify-content:center}
-.vs-uau .btn{align-self:flex-start;margin-top:4px}
-.vs-mid{font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);width:52px;height:52px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.vs-uau .btn{align-self:flex-start;margin-top:auto}
+.vs-card ul{flex:1}
+.vs-mid{align-self:center;font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);width:52px;height:52px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--bg)}
 
 /* GRUPO */
 .group{display:grid;grid-template-columns:1fr 1fr;gap:20px}
