@@ -688,14 +688,13 @@ body.lb-open{overflow:hidden}
 .cm-wall{display:flex;flex-direction:column;gap:30px}
 .cm-row{mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
 .cm-row .track{gap:0;align-items:center}
-.cm{flex:none;display:flex;align-items:center;height:56px;padding-inline:38px;position:relative}
-.cm::after{content:"";position:absolute;right:-3px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:rgba(255,255,255,.35)}
+.cm{flex:none;display:flex;align-items:center;height:56px;padding-inline:22px;position:relative}
 .cm-logo img{height:calc(38px * var(--s));max-width:150px;width:auto;object-fit:contain}
 .cm-name{font-size:21px;font-weight:300;letter-spacing:-.03em;white-space:nowrap}
 @media (max-width:700px){
   .cb-in{padding:18px 0 12px;gap:6px}
   .cb-t{font-size:11px}
-  .cm{height:44px;padding-inline:26px}
+  .cm{height:44px;padding-inline:14px}
   .cm-logo img{height:calc(34px * var(--s));max-width:120px}
   .cm-name{font-size:19px}
 }
