@@ -15,6 +15,11 @@ describe("friendlyError", () => {
   it("explains the last-administrator guard", () => {
     expect(friendlyError("last_admin")).toContain("último administrador");
   });
+  it("explains an unconfirmed collaborator", () => {
+    const text = friendlyError("colaborador_nao_conferido: ayrton.lemoss, outro.perfil");
+    expect(text).toContain("@ayrton.lemoss, @outro.perfil");
+    expect(text).toContain("antes de agendar");
+  });
   it("leaves messages that are already in Portuguese alone", () => {
     expect(friendlyError("Não foi possível salvar o squad")).toBe("Não foi possível salvar o squad");
     expect(friendlyError("Selecione um cliente")).toBe("Selecione um cliente");
