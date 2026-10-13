@@ -78,3 +78,4 @@ O `site.css` e o `site.js` são chamados com `?v=` (pedaço do hash do arquivo).
 ## Ajustar imagens (só na prévia do Claude)
 `assets/ajuste.js` adiciona o botão "Ajustar imagens" quando o site é aberto na prévia do Claude (no site no ar ele não aparece).
 Os ajustes salvos ficam na coleção `ajustes` da prévia; o Claude lê e aplica no código (object-position e zoom de cada foto).
+O botão "Editar textos" deixa reescrever textos e mudar o tamanho; fica na coleção `textos` (página, caminho do elemento, original, novo, tamanho %).
