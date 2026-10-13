@@ -146,6 +146,16 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
     .maybeSingle();
   if (!calendar) return markFailed(admin, publication.id, "calendário da publicação não encontrado");
 
+  // A collab invite goes to whoever owns the typed @, so every collaborator must have been confirmed (or be one of the
+  // agency's own clients) before anything is sent — checked here too because scheduled posts and "Publicar agora" both end up here.
+  if (publication.content_type !== "story" && (publication.collaborators ?? []).length > 0) {
+    const { data: client } = await admin.from("clients").select("agency_id").eq("id", calendar.client_id).maybeSingle();
+    const { data: unverified } = await admin.rpc("unverified_collaborators", { p_agency: client?.agency_id, p_names: publication.collaborators });
+    if (Array.isArray(unverified) && unverified.length > 0) {
+      return markFailed(admin, publication.id, `colaborador não conferido: ${unverified.map((n: string) => `@${n}`).join(", ")} — confira o perfil no campo Colaboradores antes de publicar`);
+    }
+  }
+
   const { data: connection } = await admin
     .from("instagram_connections")
     .select("instagram_business_account_id, access_token, status, auth_provider")

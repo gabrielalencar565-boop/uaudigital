@@ -2,6 +2,7 @@
 // Messages that are already in Portuguese (written by the app itself) pass through untouched.
 
 const RULES: { test: RegExp; text: (m: RegExpMatchArray) => string }[] = [
+  { test: /colaborador_nao_conferido:\s*(.+)/i, text: (m) => `Confirme os colaboradores (${m[1].split(",").map((n) => `@${n.trim()}`).join(", ")}) antes de agendar: abra o perfil no Instagram, veja se é a pessoa certa e clique em "Está certo".` },
   { test: /last_admin/i, text: () => "Não dá para tirar o último administrador da agência. Nomeie outro administrador antes." },
   { test: /new row violates row-level security policy(?: for table "?([\w.]+)"?)?/i, text: () => "Você não tem permissão para fazer essa alteração." },
   { test: /permission denied|not authorized|insufficient[_ ]privilege|forbidden|sem permissão/i, text: () => "Você não tem permissão para fazer isso." },

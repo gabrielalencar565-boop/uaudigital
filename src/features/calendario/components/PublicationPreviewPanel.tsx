@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CollaboratorPicker } from "./CollaboratorPicker";
+import { useCollaboratorStatus } from "../hooks/use-collaborators";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -69,13 +70,13 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const coverCandidatesQ = useCoverCandidates(publication?.task_id ?? null);
   const igConnectionsQ = useInstagramConnections(clientId ?? undefined);
   const igConnection = igConnectionsQ.data?.[0];
+  const { pending: pendingCollaborators } = useCollaboratorStatus(publication?.collaborators ?? []);
   const publishToInstagram = usePublishToInstagram();
   const coverFileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState("");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [collabDraft, setCollabDraft] = useState("");
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [coverDragActive, setCoverDragActive] = useState(false);
   const [mediaDragActive, setMediaDragActive] = useState(false);
@@ -116,24 +117,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
 
   if (!publication) return null;
 
-  // Instagram collab invites: usernames without "@", up to 3, same shape Instagram itself allows
   const collaborators = publication.collaborators ?? [];
-  const addCollaborator = (raw: string) => {
-    const name = raw.trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "").toLowerCase();
-    if (!name) return;
-    if (!/^[a-z0-9._]{1,30}$/.test(name)) {
-      toast.error("Esse @ não parece válido. Use só letras, números, ponto e sublinhado.");
-      return;
-    }
-    if (collaborators.includes(name)) { setCollabDraft(""); return; }
-    if (collaborators.length >= 3) {
-      toast.error("O Instagram aceita no máximo 3 colaboradores por post.");
-      return;
-    }
-    setCollabDraft("");
-    save({ collaborators: [...collaborators, name] });
-  };
-  const removeCollaborator = (name: string) => save({ collaborators: collaborators.filter((c) => c !== name) });
 
   const save = (updates: Partial<CalendarPublication>) => {
     // The "Agendar" confirmation is tied to a specific date/time — changing either one
@@ -959,36 +943,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     <Label>Colaboradores</Label>
                     <span className="text-xs text-muted-foreground">{collaborators.length}/3</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {collaborators.map((c) => (
-                      <span key={c} className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-muted/40 py-1 pl-2.5 pr-1.5 text-xs">
-                        @{c}
-                        <button type="button" onClick={() => removeCollaborator(c)} className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Remover @${c}`}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                    {collaborators.length < 3 && (
-                      <Input
-                        value={collabDraft}
-                        onChange={(e) => setCollabDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === "," || e.key === " ") {
-                            e.preventDefault();
-                            addCollaborator(collabDraft);
-                          }
-                        }}
-                        onBlur={() => collabDraft && addCollaborator(collabDraft)}
-                        placeholder={collaborators.length === 0 ? "@perfil para convidar como colaborador" : "@outro perfil"}
-                        className="h-8 w-60 text-xs"
-                      />
-                    )}
-                  </div>
-                  {collaborators.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      O convite vai junto com a publicação. O post só aparece no perfil da pessoa depois que ela aceitar.
-                    </p>
-                  )}
+                  <CollaboratorPicker value={collaborators} onChange={(next) => save({ collaborators: next })} clientId={clientId} />
                 </div>
               )}
 
@@ -1172,7 +1127,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
 
               {(() => {
                 const unsupportedType = publication.content_type === "outro";
-                const canPublish = igConnection?.status === "active" && !unsupportedType;
+                const canPublish = igConnection?.status === "active" && !unsupportedType && pendingCollaborators.length === 0;
                 const isPublishing = publication.instagram_status === "publishing";
                 const isPublished = publication.instagram_status === "published";
                 const hasDateTime = !!publication.publish_date && !!publication.publish_time;
@@ -1185,6 +1140,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 const missingForSchedule = [
                   !plainCaption ? "legenda" : null,
                   media.length === 0 ? "mídia" : null,
+                  pendingCollaborators.length > 0 ? `conferir colaboradores (${pendingCollaborators.map((p) => `@${p}`).join(", ")})` : null,
                 ].filter((x): x is string => !!x);
                 const publishedAtFormatted = publication.instagram_published_at
                   ? format(parseISO(publication.instagram_published_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
