@@ -362,3 +362,9 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
     send.disabled=false; send.firstElementChild.textContent='Enviar e falar com a UAU';
   });
 })();
+
+// Sobre: as palavras do Método VLE se preenchem com o degradê quando chegam no meio da tela
+(()=>{ const box=document.getElementById('vlerows'); if(!box) return; const rows=[...box.children];
+  if(reduce||!('IntersectionObserver' in window)){ rows.forEach(r=>r.classList.add('lit')); return; }
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('lit'); io.unobserve(e.target); } }),{rootMargin:'0px 0px -35% 0px'});
+  rows.forEach(r=>io.observe(r)); })();

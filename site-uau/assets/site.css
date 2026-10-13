@@ -581,21 +581,24 @@ body.locked{overflow:hidden}
 .dep-faces img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;margin-left:-10px}
 .dep-faces img:first-child{margin-left:0}
 @media (max-width:700px){ .dep-top{margin-bottom:32px;gap:18px} .dep-top h2{font-size:clamp(34px,10vw,44px)} .dep-faces img{width:30px;height:30px} .dep-badge{font-size:13px} }
-/* Sobre: Método VLE em três cartões */
-.vle{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:v}
-.vle-card{position:relative;overflow:hidden;min-height:460px;padding:30px 28px 28px;border-radius:28px;background:linear-gradient(180deg,#1B1820,#141217);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;transition:transform .45s cubic-bezier(.2,.7,.2,1),border-color .3s}
-.vle-card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:var(--grad);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .35s}
-.vle-card:hover{transform:translateY(-8px)}.vle-card:hover::before{opacity:1}
-.vle-l{position:absolute;left:24px;top:64px;font-size:170px;font-weight:800;line-height:1;letter-spacing:-.06em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;opacity:.32;pointer-events:none;transition:opacity .4s,transform .6s cubic-bezier(.2,.7,.2,1)}
-.vle-card:hover .vle-l{opacity:.6;transform:translateY(-10px)}
-.vle-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:auto}
-.vle-n{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--dim)}
-.vle-tag{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:#D9D4E3}
-.vle-card h3{position:relative;font-size:clamp(34px,3.4vw,48px);font-weight:700;letter-spacing:-.04em;margin:90px 0 12px}
-.vle-card p{position:relative;font-size:15px;line-height:1.55;color:var(--muted);max-width:30ch}
-.vle-bar{position:relative;display:block;height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:26px;overflow:hidden}
-.vle-bar i{position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--grad);border-radius:inherit}
-@media (max-width:900px){ .vle{grid-template-columns:1fr} .vle-card{min-height:0;padding:26px 22px} .vle-card h3{margin-top:48px} .vle-l{font-size:110px;top:62px;left:auto;right:22px} }
+/* Sobre: Método VLE em palavras gigantes que se preenchem com a rolagem */
+.vw{list-style:none;margin:0;padding:0;border-top:1px solid rgba(255,255,255,.1)}
+.vw-row{display:grid;grid-template-columns:60px 1fr minmax(240px,340px);align-items:center;gap:28px;padding:34px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.vw-n{font-size:13px;font-weight:600;letter-spacing:.16em;color:var(--dim);align-self:start;padding-top:1.6em}
+.vw-word{position:relative;font-size:clamp(64px,10.5vw,160px);font-weight:800;line-height:.9;letter-spacing:-.055em;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.28);white-space:nowrap}
+.vw-word::after{content:attr(data-w);position:absolute;inset:0;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:0;clip-path:inset(0 100% 0 0);transition:clip-path 1.1s cubic-bezier(.7,0,.2,1)}
+.vw-row.lit .vw-word::after{clip-path:inset(0 0 0 0)}
+.vw-txt{opacity:.35;transform:translateX(16px);transition:opacity .8s .25s,transform .8s .25s cubic-bezier(.2,.7,.2,1)}
+.vw-row.lit .vw-txt{opacity:1;transform:none}
+.vw-txt b{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#F2A04A;margin-bottom:10px}
+.vw-txt p{font-size:15.5px;line-height:1.55;color:var(--muted)}
+@media (max-width:900px){
+  .vw-row{grid-template-columns:1fr;gap:12px;padding:26px 0}
+  .vw-n{padding-top:0}
+  .vw-word{font-size:clamp(56px,17vw,96px);-webkit-text-stroke-width:1px}
+  .vw-txt{transform:none}
+}
+@media (prefers-reduced-motion:reduce){ .vw-word::after{transition:none;clip-path:none} .vw-txt{opacity:1;transform:none;transition:none} }
 /* criativo ampliado */
 .cr-item{cursor:zoom-in}
 .cr-item:focus-visible{outline:2px solid #C9307A;outline-offset:3px}
