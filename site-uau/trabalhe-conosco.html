@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=ba865b9b">
+<link rel="stylesheet" href="assets/site.css?v=6c3d271e">
 </head>
 <body>
 <a href="#conteudo" class="sr-only">Pular para o conteúdo</a>
@@ -43,40 +43,31 @@
   <a href="index.html#contato" class="btn btn-main">Falar com a UAU</a>
 </div>
 <main id="conteudo">
-<section class="page-hero">
+<section class="page-hero jc">
   <div class="hero-bg" aria-hidden="true"><span class="orb a"></span></div>
-  <div class="wrap">
-    <span class="eyebrow">Trabalhe conosco</span>
-    <h1>Venha fazer parte <b class="grad-text">da UAU.</b></h1>
-    <p class="muted">Procuramos gente criativa, organizada e com vontade de crescer junto.</p>
-  </div>
-</section>
-
-<section style="padding-top:24px">
-  <div class="wrap split">
-    <div class="prose reveal">
-      <p>Na UAU, você trabalha com estratégia de verdade, grava com equipe própria e vê o resultado do seu trabalho em números. Se você quer aprender rápido e construir marcas que o público escolhe, seu lugar pode ser aqui.</p>
+  <div class="wrap jc-grid">
+    <div class="jc-left">
+      <span class="eyebrow">Trabalhe conosco</span>
+      <h1>Venha fazer parte <b class="grad-text">da UAU.</b></h1>
+      <p class="muted">Procuramos gente criativa, organizada e com vontade de crescer junto. Aqui você trabalha com estratégia de verdade, grava com equipe própria e vê o resultado do seu trabalho em números.</p>
+      <div class="jc-photo" style="background-image:url(img/equipe.jpg)" role="img" aria-label="Time da UAU"></div>
     </div>
-    <div class="img photo reveal" style="background-image:url(img/camiseta.jpg);aspect-ratio:4/3" role="img" aria-label="Time da UAU no estúdio"></div>
-  </div>
-</section>
-
-<section class="light">
-  <div class="wrap">
-    <div class="head reveal">
-      <span class="eyebrow">Vagas abertas</span>
-      <h2>Onde você <b>pode entrar.</b></h2>
-    </div>
-    <!-- Vagas: um .job por vaga. Sem vagas, apague a lista e deixe só o bloco .empty. -->
-    <div class="jobs reveal" style="margin-bottom:24px">
-      <div class="job"><div><h3 class="fill">[Cargo]</h3><span class="muted fill">[Presencial, remoto ou híbrido]</span></div><a href="#" class="btn btn-main">Quero me candidatar <span class="arr">↗</span></a></div>
-    </div>
-    <div class="empty reveal">
-      <span class="eyebrow">Sem vagas no momento</span>
-      <p>Não temos vagas abertas agora, mas estamos sempre de olho em talentos. Deixe seu currículo e portfólio no nosso banco de talentos.</p>
-      <a href="#" class="btn btn-main">Entrar no banco de talentos <span class="arr">↗</span></a>
-      <small class="fill">[link do formulário do banco de talentos]</small>
-    </div>
+    <form class="jc-card lead-form" id="cand" novalidate>
+      <h2>Quero me <b class="grad-text">candidatar.</b></h2>
+      <p class="muted">Mesmo sem vaga aberta, guardamos seu contato no nosso banco de talentos.</p>
+      <div class="lead-grid">
+        <label class="f"><span>Seu nome</span><input name="nome" autocomplete="name" required placeholder="Nome completo"></label>
+        <label class="f"><span>WhatsApp</span><input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(99) 99999-9999"></label>
+        <label class="f f-full"><span>E-mail</span><input name="email" type="email" autocomplete="email" required placeholder="voce@email.com"></label>
+        <fieldset class="f f-full"><legend>Área que você quer atuar <em>(pode marcar mais de uma)</em></legend><div class="chips"><label class="chip"><input type="checkbox" name="area" value="Videomaker"><span>Videomaker</span></label><label class="chip"><input type="checkbox" name="area" value="Editor de vídeo"><span>Editor de vídeo</span></label><label class="chip"><input type="checkbox" name="area" value="Designer"><span>Designer</span></label><label class="chip"><input type="checkbox" name="area" value="Social media"><span>Social media</span></label><label class="chip"><input type="checkbox" name="area" value="Roteiro e conteúdo"><span>Roteiro e conteúdo</span></label><label class="chip"><input type="checkbox" name="area" value="Tráfego pago"><span>Tráfego pago</span></label><label class="chip"><input type="checkbox" name="area" value="Comercial"><span>Comercial</span></label><label class="chip"><input type="checkbox" name="area" value="Outra área"><span>Outra área</span></label></div></fieldset>
+        <label class="f f-full"><span>Portfólio ou Instagram <em>(link)</em></span><input name="portfolio" autocomplete="url" placeholder="behance.net/voce ou @seuperfil"></label>
+        <label class="f f-full"><span>Conte um pouco sobre você <em>(opcional)</em></span><textarea name="mensagem" rows="3" placeholder="Experiência, cidade, disponibilidade..."></textarea></label>
+        <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="lead-hp" aria-hidden="true">
+      </div>
+      <p class="lead-err" role="alert"></p>
+      <button class="btn btn-main lead-send" type="submit"><span>Enviar pelo WhatsApp</span> <span class="arr">↗</span></button>
+      <div class="jc-ok" hidden><div class="lead-check"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h3>Quase lá!</h3><p class="muted">Abrimos o WhatsApp da UAU com a sua candidatura pronta. É só tocar em enviar por lá.</p></div>
+    </form>
   </div>
 </section>
 </main>
@@ -88,12 +79,13 @@
       <p class="muted" style="max-width:320px">UAU. Sua marca vista, lembrada e escolhida.</p>
     </div>
     <div><h4>Navegação</h4><ul><li><a href="index.html">Início</a></li><li><a href="sobre.html">Sobre</a></li><li><a href="clientes.html">Clientes</a></li><li><a href="servicos.html">Serviços</a></li><li><a href="grupo-uau.html">Grupo UAU</a></li><li><a href="trabalhe-conosco.html">Trabalhe conosco</a></li></ul></div>
-    <div><h4>Contato</h4><ul><li><a href="https://api.whatsapp.com/send/?phone=5599984344705&amp;text=Oi%2C+vi+o+trabalho+da+Uau+Digital+no+Instagram+e+gostaria+de+saber+como+voc%C3%AAs+podem+ajudar+meu+neg%C3%B3cio%21&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">(99) 98434-4705</a></li><li><a href="mailto:uaucomunicacaodigital@gmail.com">uaucomunicacaodigital@gmail.com</a></li><li class="fill">Endereço [preencher], Maranhão</li><li><a href="#" class="fill">Instagram UAU Digital</a> · <a href="#" class="fill">UAU Produtora</a> · <a href="https://appfluxo.app.br">Fluxo</a></li></ul></div>
+    <div><h4>Contato</h4><ul><li><a href="https://api.whatsapp.com/send/?phone=5599984344705&amp;text=Oi%2C+vi+o+trabalho+da+Uau+Digital+no+Instagram+e+gostaria+de+saber+como+voc%C3%AAs+podem+ajudar+meu+neg%C3%B3cio%21&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener">(99) 98434-4705</a></li><li><a href="mailto:uaucomunicacaodigital@gmail.com">uaucomunicacaodigital@gmail.com</a></li><li>Rua Antônio Leite Brasil, Barra do Corda - MA</li><li><a href="https://www.instagram.com/uau.prod/" target="_blank" rel="noopener">@uau.prod</a> · <a href="https://www.instagram.com/fluxoappbr/" target="_blank" rel="noopener">@fluxoappbr</a></li></ul></div>
     <div class="legal"><span>© 2026 UAU Digital. Todos os direitos reservados. CNPJ 47.107.810/0001-05</span><span>Marketing com método.</span></div>
   </div>
 </footer>
 
 <a href="https://api.whatsapp.com/send/?phone=5599984344705&amp;text=Oi%2C+vi+o+trabalho+da+Uau+Digital+no+Instagram+e+gostaria+de+saber+como+voc%C3%AAs+podem+ajudar+meu+neg%C3%B3cio%21&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener" class="wa" aria-label="Falar com a UAU no WhatsApp">✆</a>
-<script src="assets/site.js?v=2e1441d3"></script>
+<script src="assets/site.js?v=d2ab565f"></script>
+<script src="assets/ajuste.js?v=0d87ca51" defer></script>
 </body>
 </html>
