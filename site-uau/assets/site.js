@@ -368,3 +368,9 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
   if(reduce||!('IntersectionObserver' in window)){ rows.forEach(r=>r.classList.add('lit')); return; }
   const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('lit'); io.unobserve(e.target); } }),{rootMargin:'0px 0px -35% 0px'});
   rows.forEach(r=>io.observe(r)); })();
+
+// Sobre: os parágrafos da história acendem um a um conforme chegam no meio da tela
+(()=>{ const box=document.getElementById('s3text'); if(!box) return; const ps=[...box.querySelectorAll('.s3-p')];
+  if(reduce||!('IntersectionObserver' in window)){ ps.forEach(p=>p.classList.add('on')); return; }
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } }),{rootMargin:'0px 0px -42% 0px'});
+  ps.forEach(p=>io.observe(p)); })();
