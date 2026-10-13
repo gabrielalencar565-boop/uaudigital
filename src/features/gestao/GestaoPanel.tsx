@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
 import { getPendingCalendarioFocus, subscribePendingCalendarioFocus, type CalendarioFocusRequest } from "@/lib/pending-calendario-focus-store";
 import { usePmTasks, usePmAllChildTasks, useUpdatePmTask, useDeletePmTask } from "./hooks/use-pm-data";
+import { DeleteTrashNote } from "./components/DeleteTrashNote";
 import { useDeleteTask, useTasks, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { PmClientView } from "./components/PmClientView";
@@ -1456,6 +1457,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               <span className="block text-destructive font-medium">
                 ⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no {magicLabel}.
               </span>
+              <DeleteTrashNote />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

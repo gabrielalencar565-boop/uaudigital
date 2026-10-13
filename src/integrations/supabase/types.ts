@@ -123,6 +123,7 @@ export type Database = {
         Row: {
           calendar_id: string
           caption: string | null
+          collaborators: string[]
           client_feedback: string | null
           client_note: string | null
           client_responded_at: string | null
@@ -151,6 +152,7 @@ export type Database = {
         Insert: {
           calendar_id: string
           caption?: string | null
+          collaborators?: string[]
           client_feedback?: string | null
           client_note?: string | null
           client_responded_at?: string | null
@@ -179,6 +181,7 @@ export type Database = {
         Update: {
           calendar_id?: string
           caption?: string | null
+          collaborators?: string[]
           client_feedback?: string | null
           client_note?: string | null
           client_responded_at?: string | null

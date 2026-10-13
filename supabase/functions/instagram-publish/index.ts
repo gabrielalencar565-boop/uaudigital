@@ -95,6 +95,13 @@ async function waitUntilFinished(graphHost: GraphHost, creationId: string, acces
 
 type MediaItem = { url: string; type: string | null };
 
+// Instagram "collab" invites (feed, carousel and Reels — Stories don't take them). Re-validated here
+// even though the column has a check: whatever reaches Meta must be a plain username.
+function collaboratorParams(publication: { collaborators?: string[] | null }): Record<string, string> {
+  const names = (publication.collaborators ?? []).map((n) => String(n).replace(/^@/, "").trim().toLowerCase()).filter((n) => /^[a-z0-9._]{1,30}$/.test(n)).slice(0, 3);
+  return names.length > 0 ? { collaborators: JSON.stringify(names) } : {};
+}
+
 async function fetchMediaForTask(admin: ReturnType<typeof createClient>, taskId: string): Promise<MediaItem[]> {
   // Only "final" content is client-facing/publishable — production materials
   // (category "material") are internal working files, same rule as the calendar's own
@@ -202,6 +209,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
         media_type: "CAROUSEL",
         children: childIds.join(","),
         caption: publication.caption ?? "",
+        ...collaboratorParams(publication),
       });
       await admin.from("calendar_publications").update({ instagram_creation_id: parent.id }).eq("id", publication.id);
       await waitUntilFinished(graphHost, parent.id, accessToken);
@@ -220,6 +228,7 @@ async function publishToInstagram(admin: ReturnType<typeof createClient>, public
       const coverUrl = isReel ? await fetchCoverUrl(admin, publication.cover_attachment_id) : null;
       const container = await graphPost(graphHost, `${igUserId}/media`, accessToken, {
         caption: publication.caption ?? "",
+        ...collaboratorParams(publication),
         ...(isVideo ? { video_url: item.url, media_type: isReel ? "REELS" : "VIDEO" } : { image_url: item.url }),
         ...(coverUrl ? { cover_url: coverUrl } : {}),
       });

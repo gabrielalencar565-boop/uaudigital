@@ -47,6 +47,8 @@ export interface CalendarPublication {
   title: string;
   content_type: PublicationContentType;
   caption: string | null;
+  // Instagram usernames (no @) invited as collaborators when it goes out; up to 3, not for Stories
+  collaborators: string[];
   publish_date: string | null;
   publish_time: string | null;
   status: PublicationStatus;

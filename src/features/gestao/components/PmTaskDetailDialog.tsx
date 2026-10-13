@@ -55,6 +55,7 @@ import { LateAppealDialog } from "@/features/tasks/LateAppealDialog";
 import { isTaskLate } from "@/features/tasks/is-task-late";
 import { useTaskAttachmentsMap, useTaskCalendarEntry, useTaskCalendarEntriesFor, useRemoveCalendarPublication } from "@/features/calendario/hooks/use-calendar-data";
 import { getInstagramFormat, type InstagramFormat } from "@/features/calendario/calendar-types";
+import { DeleteTrashNote } from "./DeleteTrashNote";
 
 function initials(n: string) {
   return n.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("");
@@ -333,6 +334,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
             <div>
               <p>Tem certeza que deseja excluir esta tarefa?</p>
               <p className="mt-2 text-destructive font-medium">⚠️ Os pontos de performance não serão contabilizados e a etapa será desmarcada no {magicLabel}.</p>
+              <DeleteTrashNote className="mt-2" />
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

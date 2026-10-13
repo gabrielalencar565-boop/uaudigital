@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from "@/lib/utils";
 import {
   DASHBOARD_BLOCKS,
+  OPT_IN_BLOCKS,
   useMyDashboardLayout,
   useUpdateMyDashboardLayout,
   type BlockWidth,
@@ -24,7 +25,7 @@ interface Item {
 }
 
 export function PersonalizeDashboardDialog({ open, onOpenChange }: Props) {
-  const { order: savedOrder, hidden: savedHidden, widths: savedWidths } = useMyDashboardLayout();
+  const { order: savedOrder, hidden: savedHidden, widths: savedWidths, optIn } = useMyDashboardLayout();
   const updateLayout = useUpdateMyDashboardLayout();
   const [items, setItems] = useState<Item[]>([]);
   const [activeDragId, setActiveDragId] = useState<DashboardBlockKey | null>(null);
@@ -40,6 +41,8 @@ export function PersonalizeDashboardDialog({ open, onOpenChange }: Props) {
       order: next.map((i) => i.key),
       hidden: next.filter((i) => !i.visible).map((i) => i.key),
       widths: Object.fromEntries(next.map((i) => [i.key, i.width])),
+      // what the person chose to see among the blocks that start hidden for their cargo
+      shown: next.filter((i) => i.visible && OPT_IN_BLOCKS[i.key]).map((i) => i.key),
     });
   };
 
@@ -87,6 +90,7 @@ export function PersonalizeDashboardDialog({ open, onOpenChange }: Props) {
                 key={item.key}
                 item={item}
                 isDragging={activeDragId === item.key}
+                optional={optIn.has(item.key)}
                 onToggleVisible={() => toggleVisible(item.key)}
               />
             ))}
@@ -122,10 +126,12 @@ function LockedRow({ label, description }: { label: string; description: string 
 function PersonalizeRow({
   item,
   isDragging,
+  optional,
   onToggleVisible,
 }: {
   item: Item;
   isDragging: boolean;
+  optional: boolean;
   onToggleVisible: () => void;
 }) {
   const { attributes, listeners, setNodeRef: setDragRef, transform } = useDraggable({ id: item.key });
@@ -158,8 +164,11 @@ function PersonalizeRow({
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-foreground">{info.label}</p>
-        <p className="truncate text-xs text-muted-foreground">{info.description}</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          {info.label}
+          {optional && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Opcional</span>}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">{optional ? `${info.description} · pensado para ${(OPT_IN_BLOCKS[item.key] ?? []).join(" e ")}` : info.description}</p>
       </div>
 
       <button

@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/upload-tray-store";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { FEED_FORMAT, VERTICAL_FORMAT, type InstagramFormat } from "@/features/calendario/calendar-types";
+import { fastTranscodeVideo } from "@/lib/fast-video-transcode";
 
 const sb = supabase as any;
 
@@ -234,6 +235,12 @@ export async function downscaleVideoWithFallback(file: File, onProgress?: (pct: 
     return file;
   }
 
+  // Browser's own hardware encoder first (seconds instead of minutes); ffmpeg.wasm below stays as the fallback
+  if (dims) {
+    const fast = await fastTranscodeVideo(file, { kind: "max-edge", maxEdge: MAX_VIDEO_LONG_EDGE }, dims, onProgress);
+    if (fast) return fast;
+  }
+
   const caps = [MAX_VIDEO_LONG_EDGE, ...FALLBACK_VIDEO_LONG_EDGES];
   let lastErr: unknown;
   for (const cap of caps) {
@@ -272,6 +279,10 @@ export async function fitVideoToFormat(file: File, format: InstagramFormat, onPr
   const wider = dims.width / dims.height > format.aspect;
   const cropH = wider ? even(dims.height) : even(dims.width / format.aspect);
   const cropW = wider ? even(dims.height * format.aspect) : even(dims.width);
+
+  // Browser's own hardware encoder first; ffmpeg.wasm below stays as the fallback
+  const fast = await fastTranscodeVideo(file, { kind: "cover", width: format.width, height: format.height }, dims, onProgress);
+  if (fast) return fast;
 
   const { fetchFile } = await import("@ffmpeg/util");
   let lastErr: unknown;

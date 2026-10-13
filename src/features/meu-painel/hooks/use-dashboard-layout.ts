@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { useMyProfile } from "@/hooks/use-my-profile";
 
 const sb = supabase as any;
 
@@ -22,18 +23,27 @@ export const DEFAULT_WIDTHS: Record<DashboardBlockKey, BlockWidth> = Object.from
   DASHBOARD_BLOCKS.map((b) => [b.key, b.defaultWidth]),
 ) as Record<DashboardBlockKey, BlockWidth>;
 
+// Blocks that are only for some cargos. Everybody else starts without them, and can turn them on in "Personalizar página".
+export const OPT_IN_BLOCKS: Partial<Record<DashboardBlockKey, string[]>> = {
+  client_cronograma: ["Social Media", "Head de Conteúdo"],
+};
+const normCargo = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 const VALID_WIDTHS: BlockWidth[] = ["full", "half", "third"];
 
 interface StoredLayout {
   order?: unknown;
   hidden?: unknown;
   widths?: unknown;
+  /** opt-in blocks the person chose to see */
+  shown?: unknown;
 }
 
 function sanitizeLayout(raw: StoredLayout | null | undefined): {
   order: DashboardBlockKey[];
   hidden: Set<DashboardBlockKey>;
   widths: Record<DashboardBlockKey, BlockWidth>;
+  shown: Set<DashboardBlockKey>;
 } {
   const storedOrder = Array.isArray(raw?.order) ? (raw!.order as unknown[]) : [];
   const storedHidden = Array.isArray(raw?.hidden) ? (raw!.hidden as unknown[]) : [];
@@ -62,7 +72,10 @@ function sanitizeLayout(raw: StoredLayout | null | undefined): {
     }
   }
 
-  return { order, hidden, widths };
+  const storedShown = Array.isArray(raw?.shown) ? (raw!.shown as unknown[]) : [];
+  const shown = new Set(storedShown.filter((k): k is DashboardBlockKey => DEFAULT_BLOCK_ORDER.includes(k as DashboardBlockKey)));
+
+  return { order, hidden, widths, shown };
 }
 
 export function useMyDashboardLayout() {
@@ -82,12 +95,23 @@ export function useMyDashboardLayout() {
     },
   });
 
+  const profile = useMyProfile().data;
+  const myCargos = new Set([...(profile?.role_titles ?? []), profile?.role_title ?? ""].filter(Boolean).flatMap((t) => String(t).split(",")).map(normCargo));
+
   const order = query.data?.order ?? DEFAULT_BLOCK_ORDER;
-  const hidden = query.data?.hidden ?? new Set<DashboardBlockKey>();
+  const shown = query.data?.shown ?? new Set<DashboardBlockKey>();
+  // Blocks meant for other cargos stay hidden here until the person turns them on
+  const optIn = new Set<DashboardBlockKey>();
+  const hidden = new Set<DashboardBlockKey>(query.data?.hidden ?? []);
+  for (const [key, cargos] of Object.entries(OPT_IN_BLOCKS) as [DashboardBlockKey, string[]][]) {
+    if (cargos.some((c) => myCargos.has(normCargo(c)))) continue;
+    optIn.add(key);
+    if (!shown.has(key)) hidden.add(key);
+  }
   const widths = query.data?.widths ?? DEFAULT_WIDTHS;
   const visibleOrder = order.filter((k) => !hidden.has(k));
 
-  return { order, hidden, widths, visibleOrder, isLoading: query.isLoading };
+  return { order, hidden, widths, visibleOrder, optIn, isLoading: query.isLoading };
 }
 
 export function useUpdateMyDashboardLayout() {
@@ -99,6 +123,7 @@ export function useUpdateMyDashboardLayout() {
       order: DashboardBlockKey[];
       hidden: DashboardBlockKey[];
       widths: Partial<Record<DashboardBlockKey, BlockWidth>>;
+      shown?: DashboardBlockKey[];
     }) => {
       if (!user?.id) return;
       const { error } = await sb

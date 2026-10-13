@@ -14,6 +14,7 @@ import { usePeriodicStages } from "../hooks/use-periodic-stages";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { useMagicNumberConfig } from "@/features/data/queries";
+import { DeleteTrashNote } from "./DeleteTrashNote";
 
 interface Props {
   task: PmTask;
@@ -275,6 +276,7 @@ export function PmTaskCard({ task, clientName, assignees = [], childTasks = [], 
                   {total} subtarefa{total > 1 ? "s" : ""} também será{total > 1 ? "ão" : ""} excluída{total > 1 ? "s" : ""}.
                 </span>
               )}
+              <DeleteTrashNote />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
