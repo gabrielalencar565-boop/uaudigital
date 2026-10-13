@@ -132,7 +132,7 @@ document.querySelectorAll('[data-drag]').forEach(box=>{
   const frame=t=>{
     const dt=Math.min(64,t-prev); prev=t;
     if(!down){
-      const auto=reduce||hover||document.body.classList.contains('lb-open')?0:-(half/((mob.matches?secs*.72:secs)*1000));
+      const auto=reduce||hover||document.body.classList.contains('lb-open')||document.body.classList.contains('aj')?0:-(half/((mob.matches?secs*.72:secs)*1000));
       v+= (auto - v)*0.04;            // embalo do arrasto volta aos poucos para a velocidade normal
       x+=v*dt; wrap();
     }

@@ -74,3 +74,7 @@ Para ele funcionar, está configurado em `const CONTATO={ email:'uaucomunicacaod
 
 ## Cache
 O `site.css` e o `site.js` são chamados com `?v=` (pedaço do hash do arquivo). Ao alterar um deles, atualize o `?v=` nas 6 páginas para todo mundo receber a versão nova na hora.
+
+## Ajustar imagens (só na prévia do Claude)
+`assets/ajuste.js` adiciona o botão "Ajustar imagens" quando o site é aberto na prévia do Claude (no site no ar ele não aparece).
+Os ajustes salvos ficam na coleção `ajustes` da prévia; o Claude lê e aplica no código (object-position e zoom de cada foto).
