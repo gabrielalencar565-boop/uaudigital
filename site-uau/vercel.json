@@ -37,5 +37,17 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/clientes",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/clientes.html",
+      "destination": "/",
+      "permanent": true
+    }
   ]
 }

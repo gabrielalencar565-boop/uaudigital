@@ -7,7 +7,7 @@ Este pacote tem tudo o que foi feito até 10/10/2026 no site institucional da UA
 | Arquivo | O que é |
 | --- | --- |
 | `index.html` | Home. Abra no navegador (ou sirva a pasta com `python3 -m http.server`). |
-| `sobre.html`, `clientes.html`, `servicos.html`, `grupo-uau.html`, `trabalhe-conosco.html` | Páginas internas, montadas a partir da `copy-do-site.md` |
+| `sobre.html`, `servicos.html`, `grupo-uau.html`, `trabalhe-conosco.html` | Páginas internas, montadas a partir da `copy-do-site.md` |
 | `assets/site.css`, `assets/site.js` | Estilo e comportamento compartilhados por todas as páginas |
 | `img/` | Fotos reais da equipe e do estúdio, logo da UAU Digital, do Fluxo e da UAU Produtora |
 | `logos-originais/` | Arquivos vetoriais originais (PDF) dos logos da UAU e do Fluxo, para o site final |
@@ -79,3 +79,6 @@ O `site.css` e o `site.js` são chamados com `?v=` (pedaço do hash do arquivo).
 `assets/ajuste.js` adiciona o botão "Ajustar imagens" quando o site é aberto na prévia do Claude (no site no ar ele não aparece).
 Os ajustes salvos ficam na coleção `ajustes` da prévia; o Claude lê e aplica no código (object-position e zoom de cada foto).
 O botão "Editar textos" deixa reescrever textos e mudar o tamanho; fica na coleção `textos` (página, caminho do elemento, original, novo, tamanho %).
+
+## Página Clientes
+Removida a pedido da UAU (os clientes aparecem na faixa de logos da home). `/clientes` redireciona para a home (vercel.json).
