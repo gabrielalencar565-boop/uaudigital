@@ -166,8 +166,8 @@ footer .logo img{height:44px}
 .bento .tile.in:hover{transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .t-team{grid-column:2 / span 2;background-size:cover;background-position:center 35%;justify-content:flex-end;color:#fff}
 .t-team::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,14,17,.85),rgba(15,14,17,.2) 70%)}
-.team-cap{position:relative;display:flex;align-items:baseline;gap:12px;max-width:420px}
-.team-cap strong{font-size:clamp(40px,4.4vw,60px)}
+.team-cap{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:420px}
+.team-cap strong{font-size:clamp(40px,4.4vw,60px);line-height:1}
 .team-cap span{font-size:15px;line-height:1.4;color:#E6E1EC}
 .t-team .fill{color:#F2A04A}
 
