@@ -20,7 +20,7 @@ loop('band', ['Posicionamento','Conteúdo','Audiovisual','Tráfego pago','Design
 // clientes: o logo troca dentro da frase "Marcas como [logo] confiam na UAU."
 (function(){
   const slot=document.getElementById('clslot'); if(!slot) return;
-  const imgs=[...slot.querySelectorAll('img')], seg=document.getElementById('clseg'), idx=document.getElementById('clidx');
+  const imgs=[...slot.children], seg=document.getElementById('clseg'), idx=document.getElementById('clidx');
   let i=0;
   setInterval(()=>{
     const cur=imgs[i]; i=(i+1)%imgs.length; const nxt=imgs[i];

@@ -176,11 +176,13 @@ footer .logo img{height:44px}
 .cl-spot{display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center}
 .cl-line{font-size:clamp(30px,4.6vw,64px);font-weight:300;letter-spacing:-.035em;line-height:1.1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.35em}
 .cl-slot{position:relative;display:inline-block;width:4.4em;height:1.6em;overflow:hidden;border-bottom:1px solid var(--line)}
-.cl-slot img{position:absolute;left:50%;top:50%;height:calc(1.08em * var(--s));max-width:100%;width:auto;object-fit:contain;transform:translate(-50%,60%);opacity:0;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
-.cl-slot img.on{transform:translate(-50%,-50%);opacity:1}
-.cl-slot img.out{transform:translate(-50%,-160%);opacity:0}
+.cl-slot>*{position:absolute;left:50%;top:50%;height:calc(1.08em * var(--s));max-width:100%;width:auto;object-fit:contain;transform:translate(-50%,60%);opacity:0;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
+.cl-slot>.on{transform:translate(-50%,-50%);opacity:1}
+.cl-slot>.out{transform:translate(-50%,-160%);opacity:0}
+.cl-cap{width:2.5em;height:1.04em;border-radius:999px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 18px 40px rgba(0,0,0,.45)}
+.cl-cap img{width:100%;height:100%;object-fit:cover;object-position:50% 45%;display:block}
 .cl-meta{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--dim);letter-spacing:.04em}
-.cl-meta #clseg{transition:opacity .35s}
+.cl-meta #clseg{transition:opacity .35s;white-space:nowrap}
 .cl-count{font-variant-numeric:tabular-nums;padding-left:18px;border-left:1px solid var(--line)}
 .cl-count b{color:var(--fg);font-weight:600}
 .logos .track{animation-duration:45s;gap:14px}
@@ -569,6 +571,15 @@ body.locked{overflow:hidden}
   .video{width:240px}
   .quote{width:280px}
 }
+/* depoimentos: cabeçalho */
+.dep-top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;margin-bottom:52px}
+.dep-top h2{font-size:clamp(36px,5.6vw,72px);line-height:1;letter-spacing:-.04em}
+.dep-top h2 b{font-weight:800}
+.dep-badge{display:inline-flex;align-items:center;gap:12px;padding:6px 18px 6px 6px;border-radius:999px;background:#fff;box-shadow:0 8px 28px rgba(20,18,23,.08);font-size:14px;font-weight:600;color:var(--ink)}
+.dep-faces{display:flex}
+.dep-faces img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;margin-left:-10px}
+.dep-faces img:first-child{margin-left:0}
+@media (max-width:700px){ .dep-top{margin-bottom:32px;gap:18px} .dep-top h2{font-size:clamp(34px,10vw,44px)} .dep-faces img{width:30px;height:30px} .dep-badge{font-size:13px} }
 /* criativo ampliado */
 .cr-item{cursor:zoom-in}
 .cr-item:focus-visible{outline:2px solid #C9307A;outline-offset:3px}
@@ -667,4 +678,23 @@ body.lb-open{overflow:hidden}
   .orb,.solo img,.pill,.t-views::before,.t-years::before{animation:none}
   .hero-slides .slide{transition:none;transform:none}
   html{scroll-behavior:auto}
+}
+
+/* clientes: faixa roxa compacta */
+.cl-band{padding:0;background:linear-gradient(90deg,#5B1DB8,#7B2FE0 55%,#8B3BE8);color:#fff;overflow:hidden}
+.cb-in{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:26px 0 20px}
+.cb-t{text-align:center;font-size:12px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;white-space:nowrap;color:rgba(255,255,255,.8)}
+.cl-band .cm-row{flex:1;min-width:0}
+.cm-wall{display:flex;flex-direction:column;gap:30px}
+.cm-row{mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.cm-row .track{gap:0;align-items:center}
+.cm{flex:none;display:flex;align-items:center;height:56px;padding-inline:22px;position:relative}
+.cm-logo img{height:calc(38px * var(--s));max-width:150px;width:auto;object-fit:contain}
+.cm-name{font-size:21px;font-weight:300;letter-spacing:-.03em;white-space:nowrap}
+@media (max-width:700px){
+  .cb-in{padding:18px 0 12px;gap:6px}
+  .cb-t{font-size:11px}
+  .cm{height:44px;padding-inline:14px}
+  .cm-logo img{height:calc(34px * var(--s));max-width:120px}
+  .cm-name{font-size:19px}
 }
