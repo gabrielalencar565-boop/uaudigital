@@ -368,3 +368,22 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
   if(reduce||!('IntersectionObserver' in window)){ rows.forEach(r=>r.classList.add('lit')); return; }
   const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('lit'); io.unobserve(e.target); } }),{rootMargin:'0px 0px -35% 0px'});
   rows.forEach(r=>io.observe(r)); })();
+
+// Trabalhe conosco: candidatura enviada por e-mail (FormSubmit)
+(()=>{ const f=document.getElementById('cand'); if(!f) return;
+  const err=f.querySelector('.lead-err'), send=f.querySelector('.lead-send'), ok=f.querySelector('.jc-ok');
+  const tel=f.whatsapp; tel.addEventListener('input',()=>{ const d=tel.value.replace(/\D/g,'').slice(0,11); tel.value=d.length>6?`(${d.slice(0,2)}) ${d.slice(2,d.length-4)}-${d.slice(-4)}`:d.length>2?`(${d.slice(0,2)}) ${d.slice(2)}`:d; });
+  f.addEventListener('input',e=>e.target.closest('.f')?.classList.remove('bad'));
+  f.addEventListener('submit',async e=>{ e.preventDefault(); err.textContent='';
+    const bad=[...f.querySelectorAll('[required]')].filter(x=>!x.value.trim()||(x.type==='email'&&!/^\S+@\S+\.\S+$/.test(x.value))||(x.name==='whatsapp'&&x.value.replace(/\D/g,'').length<10));
+    f.querySelectorAll('.f').forEach(x=>x.classList.remove('bad')); bad.forEach(x=>x.closest('.f').classList.add('bad'));
+    if(bad.length){ err.textContent='Confira os campos destacados.'; bad[0].focus(); return; }
+    if(f._honey.value) return;
+    const d=Object.fromEntries(new FormData(f)); d.area=[...f.querySelectorAll('[name=area]:checked')].map(x=>x.value).join(', ')||'Não informado'; delete d._honey;
+    send.disabled=true; send.firstElementChild.textContent='Enviando...';
+    try{ const r=await fetch(`https://formsubmit.co/ajax/${CONTATO.email}`,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({_subject:`Candidatura pelo site: ${d.nome} (${d.area})`,_template:'table',_captcha:'false',...d})});
+      const j=await r.json().catch(()=>({})); if(!r.ok||String(j.success)==='false') throw 0;
+      [...f.children].forEach(x=>{ if(x!==ok) x.hidden=true; }); ok.hidden=false; }
+    catch(_){ err.textContent='Não conseguimos enviar agora. Tente de novo ou chame a UAU no WhatsApp.'; }
+    send.disabled=false; send.firstElementChild.textContent='Enviar candidatura'; });
+})();
