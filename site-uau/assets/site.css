@@ -462,7 +462,7 @@ body.locked{overflow:hidden}
 .logo-grid .logo-tile small{font-size:11px;font-weight:500;letter-spacing:.04em;color:#6E6878}
 .logo-grid .logo-tile[hidden]{display:none}
 .logo-grid .logo-tile.real{min-width:0;height:130px;padding:16px;gap:10px;flex-direction:column;border:1px solid var(--line);background:var(--bg)}
-.logo-grid .logo-tile.real img{height:calc(var(--h) * .8);max-width:100%}
+.logo-grid .logo-tile.real img{height:calc(46px * var(--s,1));max-width:100%;opacity:.9}
 .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
 .video-grid .video{width:auto}
 .quote-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
