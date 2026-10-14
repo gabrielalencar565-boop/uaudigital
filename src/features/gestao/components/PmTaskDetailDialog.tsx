@@ -33,6 +33,7 @@ import {
 import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
 import { fetchTaskPlan, saveTaskPlan } from "../hooks/use-cascades";
 import { pushPlan, stepKeyFor, type CascadePlan } from "../lib/cascade";
+import { extraOutcome } from "../lib/extra-rules";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -319,7 +320,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               <span className="text-sm font-semibold">Atividade</span>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
-              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} derived={!!currentTask.origin_task_id && currentTask.origin_task_id !== currentTask.id} />
+              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} derived={!!currentTask.origin_task_id && currentTask.origin_task_id !== currentTask.id} created={currentTask.created_at ? { at: currentTask.created_at, by: currentTask.created_by ?? null } : undefined} />
             </div>
           </div>
         </div>
@@ -639,7 +640,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   const queryClient = useQueryClient();
   const [incompleteDialogItems, setIncompleteDialogItems] = useState<{ task: PmTask; missing: string[] }[] | null>(null);
   const incompleteThumbsQ = useTaskAttachmentsMap((incompleteDialogItems ?? []).map((i) => i.task.id));
-  const { flowConfig, transitionDates, stageAssignees } = useDefaultFlowWithDates();
+  const { flowConfig, transitionDates, stageAssignees, extraRules } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
@@ -725,14 +726,17 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   // Planejamento sempre vai completo para Revisão (Planejamento), mesmo se o fluxo salvo estiver legado.
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
-  const nextStages = task.is_extra_demand
+  // What an extra demand does when concluded here is set in Configurações → Agência → Fluxo de etapas (lib/extra-rules).
+  const extraOut = task.is_extra_demand ? extraOutcome(extraRules, task.stage_current) : null;
+  const extraFlows = extraOut === "flow";
+  const nextStages = task.is_extra_demand && !extraFlows
     ? []
     : task.stage_current === "planejamento"
     ? ["revisao"]
     : rawNextStages;
   const isDone = task.parent_task_id
     ? task.status_global === "concluido"
-    : task.is_extra_demand
+    : task.is_extra_demand && !extraFlows
     ? task.status_global === "concluido"
     : task.stage_current === "entrega";
 
@@ -1508,7 +1512,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       // Special case: planejamento extra demand with video/design children →
       // distribute into Vídeo + Design (same split logic as revisão→split),
       // skipping the revisão step.
-      if (completedStage === "planejamento") {
+      if (completedStage === "planejamento" && extraFlows) {
         const alreadySplit = childTasks.some(
           (c) => c.stage_current === "design" || c.stage_current === "edicao_videos"
         );
@@ -1558,19 +1562,23 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         }
       }
 
-      // Default extra-demand behavior: just mark as done, no next stage
-      const sb = supabase as any;
-      const allIds = [task.id, ...childTasks.map(c => c.id)];
-      await sb.from("pm_tasks")
-        .update({ status_global: "concluido" })
-        .in("id", allIds);
-      syncCompletedStage(completedStage);
-      queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
-      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
-      toast.success("Demanda extra concluída!");
-      return;
+      // Not following the flow: mark as done, and (per the rule set in the flow studio) move it to Entregue
+      if (!extraFlows) {
+        const sb = supabase as any;
+        const allIds = [task.id, ...childTasks.map(c => c.id)];
+        const deliver = extraOut === "deliver" && task.stage_current !== "entrega";
+        await sb.from("pm_tasks")
+          .update({ status_global: "concluido", ...(deliver ? { stage_current: "entrega" } : {}) })
+          .in("id", allIds);
+        syncCompletedStage(completedStage);
+        queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["pm_child_tasks_all"] });
+        toast.success(deliver ? "Demanda extra entregue!" : "Demanda extra concluída!");
+        return;
+      }
+      // "Segue o fluxo normal": falls through to the regular stage flow below
     }
 
     // Vídeo/Design seguem sempre o fluxo padrão (→ Revisão → PDF), inclusive
@@ -2818,7 +2826,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Atividade</h3>
           </div>
-          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} derived={!!task.origin_task_id && task.origin_task_id !== task.id} />
+          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} derived={!!task.origin_task_id && task.origin_task_id !== task.id} created={task.created_at ? { at: task.created_at, by: task.created_by ?? null } : undefined} />
         </div>
       </div>
 
@@ -2926,12 +2934,13 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
 }
 
 /* Small wrapper so the mobile inline comments fetch their own data */
-function MobileCommentsInline({ taskId, membersMap, members, derived }: {
+function MobileCommentsInline({ taskId, membersMap, members, derived, created }: {
   taskId: string;
   membersMap: Record<string, { name: string; avatar?: string }>;
   members: { id: string; name: string }[];
   derived?: boolean;
+  created?: { at: string; by: string | null };
 }) {
   const commentsQ = usePmComments(taskId);
-  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} derived={derived} />;
+  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} derived={derived} created={created} />;
 }

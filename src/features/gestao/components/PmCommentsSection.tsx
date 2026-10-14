@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronUp, ChevronDown, ChevronRight, Paperclip, ArrowRight, UserRound, CalendarDays, CheckCircle2, Plus, Pencil, Flag, Ban, Wrench, ListPlus, Activity, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download, MoreHorizontal, Trash2, Copy, ClipboardCopy } from "lucide-react";
+import { Send, ChevronUp, ChevronDown, ChevronRight, Paperclip, ArrowRight, UserRound, Eye, CalendarDays, CheckCircle2, Plus, Pencil, Flag, Ban, Wrench, ListPlus, Activity, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download, MoreHorizontal, Trash2, Copy, ClipboardCopy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ function renderTextWithLinks(text: string) {
 
 /* ── Activity events (what changed, in plain words) ── */
 const EVENT_ICON: Record<EventKind, React.ComponentType<{ className?: string }>> = {
-  created: Plus, stage: ArrowRight, sent: Send, assignee: UserRound, date: CalendarDays, done: CheckCircle2,
+  created: Plus, watchers: Eye, edit: Pencil, stage: ArrowRight, sent: Send, assignee: UserRound, date: CalendarDays, done: CheckCircle2,
   cancel: Ban, file: Paperclip, revision: Pencil, extra: Flag, status: Activity, fix: Wrench, subtask: ListPlus,
 };
 const EVENT_TONE: Partial<Record<EventKind, string>> = {
@@ -396,9 +396,11 @@ interface Props {
   members?: { id: string; name: string }[];
   /** this task was generated from a previous stage (it has an origin task) */
   derived?: boolean;
+  /** when and by whom the task was created, to start the history of tasks whose log never recorded it */
+  created?: { at: string; by: string | null };
 }
 
-export function PmCommentsSection({ taskId, comments, membersMap, members = [], derived = false }: Props) {
+export function PmCommentsSection({ taskId, comments, membersMap, members = [], derived = false, created }: Props) {
   const [content, setContent] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
@@ -450,8 +452,9 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [], 
       memberName: (id) => membersMap[id]?.name ?? null,
       stageIndex: (k) => PM_STAGES.findIndex((st) => st.key === k),
       derived,
+      created,
     }),
-    [activityLog, taskId, membersMap, derived],
+    [activityLog, taskId, membersMap, derived, created?.at, created?.by],
   );
 
   // one chronological stream: comments and changes together, oldest first, so the newest sits next to the box that writes the next one

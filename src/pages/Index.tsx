@@ -37,7 +37,7 @@ const FinLancamentosTab = lazy(() => import("@/features/financeiro/components/Fi
 const GestaoPanel = lazy(() => import("@/features/gestao/GestaoPanel").then((m) => ({ default: m.GestaoPanel })));
 const ProjetosPanel = lazy(() => import("@/features/projetos/ProjetosPanel").then((m) => ({ default: m.ProjetosPanel })));
 const ConversasPanel = lazy(() => import("@/features/conversas/ConversasPanel").then((m) => ({ default: m.ConversasPanel })));
-const ComercialPanel = lazy(() => import("@/features/admin/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
+const ComercialPanel = lazy(() => import("@/features/comercial/ComercialPanel").then((m) => ({ default: m.ComercialPanel })));
 const ClientesPanel = lazy(() => import("@/features/clientes/ClientesPanel").then((m) => ({ default: m.ClientesPanel })));
 const AjudaPanel = lazy(() => import("@/features/ajuda/AjudaPanel").then((m) => ({ default: m.AjudaPanel })));
 
