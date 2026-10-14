@@ -183,7 +183,7 @@ if(filters){
     nxt.className='in'; void nxt.offsetWidth; nxt.className='';
     setTimeout(()=>{ if(cur.className==='out') cur.className='in'; },750);
     i=(i+1)%words.length;
-  },2400);
+  },1600);
 })();
 
 // animações de entrada e contadores (o conteúdo já nasce visível)
