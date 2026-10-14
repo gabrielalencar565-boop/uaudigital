@@ -23,7 +23,7 @@ section{padding-block:96px;position:relative}
 h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.03em}
 h2{font-size:clamp(32px,5vw,60px);font-weight:300;line-height:1.02}
 h2 b{font-weight:800}
-.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:.06em;margin-right:-.06em}
 p{margin:0}
 .head{display:flex;flex-direction:column;gap:16px;max-width:720px;margin-bottom:48px}
 .head.center{margin-inline:auto;text-align:center;align-items:center}
@@ -77,8 +77,8 @@ footer .logo img{height:44px}
 @keyframes settle{from{transform:scale(1.08)}}
 @keyframes drift{to{transform:translate(-60px,50px) scale(1.12)}}
 /* palavra que troca */
-.rotator{display:inline-grid;vertical-align:bottom;overflow:hidden;padding-bottom:.08em}
-.rotator span{grid-area:1/1;font-weight:700;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
+.rotator{display:inline-grid;vertical-align:bottom;overflow:hidden;padding-bottom:.08em;padding-right:.12em;margin-right:-.12em}
+.rotator span{grid-area:1/1;font-weight:700;padding-right:.08em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;transition:transform .7s cubic-bezier(.7,0,.2,1),opacity .7s}
 .rotator span.out{transform:translateY(-125%);opacity:0}
 .rotator span.in{transform:translateY(125%);opacity:0}
 /* colagem de fotos */
