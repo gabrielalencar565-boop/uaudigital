@@ -132,7 +132,7 @@ document.querySelectorAll('[data-drag]').forEach(box=>{
   const frame=t=>{
     const dt=Math.min(64,t-prev); prev=t;
     if(!down){
-      const auto=reduce||hover||document.body.classList.contains('lb-open')?0:-(half/((mob.matches?secs*.72:secs)*1000));
+      const auto=reduce||hover||document.body.classList.contains('lb-open')||document.body.classList.contains('aj')||document.body.classList.contains('ajt')?0:-(half/((mob.matches?secs*.72:secs)*1000));
       v+= (auto - v)*0.04;            // embalo do arrasto volta aos poucos para a velocidade normal
       x+=v*dt; wrap();
     }
@@ -361,4 +361,27 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
     }catch(_){ err.textContent='Não conseguimos enviar agora. Tente de novo em instantes.'; }
     send.disabled=false; send.firstElementChild.textContent='Enviar e falar com a UAU';
   });
+})();
+
+// Sobre: as palavras do Método VLE se preenchem com o degradê quando chegam no meio da tela
+(()=>{ const box=document.getElementById('vlerows'); if(!box) return; const rows=[...box.children];
+  if(reduce||!('IntersectionObserver' in window)){ rows.forEach(r=>r.classList.add('lit')); return; }
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('lit'); io.unobserve(e.target); } }),{rootMargin:'0px 0px -35% 0px'});
+  rows.forEach(r=>io.observe(r)); })();
+
+// Trabalhe conosco: a candidatura abre no WhatsApp da UAU com a mensagem pronta
+(()=>{ const f=document.getElementById('cand'); if(!f) return;
+  const err=f.querySelector('.lead-err'), ok=f.querySelector('.jc-ok');
+  const tel=f.whatsapp; tel.addEventListener('input',()=>{ const d=tel.value.replace(/\D/g,'').slice(0,11); tel.value=d.length>6?`(${d.slice(0,2)}) ${d.slice(2,d.length-4)}-${d.slice(-4)}`:d.length>2?`(${d.slice(0,2)}) ${d.slice(2)}`:d; });
+  f.addEventListener('input',e=>e.target.closest('.f')?.classList.remove('bad'));
+  f.addEventListener('submit',e=>{ e.preventDefault(); err.textContent='';
+    const bad=[...f.querySelectorAll('[required]')].filter(x=>!x.value.trim()||(x.type==='email'&&!/^\S+@\S+\.\S+$/.test(x.value))||(x.name==='whatsapp'&&x.value.replace(/\D/g,'').length<10));
+    f.querySelectorAll('.f').forEach(x=>x.classList.remove('bad')); bad.forEach(x=>x.closest('.f').classList.add('bad'));
+    if(bad.length){ err.textContent='Confira os campos destacados.'; bad[0].focus(); return; }
+    if(f._honey.value) return;
+    const v=n=>(f[n]&&f[n].value||'').trim(), areas=[...f.querySelectorAll('[name=area]:checked')].map(x=>x.value).join(', ')||'Não informado';
+    const msg=['Olá, UAU! Quero me candidatar para trabalhar com vocês.','',`*Nome:* ${v('nome')}`,`*WhatsApp:* ${v('whatsapp')}`,`*E-mail:* ${v('email')}`,`*Área:* ${areas}`,`*Portfólio/Instagram:* ${v('portfolio')||'Não informado'}`].concat(v('mensagem')?['',`*Sobre mim:* ${v('mensagem')}`]:[]).join('\n');
+    const url=`https://wa.me/${CONTATO.whatsapp}?text=${encodeURIComponent(msg)}`;
+    const w=window.open(url,'_blank'); if(w) w.opener=null; else location.href=url;
+    [...f.children].forEach(x=>{ if(x!==ok) x.hidden=true; }); ok.hidden=false; });
 })();
