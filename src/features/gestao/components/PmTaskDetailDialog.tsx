@@ -319,7 +319,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               <span className="text-sm font-semibold">Atividade</span>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
-              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} />
+              <PmCommentsSection taskId={currentTask.id} comments={comments} membersMap={membersMap} members={members} derived={!!currentTask.origin_task_id && currentTask.origin_task_id !== currentTask.id} />
             </div>
           </div>
         </div>
@@ -1258,7 +1258,17 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         .finally(() => invalidatePmTaskQueries());
     };
 
+    // Atividade: the old task says where its work went, the receiving task says where it came from
+    const logTransition = (receivingTaskId: string, received: boolean) => {
+      const detail = { from_stage: task.stage_current, to_stage: stage, from_task_id: task.id, from_title: task.title, subtasks: children.length };
+      void sbx.from("pm_activity_log").insert([
+        { entity_type: "task", entity_id: task.id, action: "stage_sent", metadata: { ...detail, to_task_id: receivingTaskId }, created_by: user.id },
+        ...(received ? [{ entity_type: "task", entity_id: receivingTaskId, action: "stage_received", metadata: detail, created_by: user.id }] : []),
+      ]).then(() => queryClient.invalidateQueries({ queryKey: ["pm_activity_log"] }), () => {});
+    };
+
     if (linkedTaskId) {
+      logTransition(linkedTaskId, true);
       const linkedUpdates: any = { id: linkedTaskId, status_global: "backlog" as any };
       if (fixedAssignee !== undefined) {
         linkedUpdates.assignee_id = fixedAssignee;
@@ -1291,7 +1301,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       status_global: "backlog",
       post_type: postType,
       origin_task_id: originId,
+      activityMeta: { from_stage: task.stage_current, to_stage: stage, from_task_id: task.id, from_title: task.title, subtasks: children.length },
     });
+    logTransition(newTask.id, false);
 
     const newChildMap = await insertChildren(newTask.id);
     copyAttachmentsAndCommentsInBackground(newTask.id, newChildMap);
@@ -2806,7 +2818,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold">Atividade</h3>
           </div>
-          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} />
+          <MobileCommentsInline taskId={task.id} membersMap={membersMap} members={members} derived={!!task.origin_task_id && task.origin_task_id !== task.id} />
         </div>
       </div>
 
@@ -2914,11 +2926,12 @@ function PropertyRow({ icon, label, children }: { icon: React.ReactNode; label: 
 }
 
 /* Small wrapper so the mobile inline comments fetch their own data */
-function MobileCommentsInline({ taskId, membersMap, members }: {
+function MobileCommentsInline({ taskId, membersMap, members, derived }: {
   taskId: string;
   membersMap: Record<string, { name: string; avatar?: string }>;
   members: { id: string; name: string }[];
+  derived?: boolean;
 }) {
   const commentsQ = usePmComments(taskId);
-  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} />;
+  return <PmCommentsSection taskId={taskId} comments={commentsQ.data ?? []} membersMap={membersMap} members={members} derived={derived} />;
 }

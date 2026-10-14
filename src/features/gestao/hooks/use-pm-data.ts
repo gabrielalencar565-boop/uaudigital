@@ -216,6 +216,8 @@ export function usePmActivityLog(taskId: string | null) {
   return useQuery<any[]>({
     queryKey: ["pm_activity_log", taskId],
     enabled: !!taskId,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await sb
         .from("pm_activity_log")
@@ -254,11 +256,13 @@ export function useCreatePmTask() {
       posting_time?: string;
       posting_date?: string;
       periodic_stage_key?: string | null;
+      // extra detail for the Atividade "created" line, e.g. which stage this task was sent from (never stored on the task)
+      activityMeta?: Record<string, any>;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const { useTemplate, ...rest } = payload;
+      const { useTemplate, activityMeta, ...rest } = payload;
       const { data, error } = await sb.from("pm_tasks").insert({
         ...rest,
         created_by: user.id,
@@ -271,7 +275,7 @@ export function useCreatePmTask() {
         entity_type: "task",
         entity_id: data.parent_task_id ?? data.id,
         action: "created",
-        metadata: { title: data.title, parent_task_id: data.parent_task_id, child_id: data.parent_task_id ? data.id : undefined },
+        metadata: { title: data.title, parent_task_id: data.parent_task_id, child_id: data.parent_task_id ? data.id : undefined, stage_current: data.stage_current, ...(activityMeta ?? {}) },
         created_by: user.id,
       }).then(() => {}, () => {});
 
@@ -285,6 +289,9 @@ export function useCreatePmTask() {
     },
   });
 }
+
+// stage a task was in right before an update started (read before the optimistic cache patch), so the Atividade can say "de X para Y"
+const stageBeforeUpdate = new Map<string, string>();
 
 export function useUpdatePmTask() {
   const qc = useQueryClient();
@@ -432,6 +439,11 @@ export function useUpdatePmTask() {
             // Build clean metadata: strip large blobs
             const { revision_notes: _rn, ...cleanUpdates } = updates as any;
             const logMeta: Record<string, any> = { ...cleanUpdates, task_id: id, _ref_title: data.title };
+            if (Object.prototype.hasOwnProperty.call(updates, "stage_current")) {
+              const before = stageBeforeUpdate.get(id);
+              if (before && before !== (updates as any).stage_current) logMeta._from_stage = before;
+            }
+            stageBeforeUpdate.delete(id);
             // If we have a revision change hint, log it descriptively instead of dumping the full object
             if (_revision_change && _revision_change.childTitle) {
               logMeta._revision_change = _revision_change;
@@ -456,6 +468,13 @@ export function useUpdatePmTask() {
       return data as PmTask;
     },
     onMutate: async ({ id, ...updates }) => {
+      if (Object.prototype.hasOwnProperty.call(updates, "stage_current")) {
+        const cached =
+          qc.getQueryData<PmTask>(["pm_task", id]) ??
+          qc.getQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }).flatMap(([, list]) => list ?? []).find((t) => t.id === id) ??
+          qc.getQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }).flatMap(([, list]) => list ?? []).find((t) => t.id === id);
+        if (cached?.stage_current) stageBeforeUpdate.set(id, cached.stage_current as string);
+      }
       // Optimistic update for instant UI feedback
       await qc.cancelQueries({ queryKey: ["pm_tasks"] });
       await qc.cancelQueries({ queryKey: ["pm_child_tasks"] });

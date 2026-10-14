@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, ChevronDown, ChevronUp, Paperclip, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download, MoreHorizontal, Trash2, Copy, ClipboardCopy } from "lucide-react";
+import { Send, ChevronUp, ChevronDown, ChevronRight, Paperclip, ArrowRight, UserRound, CalendarDays, CheckCircle2, Plus, Pencil, Flag, Ban, Wrench, ListPlus, Activity, X, ExternalLink, Play, Instagram, Youtube, Globe, Link2, Maximize2, FileText, Download, MoreHorizontal, Trash2, Copy, ClipboardCopy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAddPmComment, useUploadPmAttachment, usePmActivityLog } from "../hooks/use-pm-data";
 import { useQueryClient } from "@tanstack/react-query";
-import { stageLabel } from "../pm-constants";
+import { stageLabel, statusLabel, PM_STAGES } from "../pm-constants";
+import { buildActivityEvents, dayLabel, type EventKind, type TimelineEvent } from "../lib/activity-timeline";
 import type { PmComment } from "../pm-types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,60 +66,50 @@ function renderTextWithLinks(text: string) {
   );
 }
 
-/* ── Important actions kept in the activity feed ── */
-function isImportantActivity(action: string, metadata: any): boolean {
-  if (action === "created" || action === "file_added") return true;
-  if (action === "correction_tags" || action === "correction_assignee") return true;
-  if (action === "updated" && metadata) {
-    // Only show when one of these meaningful fields changed
-    if (metadata.status_global) return true;
-    if (metadata.stage_current) return true;
-    if (metadata.assignee_id) return true;
-    if (metadata._revision_change) return true;
-    if (metadata.is_extra_demand !== undefined) return true;
-    if (metadata.due_date !== undefined) return true;
-  }
-  return false;
-}
+/* ── Activity events (what changed, in plain words) ── */
+const EVENT_ICON: Record<EventKind, React.ComponentType<{ className?: string }>> = {
+  created: Plus, stage: ArrowRight, sent: Send, assignee: UserRound, date: CalendarDays, done: CheckCircle2,
+  cancel: Ban, file: Paperclip, revision: Pencil, extra: Flag, status: Activity, fix: Wrench, subtask: ListPlus,
+};
+const EVENT_TONE: Partial<Record<EventKind, string>> = {
+  done: "text-emerald-500", stage: "text-primary", sent: "text-primary", cancel: "text-destructive", fix: "text-amber-500",
+};
 
-/* ── Format action text (only important ones reach here) ── */
-function formatActionText(action: string, metadata: any, membersMap: Record<string, { name: string; avatar?: string }>): string {
-  switch (action) {
-    case "created":
-      if (metadata?.parent_task_id) return `criou a subtarefa: ${metadata.title ?? ""}`;
-      return "criou esta tarefa";
-    case "updated": {
-      // Completion takes priority — most important signal
-      if (metadata?.status_global === "concluido") return "marcou como concluída ✅";
-      if (metadata?.status_global === "cancelado") return "cancelou a tarefa";
-      const parts: string[] = [];
-      if (metadata?.stage_current) parts.push(`avançou para ${stageLabel(metadata.stage_current)}`);
-      if (metadata?.assignee_id) {
-        const name = membersMap[metadata.assignee_id]?.name ?? "alguém";
-        parts.push(`responsável: ${name}`);
-      }
-      if (metadata?._revision_change) {
-        const rc = metadata._revision_change;
-        const statusLabel = rc.newStatus === "aprovado" ? "aprovada" : rc.newStatus === "alteracao" ? "pediu alteração" : "pendente";
-        parts.push(`"${rc.childTitle}" ${statusLabel}`);
-      }
-      if (metadata?.is_extra_demand !== undefined) parts.push(metadata.is_extra_demand ? "marcou como extra" : "removeu marca extra");
-      if (metadata?.due_date !== undefined) {
-        if (metadata.due_date) {
-          const d = String(metadata.due_date).slice(0, 10).split("-");
-          parts.push(`alterou data para ${d[2]}/${d[1]}/${d[0]}`);
-        } else {
-          parts.push("removeu a data");
-        }
-      }
-      if (metadata?.status_global) parts.push(`status: ${metadata.status_global}`);
-      return parts.join(", ");
-    }
-    case "correction_tags": return "corrigiu etiquetas";
-    case "correction_assignee": return "corrigiu responsável";
-    case "file_added": return `adicionou anexo: ${metadata?.file_name ?? "arquivo"}`;
-    default: return action;
+function ActivityEventCard({ ev, actorName, connectNext }: { ev: TimelineEvent; actorName: string; connectNext: boolean }) {
+  const Icon = EVENT_ICON[ev.lines[0].kind];
+  const tone = EVENT_TONE[ev.lines[0].kind] ?? "text-muted-foreground";
+  // the task's own changes first, then one block per subtask (or group of subtasks) with what changed in it
+  const groups: Array<{ subject: string | null; lines: typeof ev.lines }> = [];
+  for (const l of ev.lines) {
+    const key = l.subject ?? null;
+    const found = groups.find((g) => g.subject === key);
+    if (found) found.lines.push(l); else groups.push({ subject: key, lines: [l] });
   }
+  groups.sort((a, b) => (a.subject === null ? -1 : 0) - (b.subject === null ? -1 : 0));
+  const hasSubtaskGroups = groups.some((g) => g.subject !== null);
+  return (
+    <div className="relative pl-7">
+      {connectNext && <span className="absolute left-[9px] top-5 -bottom-2.5 w-px bg-border/40" />}
+      <span className="absolute left-0 top-0.5 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-muted/50">
+        <Icon className={`h-2.5 w-2.5 ${tone}`} />
+      </span>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="truncate text-[12px] font-medium text-foreground/90">{actorName}</span>
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">{format(new Date(ev.at), "HH:mm")}</span>
+      </div>
+      <div className="mt-1 space-y-1.5">
+        {groups.map((g) => (
+          <div key={g.subject ?? "__task"} className={hasSubtaskGroups ? "border-l border-border/50 pl-2.5" : ""}>
+            {g.subject && <p className="text-[12px] font-medium leading-snug text-foreground/80 break-words">{g.subject}</p>}
+            {!g.subject && hasSubtaskGroups && <p className="text-[12px] font-medium leading-snug text-foreground/80">Esta tarefa</p>}
+            {g.lines.map((l, i) => (
+              <p key={i} className="text-[12px] leading-snug text-muted-foreground break-words">{l.text}</p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ── Link Preview Card Component ── */
@@ -403,9 +394,11 @@ interface Props {
   comments: PmComment[];
   membersMap: Record<string, { name: string; avatar?: string }>;
   members?: { id: string; name: string }[];
+  /** this task was generated from a previous stage (it has an origin task) */
+  derived?: boolean;
 }
 
-export function PmCommentsSection({ taskId, comments, membersMap, members = [] }: Props) {
+export function PmCommentsSection({ taskId, comments, membersMap, members = [], derived = false }: Props) {
   const [content, setContent] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
@@ -420,7 +413,11 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   const [pendingFile, setPendingFile] = useState<{ file: File; preview: string | null; isImage: boolean } | null>(null);
   const [fileDescription, setFileDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
-  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState<"all" | "comments" | "history">("all");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  // Only the newest day starts open; the person's own folding/unfolding (by calendar date) wins over that default
+  const [foldOverride, setFoldOverride] = useState<Record<string, boolean>>({});
   const [previewModal, setPreviewModal] = useState<PreviewModalData | null>(null);
   const [draggingOver, setDraggingOver] = useState(false);
 
@@ -445,22 +442,45 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
   // Live link preview while typing
   const { preview: typingPreview, loading: typingLoading } = useTypingPreview(content);
 
-  const timeline = useMemo(() => {
-    const items: Array<{ type: "comment" | "activity"; data: any; timestamp: string }> = [];
-    comments.forEach(c => items.push({ type: "comment", data: c, timestamp: c.created_at }));
-    const seen = new Set<string>();
-    activityLog.forEach(a => {
-      if (a.action === "comment_added") return;
-      if (!isImportantActivity(a.action, a.metadata)) return;
-      const ts = Math.floor(new Date(a.created_at).getTime() / 2000);
-      const key = `${a.action}:${a.created_by}:${JSON.stringify(a.metadata)}:${ts}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      items.push({ type: "activity", data: a, timestamp: a.created_at });
-    });
-    items.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  const events = useMemo(
+    () => buildActivityEvents(activityLog, {
+      taskId,
+      stageName: stageLabel,
+      statusName: statusLabel,
+      memberName: (id) => membersMap[id]?.name ?? null,
+      stageIndex: (k) => PM_STAGES.findIndex((st) => st.key === k),
+      derived,
+    }),
+    [activityLog, taskId, membersMap, derived],
+  );
+
+  // one chronological stream: comments and changes together, oldest first, so the newest sits next to the box that writes the next one
+  const stream = useMemo(() => {
+    const items: Array<{ type: "comment" | "event"; at: string; comment?: PmComment; event?: TimelineEvent }> = [];
+    if (filter !== "history") comments.forEach((c) => items.push({ type: "comment", at: c.created_at, comment: c }));
+    if (filter !== "comments") events.forEach((ev) => items.push({ type: "event", at: ev.at, event: ev }));
+    items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
     return items;
-  }, [comments, activityLog]);
+  }, [comments, events, filter]);
+
+  const VISIBLE = 14;
+  const hidden = !showAll && stream.length > VISIBLE ? stream.length - VISIBLE : 0;
+  const shown = hidden > 0 ? stream.slice(-VISIBLE) : stream;
+  const dayGroups = useMemo(() => {
+    const groups: Array<{ key: string; label: string; items: typeof stream }> = [];
+    for (const item of shown) {
+      const key = format(new Date(item.at), "yyyy-MM-dd");
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.items.push(item);
+      else groups.push({ key, label: dayLabel(item.at), items: [item] });
+    }
+    return groups;
+  }, [shown]);
+
+  // keep the newest entry in view when the feed opens or grows
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [stream.length, showAll, filter]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -581,65 +601,97 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [] }
     } catch { toast.error("Erro ao remover comentário"); }
   };
 
-  const renderTimelineItem = (item: { type: "comment" | "activity"; data: any; timestamp: string }) => {
-    if (item.type === "comment") {
-      const c = item.data as PmComment;
+  const renderStreamItem = (item: (typeof stream)[number], connectNext: boolean) => {
+    if (item.type === "comment" && item.comment) {
+      const c = item.comment;
       return <CommentBubble key={`c-${c.id}`} c={c} membersMap={membersMap} formatMentions={formatMentions} onOpenPreview={(data) => setPreviewModal(data)} onDelete={handleDeleteComment} />;
-    } else {
-      const a = item.data;
-      const member = membersMap[a.created_by];
-      const actionText = formatActionText(a.action, a.metadata, membersMap);
-      return (
-        <div key={`a-${a.id}`} className="flex items-start gap-2.5 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 mt-2 shrink-0 ml-2" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-medium text-foreground/70">{member?.name ?? "Usuário"}</span>
-              {" "}{actionText}
-            </p>
-            <span className="text-[10px] text-muted-foreground/60">
-              {format(new Date(a.created_at), "MMM d 'às' HH:mm", { locale: ptBR })}
-            </span>
-          </div>
-        </div>
-      );
     }
+    const ev = item.event!;
+    return <ActivityEventCard key={`e-${ev.id}`} ev={ev} actorName={ev.actorId ? membersMap[ev.actorId]?.name ?? "Alguém da equipe" : "Sistema"} connectNext={connectNext} />;
   };
 
-  // Comentários escritos sempre aparecem (acima). Atividades vão abaixo com colapso opcional.
-  const commentItems = timeline
-    .filter(i => i.type === "comment")
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  const activityItems = timeline
-    .filter(i => i.type === "activity")
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  const firstActivity = activityItems[0] ?? null;
-  const lastActivity = activityItems.length > 1 ? activityItems[activityItems.length - 1] : null;
-  const middleActivities = activityItems.length > 2 ? activityItems.slice(1, -1) : [];
-  const hiddenCount = middleActivities.length;
+  const counts = { all: comments.length + events.length, comments: comments.length, history: events.length };
+  const FILTERS: Array<{ key: "all" | "comments" | "history"; label: string }> = [
+    { key: "all", label: "Tudo" },
+    { key: "comments", label: "Comentários" },
+    { key: "history", label: "Histórico" },
+  ];
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto overflow-x-hidden">
-        {timeline.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atividade ainda.</p>
+      <div className="flex items-center gap-4 border-b border-border/30" role="tablist" aria-label="Filtrar atividade">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.key}
+            onClick={() => { setFilter(f.key); setShowAll(false); }}
+            className={`-mb-px border-b pb-1.5 text-[11px] transition ${filter === f.key ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            {f.label} <span className="ml-0.5 text-[10px] opacity-50">{counts[f.key]}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 space-y-3 min-h-0 overflow-y-auto overflow-x-hidden pt-1">
+        {stream.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-6">
+            {filter === "comments" ? "Nenhum comentário ainda." : filter === "history" ? "Nenhuma mudança registrada ainda." : "Nenhuma atividade ainda."}
+          </p>
         )}
-        {commentItems.map(item => renderTimelineItem(item))}
-        {firstActivity && renderTimelineItem(firstActivity)}
-        {hiddenCount > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => setExpanded(prev => !prev)}
-              className="flex items-center gap-1.5 w-full text-xs text-primary/80 hover:text-primary transition py-1 px-2"
-            >
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {expanded ? "Mostrar menos" : `Mostrar mais ${hiddenCount} atividade${hiddenCount > 1 ? "s" : ""}`}
-            </button>
-            {expanded && middleActivities.map(item => renderTimelineItem(item))}
-          </>
+        {hidden > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition"
+          >
+            <ChevronUp className="h-3.5 w-3.5" /> Ver {hidden} anterior{hidden > 1 ? "es" : ""}
+          </button>
         )}
-        {lastActivity && renderTimelineItem(lastActivity)}
+        {dayGroups.map((g, gi) => {
+          const folded = foldOverride[g.key] ?? gi < dayGroups.length - 1;
+          const nComments = g.items.filter((x) => x.type === "comment").length;
+          const nChanges = g.items.length - nComments;
+          const summary = [
+            nComments > 0 ? `${nComments} comentário${nComments > 1 ? "s" : ""}` : null,
+            nChanges > 0 ? `${nChanges} mudança${nChanges > 1 ? "s" : ""}` : null,
+          ].filter(Boolean).join(" · ");
+          return (
+            <section key={g.key} className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setFoldOverride((prev) => ({ ...prev, [g.key]: !folded }))}
+                aria-expanded={!folded}
+                className={
+                  folded
+                    ? "group flex w-full items-center gap-2 rounded-lg bg-muted/30 px-2.5 py-2 text-left transition hover:bg-muted/50"
+                    : "group flex w-full items-center gap-1.5 pt-2 text-left"
+                }
+              >
+                {folded ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground/60" />}
+                <span className={`text-[10px] font-medium uppercase tracking-[0.12em] ${folded ? "text-foreground/80" : "text-muted-foreground/70 group-hover:text-foreground"}`}>{g.label}</span>
+                {folded ? (
+                  <span className="ml-auto flex items-center gap-2">
+                    <span className="hidden text-[10px] text-muted-foreground sm:inline">{summary}</span>
+                    <span className="min-w-[22px] rounded-full bg-primary/15 px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums text-primary">{g.items.length}</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-[10px] text-muted-foreground/50">{g.items.length}</span>
+                    <span className="h-px flex-1 bg-border/30" />
+                  </>
+                )}
+              </button>
+              {!folded && g.items.map((item, idx) => (
+                <div key={`${item.type}-${item.comment?.id ?? item.event?.id}`}>
+                  {renderStreamItem(item, item.type === "event" && g.items[idx + 1]?.type === "event")}
+                </div>
+              ))}
+            </section>
+          );
+        })}
+        <div ref={bottomRef} />
       </div>
 
       <div
