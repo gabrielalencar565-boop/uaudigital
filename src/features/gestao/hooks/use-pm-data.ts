@@ -219,13 +219,17 @@ export function usePmActivityLog(taskId: string | null) {
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
     queryFn: async () => {
+      // Some writes (bulk assignee changes, attachments on a subtask) are logged under the subtask's own id, so the parent's
+      // history has to read those rows too, or "what happened here" comes back empty.
+      const { data: kids } = await sb.from("pm_tasks").select("id, title").eq("parent_task_id", taskId);
+      const titleById = new Map<string, string>(((kids ?? []) as { id: string; title: string }[]).map((k) => [k.id, k.title]));
       const { data, error } = await sb
         .from("pm_activity_log")
         .select("*")
-        .eq("entity_id", taskId)
+        .in("entity_id", [taskId as string, ...titleById.keys()])
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      return ((data ?? []) as any[]).map((row) => ({ ...row, child_title: titleById.get(row.entity_id) ?? titleById.get(row.metadata?.task_id) ?? null }));
     },
   });
 }

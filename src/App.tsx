@@ -12,6 +12,7 @@ import CronogramaPublic from "./pages/CronogramaPublic";
 import AprovacaoPublic from "./pages/AprovacaoPublic";
 import RelatorioPublic from "./pages/RelatorioPublic";
 import AgendarPublic from "./pages/AgendarPublic";
+import FormularioPublic from "./pages/FormularioPublic";
 import HealthScorePublic from "./pages/HealthScorePublic";
 import Pending from "./pages/Pending";
 import Onboarding from "./pages/Onboarding";
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/aprovacao/:token" element={<AprovacaoPublic />} />
         <Route path="/relatorio/:token" element={<RelatorioPublic />} />
         <Route path="/agendar/:token" element={<AgendarPublic />} />
+        <Route path="/f/:slug" element={<FormularioPublic />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />
         <Route path="/exclusao-de-dados" element={<DataDeletion />} />
         <Route

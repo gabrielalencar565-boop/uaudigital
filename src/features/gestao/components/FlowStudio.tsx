@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STAGE_CIRCLE_COLORS, STAGE_PALETTE, type FlowStageRow } from "../pm-constants";
 import { useFlowStages } from "../StageCatalogProvider";
 import { FLOW_TEMPLATES, type FlowTemplate } from "../flow-templates";
+import { EXTRA_FINAL_STAGE, EXTRA_OUTCOMES, defaultExtraOutcome, extraOutcome, type ExtraOutcome } from "../lib/extra-rules";
 import { useStageFlows, type StageFlow } from "./PmStageFlowConfig";
 import { useCargos } from "@/hooks/use-cargos";
 import { useSaveStageRoles, useStageRoles } from "../hooks/use-stage-roles";
@@ -28,6 +29,8 @@ type DateMode = "none" | "pick" | number;
 type Draft = {
   key: string; label: string; color: string | null; kind: string; is_system: boolean; active: boolean;
   next: string[]; date: DateMode;
+  /** o que uma demanda extra faz ao ser concluída aqui */
+  extra: ExtraOutcome;
 };
 
 const DATE_OPTIONS: { value: string; label: string }[] = [
@@ -75,6 +78,7 @@ function buildDraft(rows: FlowStageRow[], flow: StageFlow | undefined): Draft[] 
         key: r.key, label: r.label, color: r.color, kind: r.kind, is_system: r.is_system, active: r.active,
         next: n === undefined ? [] : Array.isArray(n) ? n : [n],
         date: dates[r.key] ?? "none",
+        extra: extraOutcome(flow?.extra_rules, r.key),
       };
     });
 }
@@ -95,6 +99,7 @@ function draftFromTemplate(current: Draft[], t: FlowTemplate): Draft[] {
       active: true,
       next: t.next[s.key] ? [t.next[s.key]] : [],
       date: noDate ? "none" : existing ? (existing.active ? existing.date : 1) : 1,
+      extra: existing?.extra ?? defaultExtraOutcome(s.key),
     };
   });
   const tail: Draft[] = current.filter((d) => !inTemplate.has(d.key)).map((d) => ({ ...d, active: false, next: [] }));
@@ -357,7 +362,7 @@ export function FlowStudio() {
     while (taken.has(key)) key = `${base}_${n++}`;
     const finalIdx = draft.findIndex((d) => d.key === FINAL_KEY);
     const arr = [...draft];
-    arr.splice(finalIdx < 0 ? arr.length : finalIdx, 0, { key, label, color: null, kind: "work", is_system: false, active: true, next: [FINAL_KEY], date: 1 });
+    arr.splice(finalIdx < 0 ? arr.length : finalIdx, 0, { key, label, color: null, kind: "work", is_system: false, active: true, next: [FINAL_KEY], date: 1, extra: "deliver" });
     setDraft(arr);
     setNewLabel("");
     setAdding(false);
@@ -410,11 +415,13 @@ export function FlowStudio() {
         if (!NO_NEXT.includes(d.key) && nexts.length) flowConfig[d.key] = nexts.length === 1 ? nexts[0] : nexts;
         if (!NO_DATE.includes(d.key) && d.date !== "none") transition[d.key] = d.date;
       }
+      const extraRules: Record<string, ExtraOutcome> = {};
+      for (const d of draft) if (d.active && d.key !== EXTRA_FINAL_STAGE) extraRules[d.key] = d.extra;
       if (flow) {
-        const { error } = await sb.from("pm_stage_flows").update({ flow_config: flowConfig, transition_dates: transition, updated_at: now }).eq("id", flow.id);
+        const { error } = await sb.from("pm_stage_flows").update({ flow_config: flowConfig, transition_dates: transition, extra_rules: extraRules, updated_at: now }).eq("id", flow.id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("pm_stage_flows").insert({ name: "Fluxo Padrão", flow_config: flowConfig, transition_dates: transition, stage_assignees: {}, is_default: true });
+        const { error } = await sb.from("pm_stage_flows").insert({ name: "Fluxo Padrão", flow_config: flowConfig, transition_dates: transition, extra_rules: extraRules, stage_assignees: {}, is_default: true });
         if (error) throw error;
       }
       if (rolesDirty) await saveRoles.mutateAsync(changedRoles);
@@ -505,6 +512,12 @@ export function FlowStudio() {
                               <Clock className="h-3 w-3" /> <SelectValue />
                             </SelectTrigger>
                             <SelectContent>{DATE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <Select value={d.extra} onValueChange={(v) => patch(d.key, { extra: v as ExtraOutcome })}>
+                            <SelectTrigger aria-label={`Demanda extra concluída em ${d.label}`} className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground">
+                              <span className="text-[11px]">★ Extra:</span> <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>{EXTRA_OUTCOMES.map((o) => <SelectItem key={o.key} value={o.key} className="text-xs">{o.label}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                       )}

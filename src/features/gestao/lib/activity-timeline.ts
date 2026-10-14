@@ -9,9 +9,11 @@ export type ActivityEntry = {
   created_by: string | null;
   created_at: string;
   entity_id?: string | null;
+  /** title of the subtask the entry is about, when the log is read from the parent task */
+  child_title?: string | null;
 };
 
-export type EventKind = "created" | "stage" | "sent" | "assignee" | "date" | "done" | "cancel" | "file" | "revision" | "extra" | "status" | "fix" | "subtask";
+export type EventKind = "created" | "watchers" | "edit" | "stage" | "sent" | "assignee" | "date" | "done" | "cancel" | "file" | "revision" | "extra" | "status" | "fix" | "subtask";
 
 export type EventLine = {
   kind: EventKind;
@@ -37,6 +39,8 @@ export type ActivityContext = {
   stageIndex: (key: string) => number;
   /** this task was generated from a previous stage (it has an origin) but its log predates the richer "created" record */
   derived?: boolean;
+  /** when and by whom the task itself was created: used when its log never recorded a "created" row (older tasks) */
+  created?: { at: string; by: string | null };
 };
 
 const MERGE_WINDOW_MS = 5000;
@@ -95,6 +99,16 @@ function updatedLines(m: any, ctx: ActivityContext, lastStage: string | null, su
     push("revision", `“${rc.childTitle}” ${label}`);
   }
   if (m?.is_extra_demand !== undefined) push("extra", m.is_extra_demand ? "Marcou como extra" : "Tirou a marca de extra");
+  if (typeof m?.title === "string" && m.title.trim()) push("edit", `Renomeou para “${m.title.trim()}”`);
+  if (m && Object.prototype.hasOwnProperty.call(m, "watchers") && Array.isArray(m.watchers)) {
+    const names = m.watchers.map((id: string) => ctx.memberName(id)).filter((n: string | null): n is string => !!n);
+    push("watchers", names.length > 0 ? `Acompanhando: ${names.join(", ")}` : "Ninguém acompanhando");
+  }
+  if (m?.priority) push("edit", `Prioridade: ${String(m.priority).replace(/^./, (c) => c.toUpperCase())}`);
+  if (m && Object.prototype.hasOwnProperty.call(m, "tags")) push("edit", "Atualizou as etiquetas");
+  if (m && Object.prototype.hasOwnProperty.call(m, "description")) push("edit", "Editou a descrição");
+  if (m && Object.prototype.hasOwnProperty.call(m, "caption")) push("edit", "Editou a legenda");
+  if (m?.posting_date) push("date", `Data de publicação: ${isoToBr(m.posting_date)}`);
   if (m?.status_global && m.status_global !== "concluido" && m.status_global !== "cancelado") push("status", `Status: ${ctx.statusName(m.status_global)}`);
   return lines;
 }
@@ -120,7 +134,12 @@ function collapseSubjects(lines: EventLine[]): EventLine[] {
 }
 
 export function buildActivityEvents(entries: ActivityEntry[], ctx: ActivityContext): TimelineEvent[] {
-  const sorted = [...entries].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  // older tasks never recorded their own creation: take it from the task itself so the history always has a start
+  const hasCreated = entries.some((e) => e.action === "created" && !e.metadata?.parent_task_id && (!e.metadata?.task_id || e.metadata.task_id === ctx.taskId));
+  const withStart: ActivityEntry[] = !hasCreated && ctx.created
+    ? [...entries, { id: "synthetic-created", action: "created", metadata: {}, created_by: ctx.created.by, created_at: ctx.created.at, entity_id: ctx.taskId }]
+    : entries;
+  const sorted = [...withStart].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const seen = new Set<string>();
   const events: TimelineEvent[] = [];
   let lastStage: string | null = null;
@@ -133,8 +152,8 @@ export function buildActivityEvents(entries: ActivityEntry[], ctx: ActivityConte
     seen.add(key);
 
     const m = e.metadata ?? {};
-    const isChild = !!m.task_id && m.task_id !== ctx.taskId && e.entity_id === ctx.taskId;
-    const subject = isChild ? (m._ref_title ?? "subtarefa") : null;
+    const isChild = !!m.task_id && m.task_id !== ctx.taskId;
+    const subject = isChild ? (m._ref_title ?? e.child_title ?? "subtarefa") : null;
     let lines: EventLine[] = [];
 
     switch (e.action) {
@@ -155,7 +174,7 @@ export function buildActivityEvents(entries: ActivityEntry[], ctx: ActivityConte
         break;
       case "correction_tags": lines = [{ kind: "fix", text: "corrigiu as etiquetas (tarefa já concluída)" }]; break;
       case "correction_assignee": lines = [{ kind: "fix", text: "corrigiu o responsável (tarefa já concluída)" }]; break;
-      case "file_added": lines = [{ kind: "file", text: `anexou ${m.file_name ?? "um arquivo"}` }]; break;
+      case "file_added": lines = [{ kind: "file", text: `anexou ${m.file_name ?? "um arquivo"}`, subject }]; break;
       default: break; // everything else is noise for the team
     }
     if (lines.length === 0) continue;
@@ -172,7 +191,29 @@ export function buildActivityEvents(entries: ActivityEntry[], ctx: ActivityConte
       merged.push({ ...ev, lines: [...ev.lines] });
     }
   }
-  return merged.map((ev) => ({ ...ev, lines: collapseSubjects(ev.lines) }));
+  // toggling something on and off within seconds leaves only where it ended up
+  const LAST_ONLY: EventKind[] = ["watchers", "assignee", "date", "status", "extra"];
+  const settled = merged.map((ev) => {
+    const lastIdx = new Map<string, number>();
+    ev.lines.forEach((l, i) => { if (LAST_ONLY.includes(l.kind)) lastIdx.set(`${l.kind}|${l.subject ?? ""}`, i); });
+    return { ...ev, lines: ev.lines.filter((l, i) => !LAST_ONLY.includes(l.kind) || lastIdx.get(`${l.kind}|${l.subject ?? ""}`) === i) };
+  });
+
+  // the same person saving the same kind of change again and again (a description being typed) reads as one line
+  const REPEAT_WINDOW_MS = 10 * 60 * 1000;
+  const compact: TimelineEvent[] = [];
+  const signature = (ev: TimelineEvent) => ev.lines.map((l) => `${l.subject ?? ""}|${l.text}`).join(";");
+  for (const ev of collapsedSubjects(settled)) {
+    const prev = compact[compact.length - 1];
+    if (prev && prev.actorId === ev.actorId && signature(prev) === signature(ev) && new Date(ev.at).getTime() - new Date(prev.at).getTime() <= REPEAT_WINDOW_MS) {
+      prev.at = ev.at;
+    } else compact.push(ev);
+  }
+  return compact;
+}
+
+function collapsedSubjects(events: TimelineEvent[]): TimelineEvent[] {
+  return events.map((ev) => ({ ...ev, lines: collapseSubjects(ev.lines) })).filter((ev) => ev.lines.length > 0);
 }
 
 /** "Hoje", "Ontem" or "13 de out." for the day headers. */

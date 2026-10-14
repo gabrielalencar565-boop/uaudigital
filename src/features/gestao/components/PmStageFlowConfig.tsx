@@ -17,6 +17,8 @@ export interface StageFlow {
   flow_config: Record<string, string | string[]>;
   transition_dates?: Record<string, "pick" | number>;
   stage_assignees?: StageAssignees;
+  /** o que a demanda extra faz ao ser concluída em cada etapa (ver lib/extra-rules) */
+  extra_rules?: Record<string, string>;
   is_default: boolean;
   created_by: string;
   created_at: string;
@@ -48,6 +50,7 @@ export function useDefaultFlowWithDates() {
     flowConfig: defaultFlow?.flow_config ?? {},
     transitionDates: (defaultFlow?.transition_dates ?? {}) as Record<string, "pick" | number>,
     stageAssignees: (defaultFlow?.stage_assignees ?? {}) as StageAssignees,
+    extraRules: (defaultFlow?.extra_rules ?? {}) as Record<string, string>,
   };
 }
 

@@ -77,7 +77,43 @@ describe("activity timeline", () => {
   });
 
   it("ignores noise", () => {
-    expect(buildActivityEvents([entry("comment_added", {}, "2026-10-14T09:00:00Z"), entry("updated", { title: "x" }, "2026-10-14T09:01:00Z")], ctx)).toHaveLength(0);
+    expect(buildActivityEvents([entry("comment_added", {}, "2026-10-14T09:00:00Z"), entry("updated", { order_index: 3, revision_notes: true }, "2026-10-14T09:01:00Z")], ctx)).toHaveLength(0);
+  });
+
+  it("starts the history from the task's own creation when its log never recorded it", () => {
+    const events = buildActivityEvents([entry("updated", { assignee_id: "u1" }, "2026-10-14T17:24:00Z")], { ...ctx, derived: true, created: { at: "2026-10-13T13:09:00Z", by: "a" } });
+    expect(events[0].lines[0].text).toBe("esta etapa foi criada ao avançar da etapa anterior");
+    expect(events[0].at).toBe("2026-10-13T13:09:00Z");
+    expect(events).toHaveLength(2);
+  });
+
+  it("does not add a second start when the log already has one", () => {
+    const events = buildActivityEvents([entry("created", { stage_current: "planejamento" }, "2026-10-13T13:09:00Z")], { ...ctx, created: { at: "2026-10-13T13:09:00Z", by: "a" } });
+    expect(events).toHaveLength(1);
+  });
+
+  it("shows changes logged under a subtask's own id, named after the subtask", () => {
+    const [ev] = buildActivityEvents([{ ...entry("updated", { task_id: "c9", assignee_id: "u1", propagated_from: "T" }, "2026-10-14T10:00:00Z", "a", "c9"), child_title: "1- Foto" }], ctx);
+    expect(ev.lines[0]).toMatchObject({ text: "Responsável: Izadora Torres", subject: "1- Foto" });
+  });
+
+  it("keeps only where an on/off toggle ended up", () => {
+    const [ev] = buildActivityEvents([
+      entry("updated", { watchers: ["u1"] }, "2026-10-14T15:12:53Z"),
+      entry("updated", { watchers: [] }, "2026-10-14T15:12:53.7Z"),
+      entry("updated", { watchers: ["u1"] }, "2026-10-14T15:12:54.9Z"),
+    ], ctx);
+    expect(ev.lines.map((l) => l.text)).toEqual(["Acompanhando: Izadora Torres"]);
+  });
+
+  it("folds repeated saves of the same edit into one line", () => {
+    const events = buildActivityEvents([
+      entry("updated", { description: "a" }, "2026-10-14T10:00:00Z"),
+      entry("updated", { description: "ab" }, "2026-10-14T10:03:00Z"),
+      entry("updated", { description: "abc" }, "2026-10-14T10:06:00Z"),
+    ], ctx);
+    expect(events).toHaveLength(1);
+    expect(events[0].lines[0].text).toBe("Editou a descrição");
   });
 
   it("labels days", () => {
