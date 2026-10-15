@@ -40,6 +40,7 @@ import { CascadeStudio } from "./components/CascadeStudio";
 import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
+import { extraDisplayStage } from "./lib/extra-rules";
 import { stageLabel, stageAbbr, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
@@ -895,10 +896,13 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             : isRevisaoDesign
               ? "REV/DSG"
               : undefined;
-    const stageBg = gradientClass ?? (STAGE_BADGE_BG[t.stage_current] ?? "bg-muted");
+    // Extra concluded in Agendamento/PDF/Revisão shows what it is (DSG/VDO), not the stage it passed through
+    const typeStage = extraDisplayStage(t);
+    const shownStage = typeStage ?? t.stage_current;
+    const stageBg = (typeStage ? undefined : gradientClass) ?? (STAGE_BADGE_BG[shownStage] ?? "bg-muted");
     const abbr = t.periodic_stage_key
       ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
-      : gradientAbbr ?? stageAbbr(t.stage_current);
+      : (typeStage ? undefined : gradientAbbr) ?? stageAbbr(shownStage);
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
