@@ -362,7 +362,7 @@ export function FlowStudio() {
     while (taken.has(key)) key = `${base}_${n++}`;
     const finalIdx = draft.findIndex((d) => d.key === FINAL_KEY);
     const arr = [...draft];
-    arr.splice(finalIdx < 0 ? arr.length : finalIdx, 0, { key, label, color: null, kind: "work", is_system: false, active: true, next: [FINAL_KEY], date: 1, extra: "deliver" });
+    arr.splice(finalIdx < 0 ? arr.length : finalIdx, 0, { key, label, color: null, kind: "work", is_system: false, active: true, next: [FINAL_KEY], date: 1, extra: defaultExtraOutcome(key) });
     setDraft(arr);
     setNewLabel("");
     setAdding(false);
