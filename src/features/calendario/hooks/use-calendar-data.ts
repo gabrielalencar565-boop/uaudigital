@@ -721,6 +721,24 @@ export function useRemoveCalendarPublication() {
   });
 }
 
+/** Remove várias publicações do calendário de uma vez (a tarefa original não é apagada), como "Remover" faz com uma. */
+export function useRemoveCalendarPublications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: Array<{ id: string; calendar_id: string; task_id: string }>) => {
+      if (items.length === 0) return items;
+      const { error } = await sb.from("calendar_publications").delete().in("id", items.map((i) => i.id));
+      if (error) throw error;
+      return items;
+    },
+    onSuccess: (items) => {
+      for (const calendarId of new Set(items.map((i) => i.calendar_id))) qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
+      for (const i of items) qc.invalidateQueries({ queryKey: ["task_calendar_entry", i.task_id] });
+    },
+  });
+}
+
 export function useUpdateCalendarStatus() {
   const qc = useQueryClient();
   return useMutation({

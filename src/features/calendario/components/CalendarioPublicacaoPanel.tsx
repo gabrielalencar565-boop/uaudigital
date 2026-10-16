@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send, SquareCheck, Trash2, X } from "lucide-react";
 import { TAG_COLORS, stageLabel } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -26,8 +26,7 @@ import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
 import {
   useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate,
-  type ClientInstagramRisk,
-} from "../hooks/use-calendar-data";
+  type ClientInstagramRisk, useRemoveCalendarPublications } from "../hooks/use-calendar-data";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
@@ -70,15 +69,15 @@ export function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-export function anchorForDate(d: Date, day: number) {
-  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+// O Cronograma é por mês de calendário (1 a último dia). Os três ainda recebem o "dia" do Dia D só para não mudar quem chama, mas ele não é usado.
+export function anchorForDate(d: Date, _day?: number) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
 }
-export function cycleEnd(anchor: Date, day: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
+export function cycleEnd(anchor: Date, _day?: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
 }
-export function cycleStart(anchor: Date, day: number) {
-  const end = cycleEnd(anchor, day);
-  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
+export function cycleStart(anchor: Date, _day?: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
@@ -134,22 +133,40 @@ const STATUS_FILTERS: { key: string; label: string; icon: typeof CircleDashed; t
 type AlertMode = false | "on" | "pulse";
 const alertClass = (mode: AlertMode) => (mode === "pulse" ? "rounded-lg ring-4 ring-rose-500 animate-pulse" : mode === "on" ? "rounded-lg ring-2 ring-rose-500/80" : "");
 
-function DraggablePublication({ publication, images, onClick, isCapa, alert = false }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean; alert?: AlertMode }) {
+function SelectOverlay({ selected, onClick }: { selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={selected ? "Desmarcar publicação" : "Selecionar publicação"}
+      aria-pressed={selected}
+      className={cn("absolute inset-0 z-10 rounded-lg", selected ? "bg-primary/10 ring-2 ring-primary" : "bg-transparent hover:bg-primary/5")}
+    >
+      <span className={cn("absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md border-2 shadow", selected ? "border-primary bg-primary text-primary-foreground" : "border-white/70 bg-background/70 text-transparent")}>
+        <Check className="h-3.5 w-3.5" />
+      </span>
+    </button>
+  );
+}
+
+function DraggablePublication({ publication, images, onClick, isCapa, alert = false, selecting = false, selected = false }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean; alert?: AlertMode; selecting?: boolean; selected?: boolean }) {
   const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: publication.id,
     data: { publication },
+    disabled: selecting,
   });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   return (
-    <div ref={setNodeRef} style={style} className={alertClass(alert)} data-unscheduled-alert={alert ? "" : undefined}>
+    <div ref={setNodeRef} style={style} className={cn("relative", alertClass(alert))} data-unscheduled-alert={alert ? "" : undefined}>
       <PublicationCard
         publication={publication}
         images={images}
         onClick={onClick}
-        dragHandleProps={{ listeners, attributes, setActivatorNodeRef }}
+        dragHandleProps={selecting ? undefined : { listeners, attributes, setActivatorNodeRef }}
         isDragging={isDragging}
         isCapa={isCapa}
       />
+      {selecting && <SelectOverlay selected={selected} onClick={onClick} />}
     </div>
   );
 }
@@ -309,6 +326,14 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Seleção em massa: marca várias publicações e remove todas de uma vez do calendário
+  const [selectMode, setSelectMode] = useState(false);
+  const [bulkIds, setBulkIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const removeBulk = useRemoveCalendarPublications();
+  const toggleBulk = (id: string) => setBulkIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const openPub = (id: string) => (selectMode ? toggleBulk(id) : setSelectedId(id));
+  const exitSelect = () => { setSelectMode(false); setBulkIds(new Set()); };
 
   // Deep-link from elsewhere in the app (e.g. the Agenda's "Ciclo incompleto" dialog):
   // jump straight to a client's cycle and open one publication, instead of making the
@@ -317,7 +342,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     if (!focusRequest) return;
     const cycleStartDate = parseISO(focusRequest.cycleStart);
     setClientId(focusRequest.clientId);
-    setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth() + 1, 1));
+    setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth(), 1));
     setSelectedId(focusRequest.publicationId ?? null);
     onFocusHandled?.();
   }, [focusRequest, onFocusHandled]);
@@ -658,6 +683,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     }
     return hidden;
   }, [allRelevantPublications, attachmentsQ.data]);
+  // Publicações que aparecem na tela agora (sem data + as do ciclo), as únicas que a seleção em massa alcança
+  const bulkSelectable = useMemo(() => {
+    const byId = new Map<string, CalendarPublication>();
+    for (const p of unscheduledPubsQ.data ?? []) if (!hiddenFromUnscheduled.has(p.task_id)) byId.set(p.id, p);
+    for (const p of publications) {
+      if (!p.publish_date) { if (!hiddenFromUnscheduled.has(p.task_id)) byId.set(p.id, p); continue; }
+      if (activePubStatusFilters.size === 0 || activePubStatusFilters.has(p.status)) byId.set(p.id, p);
+    }
+    return [...byId.values()];
+  }, [unscheduledPubsQ.data, publications, hiddenFromUnscheduled, activePubStatusFilters]);
+  const bulkChosen = useMemo(() => bulkSelectable.filter((p) => bulkIds.has(p.id)), [bulkSelectable, bulkIds]);
+  const bulkOnInstagram = bulkChosen.filter((p) => p.instagram_scheduled).length;
   // Only "carrossel" posts are meant to page through every image — for every other
   // content type (reel, vídeo, imagem...) the card should show just the one cover
   // image as a static thumbnail, even if the task has other image attachments
@@ -699,12 +736,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return out;
   }, [cursor]);
 
+  // Publicação datada fora do ciclo (dia 28 em diante já é o ciclo seguinte) aparece esmaecida e não conta neste mês
+  const countedPublications = useMemo(() => {
+    const startKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
+    const endKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
+    return publications.filter((p) => !p.publish_date || (p.publish_date >= startKey && p.publish_date <= endKey));
+  }, [publications, cursor, magicDay]);
   const counts = useMemo(() => ({
-    total: publications.length,
-    aguardando: publications.filter((p) => p.status === "aguardando_aprovacao").length,
-    aprovada: publications.filter((p) => p.status === "aprovada").length,
-    alteracao: publications.filter((p) => p.status === "alteracao_solicitada").length,
-  }), [publications]);
+    total: countedPublications.length,
+    aguardando: countedPublications.filter((p) => p.status === "aguardando_aprovacao").length,
+    aprovada: countedPublications.filter((p) => p.status === "aprovada").length,
+    alteracao: countedPublications.filter((p) => p.status === "alteracao_solicitada").length,
+  }), [countedPublications]);
 
   // Feed: chronological reading order (most recent first), excluding stories
   // and anything missing what it needs to actually appear in a real feed. Only the
@@ -1302,6 +1345,58 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
         />
       </div>
 
+      {view !== "feed" && !selectMode && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-full text-xs" onClick={() => setSelectMode(true)}>
+            <SquareCheck className="h-3.5 w-3.5" /> Selecionar
+          </Button>
+        </div>
+      )}
+
+      {view !== "feed" && selectMode && (
+        <div className="sticky top-3 z-30 flex justify-center px-2">
+          <div className="flex max-w-full flex-wrap items-center gap-2 rounded-full border border-border/60 bg-background/90 py-2 pl-4 pr-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
+            <span className="text-xs font-medium tabular-nums">{bulkChosen.length} selecionada{bulkChosen.length === 1 ? "" : "s"}</span>
+            <Button variant="ghost" size="sm" className="h-8 rounded-full text-xs" onClick={() => setBulkIds(new Set(bulkSelectable.map((p) => p.id)))} disabled={bulkSelectable.length === 0}>
+              Selecionar todas ({bulkSelectable.length})
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 rounded-full text-xs" onClick={() => setBulkIds(new Set())} disabled={bulkChosen.length === 0}>Limpar</Button>
+            <Button size="sm" variant="destructive" className="h-8 gap-1.5 rounded-full text-xs" disabled={bulkChosen.length === 0 || removeBulk.isPending} onClick={() => setBulkConfirmOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Apagar {bulkChosen.length > 0 ? bulkChosen.length : ""}
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1 rounded-full text-xs" onClick={exitSelect}><X className="h-3.5 w-3.5" /> Cancelar</Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {bulkChosen.length} publicaç{bulkChosen.length === 1 ? "ão" : "ões"} do calendário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As tarefas originais não serão apagadas, só os itens vinculados a elas neste calendário de aprovação. Não dá para desfazer.
+              {bulkOnInstagram > 0 && ` ${bulkOnInstagram} já ${bulkOnInstagram === 1 ? "está agendada" : "estão agendadas"} no Instagram: remover do calendário não cancela o agendamento lá.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const items = bulkChosen.map((p) => ({ id: p.id, calendar_id: p.calendar_id, task_id: p.task_id }));
+                removeBulk.mutate(items, {
+                  onSuccess: () => { toast.success(`${items.length} publicaç${items.length === 1 ? "ão removida" : "ões removidas"}.`); exitSelect(); },
+                  onError: (e: any) => toast.error(e?.message ?? "Não foi possível remover as publicações"),
+                });
+                setBulkConfirmOpen(false);
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {view !== "feed" && (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
@@ -1314,7 +1409,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 ) : (
                   unscheduled.map((p) => (
                     <div key={p.id} className="w-28">
-                      <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
+                      <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => openPub(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} selecting={selectMode} selected={bulkIds.has(p.id)} />
                     </div>
                   ))
                 );
@@ -1380,7 +1475,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                           <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
                             {dayPubs.map((p) => (
                               <div key={p.id} className="w-28">
-                                <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
+                                <DraggablePublication publication={p} images={imagesFor(p)} onClick={() => openPub(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} selecting={selectMode} selected={bulkIds.has(p.id)} />
                               </div>
                             ))}
                           </div>
@@ -1437,7 +1532,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                             )}
                           </div>
                           {dayPubs.map((p) => (
-                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => setSelectedId(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} />
+                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => openPub(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} selecting={selectMode} selected={bulkIds.has(p.id)} />
                           ))}
                         </DropZone>
                       );
@@ -1456,16 +1551,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                       );
                     }
                     return scheduled.map((p, idx) => (
-                      <ListPublicationCard
-                        key={p.id}
-                        publication={p}
-                        idx={idx}
-                        images={imagesFor(p)}
-                        onClick={() => setSelectedId(p.id)}
-                        isCapa={isCapaTask(p.task_id)}
-                        hasVideo={mediaFor(p.task_id).some((m) => m.type?.startsWith("video/"))}
-                        alert={alertModeFor(p)}
-                      />
+                      <div key={p.id} className="relative">
+                        <ListPublicationCard
+                          publication={p}
+                          idx={idx}
+                          images={imagesFor(p)}
+                          onClick={() => openPub(p.id)}
+                          isCapa={isCapaTask(p.task_id)}
+                          hasVideo={mediaFor(p.task_id).some((m) => m.type?.startsWith("video/"))}
+                          alert={alertModeFor(p)}
+                        />
+                        {selectMode && <SelectOverlay selected={bulkIds.has(p.id)} onClick={() => toggleBulk(p.id)} />}
+                      </div>
                     ));
                   })()}
                 </div>

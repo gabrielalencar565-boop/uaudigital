@@ -1,3 +1,5 @@
+import { automaticMonthDate, pickToReferenceMonth } from "../lib/content-month";
+import { useContentMonthOffset } from "@/features/data/queries";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -61,16 +63,15 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const cascadeChoice = useCascadeChoice(stage, !isExtra && !isPeriodic);
 
   // Reference month defaults from the due date (month only, no year)
-  const dueDateObj = dueDate ? new Date(`${dueDate}T12:00:00`) : new Date();
-  const defaultMonthRef = String(dueDateObj.getMonth() + 1).padStart(2, "0");
+  const contentOffset = useContentMonthOffset();
+  const defaultMonthRef = String(automaticMonthDate(dueDate || null, contentOffset).getMonth() + 1).padStart(2, "0");
   const [monthRef, setMonthRef] = useState(defaultMonthRef);
 
   useEffect(() => {
     if (!open) return;
     const dd = defaultDate ?? format(new Date(), "yyyy-MM-dd");
     setDueDate(dd);
-    const d = new Date(`${dd}T12:00:00`);
-    setMonthRef(String(d.getMonth() + 1).padStart(2, "0"));
+    setMonthRef(String(automaticMonthDate(dd, contentOffset).getMonth() + 1).padStart(2, "0"));
     setIsExtra(false);
     setCustomTitle("");
     setIsFreelancer(false);
@@ -180,6 +181,8 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       watchers: watchers.length > 0 ? watchers : undefined,
       is_extra_demand: isPeriodic ? true : isExtra,
       status_global: "backlog",
+      // "Mês referente" também define o mês do Magic Number e da pontuação, não só o nome da tarefa
+      reference_month: isPeriodic || isExtra ? null : pickToReferenceMonth(monthRef, automaticMonthDate(dueDate, contentOffset)),
     } as any, {
       onSuccess: (created: any) => {
         // Cascata: save the planned dates of every step of this piece of work next to its first task.

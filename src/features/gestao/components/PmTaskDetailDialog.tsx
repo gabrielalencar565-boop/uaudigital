@@ -34,6 +34,8 @@ import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
 import { fetchTaskPlan, saveTaskPlan } from "../hooks/use-cascades";
 import { pushPlan, stepKeyFor, type CascadePlan } from "../lib/cascade";
 import { extraOutcome } from "../lib/extra-rules";
+import { monthLabel } from "../lib/content-month";
+import { ContentMonthPicker } from "./ContentMonthPicker";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
 import { PmPlanningSubtasks } from "./PmPlanningSubtasks";
@@ -2285,6 +2287,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
           <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
             <DatePickerInline value={task.due_date ?? ""} onChange={(v) => updateTask.mutate({ id: task.id, due_date: v || null })} />
+          </PropertyRow>
+
+          <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Mês do conteúdo">
+            <ContentMonthPicker
+              referenceMonth={task.reference_month}
+              dueDate={task.due_date}
+              onChange={(v) => updateTask.mutate({ id: task.id, reference_month: v } as any, {
+                onSuccess: () => toast.success(v ? `Conteúdo de ${monthLabel(v)}` : "Mês do conteúdo igual ao prazo"),
+              })}
+            />
           </PropertyRow>
 
           <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">

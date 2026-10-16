@@ -212,6 +212,8 @@ export type AppSettingsRow = {
   whats_new_published_at: string | null;
   magic_number_day: number;
   magic_number_label: string;
+  /** meses de antecedência do conteúdo: o trabalho feito em um mês conta no mês +N (0 = mesmo mês) */
+  content_month_offset: number;
   slogan: string | null;
   sidebar_color: string | null;
   chart_accent_color: string | null;
@@ -233,7 +235,7 @@ export function useAppSettings() {
       const { data: agencyId } = await (supabase as any).rpc("current_agency_id");
       let query = supabase
         .from("app_settings")
-        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, magic_number_day, magic_number_label, slogan, sidebar_color, chart_accent_color, header_gradient_from, header_gradient_to, favicon_url, link_preview_title, link_preview_description, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, magic_number_day, magic_number_label, content_month_offset, slogan, sidebar_color, chart_accent_color, header_gradient_from, header_gradient_to, favicon_url, link_preview_title, link_preview_description, updated_at, updated_by")
         ;
       query = agencyId ? (query as any).eq("agency_id", agencyId) : (query as any).eq("id", 1);
       const { data, error } = await (query as any).maybeSingle();
@@ -289,6 +291,7 @@ export function useUpdateAppSettings() {
       whats_new_published_at?: string | null;
       magic_number_day?: number;
       magic_number_label?: string;
+      content_month_offset?: number;
       slogan?: string | null;
       sidebar_color?: string | null;
       chart_accent_color?: string | null;
@@ -314,6 +317,11 @@ export function useUpdateAppSettings() {
 
 // Shared hook for reading the agency's configured "D-day" (day of month + display label),
 // used to keep the Magic Number deadline configurable per agency instead of hardcoded to 27.
+export function useContentMonthOffset(): number {
+  const q = useAppSettings();
+  return q.data?.content_month_offset ?? 0;
+}
+
 export function useMagicNumberConfig() {
   const q = useAppSettings();
   return {
