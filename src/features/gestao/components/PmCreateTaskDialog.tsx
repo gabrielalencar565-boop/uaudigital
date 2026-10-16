@@ -1,3 +1,5 @@
+import { automaticMonthDate, pickToReferenceMonth } from "../lib/content-month";
+import { useContentMonthOffset } from "@/features/data/queries";
 import { useState, useMemo, useEffect } from "react";
 import { FolderOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -39,8 +41,9 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
   const { stageAssignees } = useDefaultFlowWithDates();
   const { data: periodicStages = [] } = usePeriodicStages();
   const [saving, setSaving] = useState(false);
-  const now = new Date();
-  const [monthRef, setMonthRef] = useState(String(now.getMonth() + 1).padStart(2, "0"));
+  const contentOffset = useContentMonthOffset();
+  const autoMonth = () => String(automaticMonthDate(null, contentOffset).getMonth() + 1).padStart(2, "0");
+  const [monthRef, setMonthRef] = useState(autoMonth);
   const [clientId, setClientId] = useState("");
   const [stage, setStage] = useState(defaultStatus || "");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
@@ -55,9 +58,10 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
       setSelectedMemberIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setIsExtra(false);
       setCustomTitle("");
-      setMonthRef(String(new Date().getMonth() + 1).padStart(2, "0"));
+      setMonthRef(autoMonth());
     }
-  }, [open, defaultStatus, defaultAssigneeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultStatus, defaultAssigneeId, contentOffset]);
 
   // Auto-assign when stage + client change (skip for periodic stages)
   useEffect(() => {
@@ -124,6 +128,8 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
         is_extra_demand: isExtra,
         status_global: "backlog",
         periodic_stage_key: isPeriodic ? stage : null,
+        // "Mês referente" também define o mês do Magic Number e da pontuação, não só o nome da tarefa
+        reference_month: isExtra || isPeriodic ? null : pickToReferenceMonth(monthRef, automaticMonthDate(null, contentOffset)),
       });
 
       onClose();

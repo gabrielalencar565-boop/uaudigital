@@ -467,21 +467,23 @@ function DiaDSection() {
   const update = useUpdateAppSettings();
   const [day, setDay] = useState("27");
   const [label, setLabel] = useState("Magic Number");
+  const [ahead, setAhead] = useState("0");
   const loaded = useRef(false);
   useEffect(() => {
     if (!q.data || loaded.current) return;
     loaded.current = true;
     setDay(String(q.data.magic_number_day));
     setLabel(q.data.magic_number_label);
+    setAhead(String(q.data.content_month_offset ?? 0));
   }, [q.data]);
-  const dirty = !!q.data && (String(q.data.magic_number_day) !== day || q.data.magic_number_label !== label.trim());
+  const dirty = !!q.data && (String(q.data.magic_number_day) !== day || q.data.magic_number_label !== label.trim() || String(q.data.content_month_offset ?? 0) !== ahead);
 
   const save = () => {
     const n = Number(day);
     if (!Number.isInteger(n) || n < 1 || n > 28) { toast.error("O dia deve ser um número entre 1 e 28"); return; }
     if (!label.trim()) { toast.error("Informe um nome"); return; }
-    update.mutate({ magic_number_day: n, magic_number_label: label.trim() }, {
-      onSuccess: () => toast.success("Dia D salvo!"), onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+    update.mutate({ magic_number_day: n, magic_number_label: label.trim(), content_month_offset: Number(ahead) }, {
+      onSuccess: () => toast.success("Dia D e antecedência salvos!"), onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
     });
   };
 
@@ -499,6 +501,23 @@ function DiaDSection() {
           <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Nome</label>
           <Input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} className="h-10" />
         </div>
+      </div>
+      <div className="max-w-md space-y-1.5">
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Antecedência do conteúdo</label>
+        <select
+          value={ahead}
+          onChange={(e) => setAhead(e.target.value)}
+          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Antecedência do conteúdo"
+        >
+          <option value="0">Mesmo mês: o trabalho conta no mês do prazo</option>
+          <option value="1">1 mês adiantado: o trabalho de outubro conta em novembro</option>
+          <option value="2">2 meses adiantados: o trabalho de outubro conta em dezembro</option>
+          <option value="3">3 meses adiantados</option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Vale para as tarefas novas (planejamento, design, vídeo…): elas já nascem com o "mês do conteúdo" certo, que o Magic Number e a pontuação usam. Dá para ajustar uma tarefa específica (por exemplo, conteúdo de dezembro) dentro dela. Demandas extras e tarefas periódicas contam no mês do prazo.
+        </p>
       </div>
       <Button className="rounded-full" disabled={!dirty || update.isPending} onClick={save}>Salvar</Button>
     </div>

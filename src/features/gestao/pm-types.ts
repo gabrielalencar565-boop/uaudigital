@@ -29,6 +29,8 @@ export interface PmTask {
   posting_date: string | null;
   posting_time: string | null;
   caption: string | null;
+  /** mês do conteúdo (primeiro dia do mês); sem valor, vale o mês do prazo — ver lib/content-month */
+  reference_month?: string | null;
 }
 
 export interface PmSubtask {
