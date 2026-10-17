@@ -49,7 +49,8 @@ const STAGE_BADGE_BG: Record<string, string> = {
   pdf: "bg-indigo-500", agendamento: "bg-lime-500", entrega: "bg-emerald-500"
 };
 
-function getCleaningEmoji(categoryName: string) {
+function getCleaningEmoji(categoryName: string, chosen?: string | null) {
+  if (chosen) return chosen;
   const name = categoryName.toLowerCase();
   if (name.includes("varrer") || name.includes("vassoura") || name.includes("chão")) return "🧹";
   if (name.includes("pano") || name.includes("rodo") || name.includes("balde")) return "🪣";
@@ -1045,7 +1046,7 @@ export function DayViewPanel() {
                       const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
                       const [dueH, dueM] = dueTimeStr.split(":").map(Number);
                       const isOverdueCleaning = now.getHours() > dueH || (now.getHours() === dueH && now.getMinutes() >= dueM);
-                      const emoji = getCleaningEmoji(cat?.name ?? "");
+                      const emoji = getCleaningEmoji(cat?.name ?? "", cat?.emoji);
                       return (
                         <button
                           key={`cleaning-${schedule.id}`}
@@ -1102,7 +1103,7 @@ export function DayViewPanel() {
                     .filter((s) => s.user_id === g.user_id && completedScheduleIds.has(s.id))
                     .map((schedule) => {
                       const cat = cleaningCategoryById.get(schedule.category_id);
-                      const emoji = getCleaningEmoji(cat?.name ?? "");
+                      const emoji = getCleaningEmoji(cat?.name ?? "", cat?.emoji);
                       const dueTimeStr = schedule.due_time?.slice(0, 5) ?? "18:00";
                       return (
                         <button

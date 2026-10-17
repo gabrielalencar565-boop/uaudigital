@@ -34,6 +34,7 @@ import { usePmTags, useCreatePmTag } from "../hooks/use-pm-tags";
 import { fetchTaskPlan, saveTaskPlan } from "../hooks/use-cascades";
 import { pushPlan, stepKeyFor, type CascadePlan } from "../lib/cascade";
 import { extraOutcome } from "../lib/extra-rules";
+import { nextDueBase, nextDueKey } from "../lib/due-dates";
 import { monthLabel } from "../lib/content-month";
 import { ContentMonthPicker } from "./ContentMonthPicker";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
@@ -642,7 +643,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   const queryClient = useQueryClient();
   const [incompleteDialogItems, setIncompleteDialogItems] = useState<{ task: PmTask; missing: string[] }[] | null>(null);
   const incompleteThumbsQ = useTaskAttachmentsMap((incompleteDialogItems ?? []).map((i) => i.task.id));
-  const { flowConfig, transitionDates, stageAssignees, extraRules } = useDefaultFlowWithDates();
+  const { flowConfig, transitionDates, stageAssignees, extraRules, lateRule } = useDefaultFlowWithDates();
 
   const allAssigneeIds = [
     ...(task.assignee_id ? [task.assignee_id] : []),
@@ -963,7 +964,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           const newAssigneeKey = resolveAssigneeStageKey(completedStage, nextStage);
           const fixedAssignee = getFixedAssignee(stageAssignees, newAssigneeKey, task.client_id);
           const fixedWatchers_ = getFixedWatchers(stageAssignees, newAssigneeKey, task.client_id);
-          const nextDueDate = newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+          const nextDueDate = newDueDate ?? nextDueKey(snapshotDueDate, 1, lateRule);
 
           const nextStageLabel = stageLabel(nextStage);
           const currentStageLabel = stageLabel(completedStage);
@@ -1534,8 +1535,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             const dateConfigEd = transitionDates[task.stage_current];
             let newDueDateEd: string | undefined;
             if (typeof dateConfigEd === "number") {
-              const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
-              newDueDateEd = format(addDays(baseDate, dateConfigEd), "yyyy-MM-dd");
+              newDueDateEd = nextDueKey(task.due_date, dateConfigEd, lateRule);
             }
             const snapshotDueDate = task.due_date ?? format(new Date(), "yyyy-MM-dd");
             const allIds = [task.id, ...childTasks.map(c => c.id)];
@@ -1545,7 +1545,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
               const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
               monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
             }
-            const nextDueDate = newDueDateEd ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+            const nextDueDate = newDueDateEd ?? nextDueKey(snapshotDueDate, 1, lateRule);
 
             const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string }[] = [];
             if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video" });
@@ -1592,8 +1592,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     let newDueDate: string | undefined;
 
     if (typeof dateConfig === "number") {
-      const baseDate = task.due_date ? new Date(task.due_date + "T12:00:00") : new Date();
-      newDueDate = format(addDays(baseDate, dateConfig), "yyyy-MM-dd");
+      newDueDate = nextDueKey(task.due_date, dateConfig, lateRule);
     }
 
     // Revisão (Planejamento) aprovada → só agora distribui em Vídeo + Design.
@@ -1631,7 +1630,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             const raw = format(parseISO(task.due_date), "MMMM", { locale: ptBR });
             monthLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
           }
-          const nextDueDate = planned?.design ?? planned?.edicao_videos ?? newDueDate ?? format(addDays(new Date(snapshotDueDate + "T12:00:00"), 1), "yyyy-MM-dd");
+          const nextDueDate = planned?.design ?? planned?.edicao_videos ?? newDueDate ?? nextDueKey(snapshotDueDate, 1, lateRule);
 
           const splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate?: string }[] = [];
           if (hasVideo) splits.push({ stage: "edicao_videos", stageLabel: "Vídeo", children: videoChildren, postType: "video", dueDate: planned?.edicao_videos });
@@ -1682,7 +1681,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     // No existing task found — if dateConfig is "pick", show date picker
     if (dateConfig === "pick" && !planDue) {
       setPendingCompletedStage(completedStage);
-      setCompletionDate(task.due_date ?? format(new Date(), "yyyy-MM-dd"));
+      setCompletionDate(format(nextDueBase(task.due_date, lateRule), "yyyy-MM-dd"));
       setCompletionDateOpen(true);
       return;
     }

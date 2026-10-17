@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STAGE_CIRCLE_COLORS, STAGE_PALETTE, type FlowStageRow } from "../pm-constants";
 import { useFlowStages } from "../StageCatalogProvider";
 import { FLOW_TEMPLATES, type FlowTemplate } from "../flow-templates";
+import { LATE_RULES, normalizeLateRule, type LateRule } from "../lib/due-dates";
 import { EXTRA_FINAL_STAGE, EXTRA_OUTCOMES, defaultExtraOutcome, extraOutcome, type ExtraOutcome } from "../lib/extra-rules";
 import { useStageFlows, type StageFlow } from "./PmStageFlowConfig";
 import { useCargos } from "@/hooks/use-cargos";
@@ -267,6 +268,38 @@ function TemplateCard({ t, onUse, inUse }: { t: FlowTemplate; onUse: () => void;
   );
 }
 
+// Prazo da próxima etapa quando a anterior atrasou: salva na hora (é uma regra do fluxo, não faz parte do rascunho de etapas)
+function LateRuleControl({ flow }: { flow: StageFlow | undefined }) {
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  if (!flow) return null;
+  const rule = normalizeLateRule(flow.late_rule);
+  const change = async (next: LateRule) => {
+    if (next === rule) return;
+    setSaving(true);
+    const { error } = await sb.from("pm_stage_flows").update({ late_rule: next, updated_at: new Date().toISOString() }).eq("id", flow.id);
+    setSaving(false);
+    if (error) { toast.error(error.message || "Não foi possível salvar"); return; }
+    await qc.invalidateQueries({ queryKey: ["pm_stage_flows"] });
+    toast.success(next === "from_today" ? "Etapa atrasada: a próxima conta a partir de hoje" : "Etapa atrasada: a próxima segue o prazo planejado");
+  };
+  const current = LATE_RULES.find((r) => r.key === rule)!;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border/40 bg-card/30 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">Etapa concluída com atraso</p>
+        <p className="text-xs text-muted-foreground">{current.hint}</p>
+      </div>
+      <Select value={rule} onValueChange={(v) => void change(v as LateRule)} disabled={saving}>
+        <SelectTrigger aria-label="Prazo da próxima etapa quando a anterior atrasou" className="h-9 w-[230px] rounded-full border-border/30 bg-background/60 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{LATE_RULES.map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}</SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 export function FlowStudio() {
   const qc = useQueryClient();
   const stagesQ = useFlowStages();
@@ -461,6 +494,8 @@ export function FlowStudio() {
           <LayoutTemplate className="h-4 w-4" /> Modelos prontos
         </Button>
       </div>
+
+      <LateRuleControl flow={flow} />
 
       <div className="rounded-2xl border border-border/40 bg-card/30 p-3">
         <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

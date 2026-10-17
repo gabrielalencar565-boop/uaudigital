@@ -1,6 +1,7 @@
 import { addDays, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeLateRule } from "../lib/due-dates";
 
 const sb = supabase as any;
 
@@ -19,6 +20,8 @@ export interface StageFlow {
   stage_assignees?: StageAssignees;
   /** o que a demanda extra faz ao ser concluída em cada etapa (ver lib/extra-rules) */
   extra_rules?: Record<string, string>;
+  /** prazo da próxima etapa quando a anterior atrasou (ver lib/due-dates) */
+  late_rule?: string;
   is_default: boolean;
   created_by: string;
   created_at: string;
@@ -51,6 +54,7 @@ export function useDefaultFlowWithDates() {
     transitionDates: (defaultFlow?.transition_dates ?? {}) as Record<string, "pick" | number>,
     stageAssignees: (defaultFlow?.stage_assignees ?? {}) as StageAssignees,
     extraRules: (defaultFlow?.extra_rules ?? {}) as Record<string, string>,
+    lateRule: normalizeLateRule(defaultFlow?.late_rule),
   };
 }
 

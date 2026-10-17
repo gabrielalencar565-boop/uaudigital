@@ -20,14 +20,16 @@ export function useCalendarsForClient(clientId: string | null) {
   });
 }
 
-export function useCalendarsForCycle(cycleStart: string) {
+/** Calendários do ciclo cujo último dia é `cycleEnd`: o calendário é o que contém essa data, qualquer que seja a forma do ciclo (28→27 ou mês). */
+export function useCalendarsForCycle(cycleEnd: string) {
   return useQuery({
-    queryKey: ["publication_calendars_cycle", cycleStart],
+    queryKey: ["publication_calendars_cycle", cycleEnd],
     queryFn: async (): Promise<Pick<PublicationCalendar, "id" | "client_id" | "status">[]> => {
       const { data, error } = await sb
         .from("publication_calendars")
         .select("id, client_id, status")
-        .eq("cycle_start", cycleStart);
+        .lte("cycle_start", cycleEnd)
+        .gte("cycle_end", cycleEnd);
       if (error) throw error;
       return data ?? [];
     },

@@ -1,3 +1,4 @@
+import { MonthYearSelect } from "@/components/MonthYearSelect";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
@@ -69,15 +70,16 @@ export function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-// O Cronograma é por mês de calendário (1 a último dia). Os três ainda recebem o "dia" do Dia D só para não mudar quem chama, mas ele não é usado.
-export function anchorForDate(d: Date, _day?: number) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+// O ciclo do Cronograma segue o Dia D da agência: com Dia D = 27, o ciclo de outubro vai de 28/09 a 27/10, e do dia 28 em diante é o calendário seguinte.
+export function anchorForDate(d: Date, day: number) {
+  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
-export function cycleEnd(anchor: Date, _day?: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+export function cycleEnd(anchor: Date, day: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
 }
-export function cycleStart(anchor: Date, _day?: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+export function cycleStart(anchor: Date, day: number) {
+  const end = cycleEnd(anchor, day);
+  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
@@ -342,7 +344,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     if (!focusRequest) return;
     const cycleStartDate = parseISO(focusRequest.cycleStart);
     setClientId(focusRequest.clientId);
-    setCursor(new Date(cycleStartDate.getFullYear(), cycleStartDate.getMonth(), 1));
+    setCursor(anchorForDate(addDays(cycleStartDate, 15), magicDay));
     setSelectedId(focusRequest.publicationId ?? null);
     onFocusHandled?.();
   }, [focusRequest, onFocusHandled]);
@@ -395,14 +397,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   }, [sortedClients, stageAssignees, teamMemberById]);
   const calendarsQ = useCalendarsForClient(clientId);
   const cycleStartKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
-  const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start === cycleStartKey) ?? null, [calendarsQ.data, cycleStartKey]);
+  const cycleEndKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
+  const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start <= cycleEndKey && c.cycle_end >= cycleEndKey) ?? null, [calendarsQ.data, cycleEndKey]);
 
   // "Publicações sem data" — cross-cycle (see useUnscheduledPublicationsForClient).
   const unscheduledPubsQ = useUnscheduledPublicationsForClient(clientId);
   const setPublicationDate = useSetPublicationDate();
 
   // Which clients have a calendar in the current ciclo, for the sidebar dots.
-  const cycleCalendarsQ = useCalendarsForCycle(cycleStartKey);
+  const cycleCalendarsQ = useCalendarsForCycle(cycleEndKey);
   const calendarByClientId = useMemo(() => {
     const map = new Map<string, { id: string; status: string }>();
     for (const c of cycleCalendarsQ.data ?? []) map.set(c.client_id, c);
@@ -880,21 +883,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   };
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
-  const cycleMonthRaw = format(cycleEnd(cursor, magicDay), "MMMM", { locale: ptBR });
-  const cycleMonthLabel = cycleMonthRaw.charAt(0).toUpperCase() + cycleMonthRaw.slice(1);
-  const cycleRangeLabel = `${format(cycleStart(cursor, magicDay), "dd/MM")} a ${format(cycleEnd(cursor, magicDay), "dd/MM")}`;
 
   const cycleNav = (
-    <div className={cn("flex w-fit items-center gap-1 p-1", !fixedClientId && "rounded-2xl border border-border/30 bg-muted/20 p-2")}>
-      <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </button>
-      <span className="min-w-[10.5rem] truncate text-center text-xs font-medium">
-        {cycleMonthLabel} ({cycleRangeLabel})
-      </span>
-      <button type="button" onClick={() => setCursor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-muted">
-        <ChevronRight className="h-3.5 w-3.5" />
-      </button>
+    <div className={cn("flex w-fit items-center gap-1", !fixedClientId && "rounded-2xl border border-border/30 bg-muted/20 p-2")}>
+      <MonthYearSelect value={cursor} onChange={setCursor} />
     </div>
   );
 
@@ -1417,7 +1409,6 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             </div>
           </DropZone>
 
-          {calendar && (
             <>
               {view === "calendario" && isMobile ? (
                 // Seven columns are too narrow for a post on a phone: one row per day instead, posts side by side.
@@ -1568,24 +1559,13 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                 </div>
               )}
             </>
-          )}
         </DndContext>
       )}
 
-      {!calendar && (
-        <div className="space-y-3 rounded-2xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
-          <p>Nenhum calendário para esse cliente neste ciclo ainda — ele é criado automaticamente assim que uma tarefa chegar na etapa "{stageLabel("pdf")}". Dá pra escolher uma data pra uma publicação sem data (acima) que ele é criado na hora.</p>
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 rounded-full"
-            onClick={() => {
-              setQuickAddDate(null);
-              setQuickAddOpen(true);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" /> Nova publicação
-          </Button>
-        </div>
+      {!calendar && view !== "feed" && (
+        <p className="text-center text-xs text-muted-foreground">
+          Ainda não há publicações neste ciclo. O calendário é criado na hora quando você solta um post em um dia ou usa o + de um dia.
+        </p>
       )}
 
       {calendar && view === "feed" && (

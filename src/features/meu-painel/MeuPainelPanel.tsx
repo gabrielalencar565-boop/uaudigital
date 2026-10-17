@@ -233,7 +233,7 @@ export function MeuPainelPanel() {
       return {
         id: `cleaning:${schedule.id}`,
         clientName: cat?.name ?? "Limpeza",
-        stageLabel: "🧹 Limpeza",
+        stageLabel: `${cat?.emoji ?? "🧹"} Limpeza`,
         stage: "captacao" as any,
         title: null,
         dueDate: todayKey,

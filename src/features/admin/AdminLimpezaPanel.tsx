@@ -7,11 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { CleaningEmojiPicker } from "@/features/cleaning/components/CleaningEmojiPicker";
+import { CleaningListImport } from "@/features/cleaning/components/CleaningListImport";
 import { useTeamMembers } from "@/features/data/queries";
 import {
   useCleaningCategories,
   useCreateCleaningCategory,
   useDeleteCleaningCategory,
+  useSetCleaningCategoryEmoji,
   useCleaningSchedules,
   useCreateCleaningSchedule,
   useDeleteCleaningSchedule,
@@ -26,6 +29,7 @@ export function AdminLimpezaPanel() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTime, setSelectedTime] = useState("18:00");
 
+  const setCategoryEmoji = useSetCleaningCategoryEmoji();
   const categoriesQ = useCleaningCategories();
   const createCategory = useCreateCleaningCategory();
   const deleteCategory = useDeleteCleaningCategory();
@@ -150,7 +154,8 @@ export function AdminLimpezaPanel() {
           </div>
           <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
-              <Badge key={c.id} variant="secondary" className="gap-1 pr-1">
+              <Badge key={c.id} variant="secondary" className="gap-1 pl-1.5 pr-1">
+                <CleaningEmojiPicker value={c.emoji} disabled={setCategoryEmoji.isPending} onChange={(emoji) => setCategoryEmoji.mutate({ id: c.id, emoji }, { onError: () => toast.error("Não consegui salvar o emoji") })} />
                 {c.name}
                 <button
                   onClick={() => deleteCategory.mutate(c.id)}
@@ -166,6 +171,8 @@ export function AdminLimpezaPanel() {
           </div>
         </CardContent>
       </Card>
+
+      <CleaningListImport members={activeMembers} />
 
       {/* Escala Semanal */}
       <Card className="opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0.15s" }}>
@@ -212,7 +219,7 @@ export function AdminLimpezaPanel() {
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.emoji ? `${c.emoji} ` : ""}{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -260,7 +267,7 @@ export function AdminLimpezaPanel() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <span className="text-muted-foreground">→ {cat?.name ?? "—"}</span>
+                              <span className="text-muted-foreground">→ {cat?.emoji ? `${cat.emoji} ` : ""}{cat?.name ?? "—"}</span>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-500 hover:text-green-400" onClick={saveEdit} disabled={updateSchedule.isPending}>
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
@@ -273,7 +280,7 @@ export function AdminLimpezaPanel() {
                               <span>
                                 <span className="font-medium">{member?.display_name ?? "—"}</span>
                                 {" → "}
-                                <span className="text-muted-foreground">{cat?.name ?? "—"}</span>
+                                <span className="text-muted-foreground">{cat?.emoji ? `${cat.emoji} ` : ""}{cat?.name ?? "—"}</span>
                                 {" • "}
                                 <span className="text-muted-foreground">{s.due_time?.slice(0, 5) ?? "18:00"}</span>
                               </span>
