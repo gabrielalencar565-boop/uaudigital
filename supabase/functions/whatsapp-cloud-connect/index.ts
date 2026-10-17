@@ -196,10 +196,16 @@ Deno.serve(async (req) => {
       if (b64.length > 9_000_000) return json({ error: "O áudio ficou grande demais. Grave um mais curto." }, 413);
       const to = digits.length <= 11 ? `55${digits}` : digits;
       const label = `🎤 Áudio (${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")})`;
-      const saveMessage = (messageId: string | null, provider: string) => admin.from("whatsapp_messages").insert({
-        contact_phone: to, direction: "out", body: label, media_type: "audio", status: "sent", source_type: "manual", agency_id: agencyId,
-        sent_by_user_id: userId, zapi_message_id: messageId, raw: { provider, seconds },
-      });
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      // guarda o áudio num bucket privado (pasta da agência) para a equipe poder ouvir de novo; a tela pede um link temporário
+      const saveMessage = async (messageId: string | null, provider: string) => {
+        const path = `${agencyId}/${crypto.randomUUID()}.mp3`;
+        const stored = await admin.storage.from("crm-chat-audio").upload(path, bytes, { contentType: "audio/mpeg" });
+        await admin.from("whatsapp_messages").insert({
+          contact_phone: to, direction: "out", body: label, media_type: "audio", media_url: stored.error ? null : `storage:crm-chat-audio/${path}`,
+          status: "sent", source_type: "manual", agency_id: agencyId, sent_by_user_id: userId, zapi_message_id: messageId, raw: { provider, seconds },
+        });
+      };
 
       const { data: zc } = await admin.from("whatsapp_zapi_connections").select("instance_id, instance_token, client_token").eq("agency_id", agencyId).maybeSingle();
       if (zc) {
@@ -211,7 +217,6 @@ Deno.serve(async (req) => {
 
       const { data: conn } = await admin.from("whatsapp_cloud_connections").select("phone_number_id, access_token").eq("agency_id", agencyId).maybeSingle();
       if (!conn) return json({ error: "O WhatsApp ainda não está conectado." }, 409);
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const form = new FormData();
       form.append("messaging_product", "whatsapp");
       form.append("type", "audio/mpeg");
