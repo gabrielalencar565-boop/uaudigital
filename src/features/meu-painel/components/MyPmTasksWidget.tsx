@@ -12,6 +12,7 @@ import { useSession } from "@/hooks/use-session";
 import { usePmTasks, useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
 import { getStageCircleColor, stageLabel } from "@/features/gestao/pm-constants";
 import type { PmTask } from "@/features/gestao/pm-types";
+import { CleaningTurnBanner } from "./CleaningTurnBanner";
 
 const PRIORITY_FLAG: Record<string, string> = {
   urgente: "text-destructive",
@@ -395,6 +396,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             <CardTitle className="text-base font-semibold">Minhas tarefas</CardTitle>
           </div>
         </CardHeader>
+        <CleaningTurnBanner />
         <CardContent className="px-5 pb-5">
           <p className="text-sm text-muted-foreground">Nenhuma tarefa atribuída no momento.</p>
         </CardContent>
@@ -504,6 +506,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             </Tabs>
           </div>
         </CardHeader>
+        <CleaningTurnBanner />
         <CardContent className="p-0">
         {/* Em atraso */}
         {groups.overdue.length > 0 && (

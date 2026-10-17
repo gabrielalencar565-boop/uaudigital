@@ -1,8 +1,9 @@
+import { MonthYearSelect } from "@/components/MonthYearSelect";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, MessageSquareWarning } from "lucide-react";
+import { CalendarRange, CheckCircle2, MessageSquareWarning } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function ClientCronogramaWidget() {
   const start = cycleStart(cursor, magicDay);
   const end = cycleEnd(cursor, magicDay);
   const cycleKey = format(start, "yyyy-MM-dd");
+  const endKey = format(end, "yyyy-MM-dd");
   const monthRaw = format(end, "MMMM", { locale: ptBR });
   const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1);
   const isCurrent = format(anchorForDate(new Date(), magicDay), "yyyy-MM") === format(cursor, "yyyy-MM");
@@ -59,8 +61,9 @@ export function ClientCronogramaWidget() {
     queryFn: async (): Promise<Pub[]> => {
       const { data, error } = await sb
         .from("calendar_publications")
-        .select("id, task_id, status, client_feedback, client_responded_at, publication_calendars!inner(client_id, cycle_start), pm_tasks!inner(title)")
-        .eq("publication_calendars.cycle_start", cycleKey)
+        .select("id, task_id, status, client_feedback, client_responded_at, publication_calendars!inner(client_id, cycle_start, cycle_end), pm_tasks!inner(title)")
+        .lte("publication_calendars.cycle_start", endKey)
+        .gte("publication_calendars.cycle_end", endKey)
         .is("deleted_at", null)
         .in("status", ["aprovada", "alteracao_solicitada", "aguardando_aprovacao"])
         .limit(1000);
@@ -130,11 +133,6 @@ export function ClientCronogramaWidget() {
   const clientOf = (p: Pub) => clientsQ.data?.get(p.publication_calendars?.client_id ?? "") ?? { name: "Cliente", logo: null };
   const shown = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);
 
-  const shiftMonth = (delta: number) => {
-    setCursor((a) => new Date(a.getFullYear(), a.getMonth() + delta, 1));
-    setExpanded(false);
-  };
-
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="space-y-0 px-5 pb-3 pt-5">
@@ -162,18 +160,7 @@ export function ClientCronogramaWidget() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
-          <div className="flex items-center gap-1">
-            <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[8.5rem] text-center">
-              <span className="block text-sm font-semibold leading-tight">{monthLabel}</span>
-              <span className="block text-[10px] text-muted-foreground">{format(start, "dd/MM")} a {format(end, "dd/MM")}</span>
-            </span>
-            <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <MonthYearSelect value={cursor} onChange={(d) => { setCursor(d); setExpanded(false); }} />
           {!isCurrent && (
             <button type="button" onClick={() => { setCursor(anchorForDate(new Date(), magicDay)); setExpanded(false); }} className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
               Mês atual
