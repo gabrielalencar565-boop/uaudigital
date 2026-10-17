@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addDays, attentionCount, attentionGroups, brl, computeOverview, diffDays, isStale, leadStatus, noFirstContact, nextActivity, shortDate, todayBR, waLink,
+  addDays, agoPt, attentionCount, attentionGroups, brl, computeOverview, diffDays, isStale, leadStatus, noFirstContact, nextActivity, shortDate, todayBR, waLink,
   type Activity, type ComercialClient, type Lead, type Stage,
 } from "./rules";
 
@@ -132,5 +132,17 @@ describe("o que fazer agora", () => {
   });
   it("não lista grupo vazio", () => {
     expect(attentionGroups([], stages, [], [], [], new Set(), TODAY, NOW)).toEqual([]);
+  });
+});
+
+describe("agoPt", () => {
+  const now = new Date("2026-10-17T15:00:00Z");
+  it("diz há quanto tempo foi, em português", () => {
+    expect(agoPt("2026-10-17T14:59:40Z", now)).toBe("agora");
+    expect(agoPt("2026-10-17T14:20:00Z", now)).toBe("há 40 min");
+    expect(agoPt("2026-10-17T12:00:00Z", now)).toBe("há 3 h");
+    expect(agoPt("2026-10-16T12:00:00Z", now)).toBe("ontem");
+    expect(agoPt("2026-10-12T15:00:00Z", now)).toBe("há 5 dias");
+    expect(agoPt(null, now)).toBeUndefined();
   });
 });
