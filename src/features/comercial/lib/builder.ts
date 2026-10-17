@@ -5,7 +5,7 @@ import { SERVICES } from "./rules";
 // ───────────── tipos ─────────────
 
 export type StepType = "msg" | "ask" | "cond" | "wait" | "tag" | "deal" | "task" | "meet" | "form" | "human";
-export type TriggerType = "new" | "msg_in" | "form" | "stage" | "won" | "idle" | "schedule";
+export type TriggerType = "new" | "msg_in" | "msg_back" | "form" | "stage" | "won" | "idle" | "schedule";
 
 export interface Step {
   id: string;
@@ -36,6 +36,7 @@ export interface Trigger {
   stage?: string;
   days?: number;
   every?: string;
+  hours?: number;
 }
 
 export type FieldType = "text" | "long" | "phone" | "email" | "number" | "choice" | "multi" | "date" | "scale" | "file" | "consent";
@@ -114,6 +115,7 @@ export const BLOCKS: Record<StepType, { name: string; group: "msg" | "logic" | "
 export const TRIGGERS: Record<TriggerType, string> = {
   new: "Novo lead cadastrado",
   msg_in: "Mensagem de contato novo no WhatsApp",
+  msg_back: "Lead que já existe manda nova mensagem",
   form: "Formulário enviado",
   stage: "Negócio entra na etapa",
   won: "Negócio ganho",
@@ -265,6 +267,9 @@ export const AUTO_TPL: Record<string, AutoTemplate> = {
     S("msg", { text: "Oi! Aqui é da UAU Digital. Que bom ter você por aqui 😊" }),
     S("ask", { text: "Qual serviço você procura?", options: ["Redes sociais", "Tráfego pago", "Posicionamento de marca"], saveTo: "services" }),
     S("tag", { tag: "Novo contato WhatsApp" }), S("human", { owner: "lead" })] },
+  retorno: { name: "Retorno de lead", desc: "Quem já tinha falado escreve de novo → recebe uma resposta → alerta a equipe.", trigger: () => ({ type: "msg_back", hours: 24 }), steps: () => [
+    S("msg", { text: "Oi, {nome}! Que bom te ver de novo por aqui 😊 Em que posso te ajudar hoje?" }),
+    S("task", { ttype: "Follow-up", title: "Responder lead que voltou a falar", days: 0, owner: "lead" }), S("human", { owner: "lead" })] },
   qualif: { name: "Qualificação comercial", desc: "Pergunta o interesse, segue o caminho certo e atualiza o CRM.", trigger: () => ({ type: "msg_in" }), steps: (c) => [
     S("msg", { text: "Oi, {nome}! Aqui é da UAU Digital. Vou te fazer duas perguntas rápidas pra entender o que você precisa." }),
     S("ask", { text: "Qual serviço você procura?", options: ["Redes sociais", "Tráfego pago"], saveTo: "services" }),

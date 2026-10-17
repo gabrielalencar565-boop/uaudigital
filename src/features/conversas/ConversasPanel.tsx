@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessagesSquare, Send, Trash2 } from "lucide-react";
+import { Search, RefreshCw, MessagesSquare, Send, Trash2, Mic, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { MAX_AUDIO_SECONDS, blobToBase64, clock, startRecording, type Recorder } from "./lib/record-audio";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -89,10 +90,13 @@ interface ConversasPanelProps {
   onConnect?: () => void;
   /** envia a resposta; rejeita com a mensagem de erro (ex.: fora das 24h) */
   onSend?: (phone: string, text: string) => Promise<unknown>;
+  /** envia um áudio gravado (MP3 em base64); rejeita com a mensagem de erro */
+  onSendAudio?: (phone: string, audioBase64: string, seconds: number) => Promise<unknown>;
 }
 
-export function ConversasPanel({ connected = false, onConnect, onSend }: ConversasPanelProps) {
+export function ConversasPanel({ connected = false, onConnect, onSend, onSendAudio }: ConversasPanelProps) {
   const qc = useQueryClient();
+  const [recording, setRecording] = useState<{ rec: Recorder; seconds: number } | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -207,6 +211,39 @@ export function ConversasPanel({ connected = false, onConnect, onSend }: Convers
       setSending(false);
     }
   };
+
+  // gravação de áudio: o contador roda enquanto grava; ao enviar, converte para MP3 e manda
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => setRecording((r) => (r ? { ...r, seconds: r.seconds + 1 } : r)), 1000);
+    return () => clearInterval(t);
+  }, [recording?.rec]);
+
+  const startAudio = async () => {
+    try { setRecording({ rec: await startRecording(), seconds: 0 }); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Não foi possível gravar."); }
+  };
+  const cancelAudio = () => { recording?.rec.cancel(); setRecording(null); };
+  const sendAudio = async () => {
+    if (!recording || !activeContact || !onSendAudio || sending) return;
+    const { rec } = recording;
+    setSending(true);
+    try {
+      const { mp3, seconds } = await rec.finish();
+      setRecording(null);
+      if (mp3.size > 6_000_000) throw new Error("O áudio ficou grande demais. Grave um mais curto.");
+      await onSendAudio(activeContact.phone_e164, await blobToBase64(mp3), seconds);
+      qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
+      qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+    } catch (e) {
+      setRecording(null);
+      toast.error(e instanceof Error ? e.message : "Não foi possível enviar o áudio.");
+    } finally {
+      setSending(false);
+    }
+  };
+  useEffect(() => { if (recording && recording.seconds >= MAX_AUDIO_SECONDS) void sendAudio(); }, [recording?.seconds]);
+  useEffect(() => () => { recording?.rec.cancel(); }, []);
 
   const trashButton = (title: string) => (
     <button type="button" className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition text-muted-foreground hover:text-destructive p-1 rounded shrink-0" title={title}>
@@ -353,7 +390,10 @@ export function ConversasPanel({ connected = false, onConnect, onSend }: Convers
                         {own && del}
                         <div className={cn("max-w-[75%] rounded-2xl px-3 py-2 shadow-sm", own ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm")}>
                           {m.body && <div className="whitespace-pre-wrap text-sm leading-snug">{m.body}</div>}
-                          {m.media_url && (
+                          {m.media_url && m.media_type === "audio" && (
+                            <audio controls preload="none" src={m.media_url} className="mt-1 h-9 w-full max-w-[260px]" />
+                          )}
+                          {m.media_url && m.media_type !== "audio" && (
                             <a href={m.media_url} target="_blank" rel="noreferrer" className="block text-xs underline mt-1 break-all">[{m.media_type ?? "anexo"}] abrir mídia</a>
                           )}
                           <div className={cn("text-[10px] mt-1 flex items-center gap-1", own ? "text-primary-foreground/70 justify-end" : "text-muted-foreground")}>
@@ -368,7 +408,15 @@ export function ConversasPanel({ connected = false, onConnect, onSend }: Convers
                 )}
               </div>
 
-              {connected && onSend ? (
+              {connected && onSend && recording ? (
+                <div className="border-t border-border p-3 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+                  <span className="text-sm font-medium tabular-nums">{clock(recording.seconds)}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Gravando… fale perto do microfone</span>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={cancelAudio} disabled={sending}><X className="h-4 w-4" /> Cancelar</Button>
+                  <Button type="button" size="sm" className="gap-1.5" onClick={() => void sendAudio()} disabled={sending}><Send className="h-4 w-4" /> Enviar áudio</Button>
+                </div>
+              ) : connected && onSend ? (
                 <div className="border-t border-border p-3 flex items-end gap-2">
                   <textarea
                     rows={2}
@@ -378,6 +426,9 @@ export function ConversasPanel({ connected = false, onConnect, onSend }: Convers
                     placeholder="Escreva a resposta… (Enter envia, Shift+Enter quebra a linha)"
                     className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
                   />
+                  {onSendAudio && !draft.trim() && (
+                    <Button type="button" variant="outline" size="icon" title="Gravar áudio" aria-label="Gravar áudio" disabled={sending} onClick={() => void startAudio()}><Mic className="h-4 w-4" /></Button>
+                  )}
                   <Button onClick={() => void send()} disabled={sending || !draft.trim()} className="gap-1.5"><Send className="h-4 w-4" /> Enviar</Button>
                 </div>
               ) : (
