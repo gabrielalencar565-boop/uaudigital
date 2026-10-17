@@ -194,6 +194,12 @@ export function AutomacaoEditor({ id, onBack, onOpen }: { id: string; onBack: ()
               <p className="rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">Gatilho por data ainda não executa sozinho. Dá para montar e testar o fluxo, mas ele não dispara no CRM por enquanto.</p>
             </>
           )}
+          {t.type === "msg_back" && (
+            <>
+              <Lab label="Depois de quantas horas sem falar"><Input type="number" min={1} value={t.hours ?? 24} onChange={(e) => setTrigger({ hours: Math.max(1, Number(e.target.value) || 24) })} /></Lab>
+              <p className="rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">Dispara quando alguém que já é lead escreve de novo no WhatsApp, depois de ficar esse tempo sem falar. Não repete enquanto essa automação ainda estiver rodando ou esperando para o mesmo lead. Depende do WhatsApp estar conectado.</p>
+            </>
+          )}
           {t.type === "msg_in" && (
             <p className="rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">Dispara quando um contato novo chama no WhatsApp e vira lead no funil. Depende do WhatsApp estar conectado.</p>
           )}

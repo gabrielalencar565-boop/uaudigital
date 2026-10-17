@@ -1016,12 +1016,12 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-40 p-2"
+                      className="flex max-h-[calc(var(--radix-popover-content-available-height,100vh)-8px)] w-40 flex-col p-2"
                       align="start"
                       side="bottom"
                       avoidCollisions={false}
                     >
-                      <div className="mb-2 border-b pb-2">
+                      <div className="mb-2 shrink-0 border-b pb-2">
                         <input
                           type="time"
                           value={publication.publish_time?.slice(0, 5) ?? ""}
@@ -1034,7 +1034,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                           className="h-9 w-full rounded-lg border border-border/50 bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                         />
                       </div>
-                      <div className="mb-2 grid grid-cols-2 gap-1.5 border-b pb-2">
+                      <div className="mb-2 grid shrink-0 grid-cols-2 gap-1.5 border-b pb-2">
                         <button
                           type="button"
                           onClick={() => pickTime("12:00")}
@@ -1062,7 +1062,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </div>
                       <div
                         ref={timeListRef}
-                        className="flex max-h-[240px] flex-col gap-1 overflow-y-auto"
+                        className="flex min-h-0 max-h-[240px] flex-col gap-1 overflow-y-auto"
                         onWheel={(e) => { e.currentTarget.scrollTop += e.deltaY; }}
                       >
                         {TIME_SLOTS.map((t) => (

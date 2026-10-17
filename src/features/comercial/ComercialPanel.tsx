@@ -14,7 +14,7 @@ import {
   useActivities, useClientTasks, useComercialClients, useContactedLeadIds, useLeads, useStages, useTeam, useUnreadChats, useUpdateLead,
 } from "./hooks/use-comercial";
 import { attentionCount, attentionGroups, diffDays, isOpenStage, nextActivity, todayBR, type Lead } from "./lib/rules";
-import { sendWhatsApp, useCloudStatus } from "./hooks/use-whatsapp-cloud";
+import { sendWhatsApp, sendWhatsAppAudio, useCloudStatus, useZapiStatus } from "./hooks/use-whatsapp-cloud";
 import { Atividades } from "./views/Atividades";
 import { Biblioteca } from "./views/Biblioteca";
 import { Automacoes } from "./views/Automacoes";
@@ -70,6 +70,7 @@ export function ComercialPanel() {
   const contactedQ = useContactedLeadIds();
   const unreadQ = useUnreadChats();
   const cloudQ = useCloudStatus();
+  const zapiQ = useZapiStatus();
   const updateLead = useUpdateLead();
 
   const stages = stagesQ.data ?? [];
@@ -158,8 +159,8 @@ export function ComercialPanel() {
       case "funil": return <Funil />;
       case "leads": return <Leads />;
       case "acts": return <Atividades />;
-      case "chat": return <ConversasPanel connected={!!cloudQ.data?.connected} onConnect={() => ctx.goto("cfg")} onSend={sendWhatsApp} />;
-      case "chat_wa": return <ConversasPanel connected={!!cloudQ.data?.connected} onConnect={() => ctx.goto("cfg")} onSend={sendWhatsApp} />;
+      case "chat": return <ConversasPanel connected={!!cloudQ.data?.connected || !!zapiQ.data?.connected} onConnect={() => ctx.goto("cfg")} onSend={sendWhatsApp} onSendAudio={sendWhatsAppAudio} />;
+      case "chat_wa": return <ConversasPanel connected={!!cloudQ.data?.connected || !!zapiQ.data?.connected} onConnect={() => ctx.goto("cfg")} onSend={sendWhatsApp} onSendAudio={sendWhatsAppAudio} />;
       case "chat_ig": return <EmBreve title="Instagram Direct" icon={Instagram}>As mensagens do Direct vão chegar aqui junto com as do WhatsApp, cada uma no lead certo. Depende da conexão com o Instagram Messaging.</EmBreve>;
       case "chat_em": return <EmBreve title="E-mail" icon={Mail}>A caixa de entrada de e-mail por lead entra depois de escolhermos o provedor de envio e recebimento.</EmBreve>;
       case "autos": return <Automacoes />;

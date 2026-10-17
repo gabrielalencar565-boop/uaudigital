@@ -10,9 +10,8 @@ import { cn } from "@/lib/utils";
 import { useComercial } from "../ComercialContext";
 import { useCreateStage, useDeleteStage, useSaveStage, useSwapStages } from "../hooks/use-comercial";
 import type { Stage } from "../lib/rules";
-import { initials } from "../lib/rules";
 import { CanaisConectados } from "../components/CanaisConectados";
-import { OwnerAvatar, PageHead, Panel } from "../components/ui-bits";
+import { PageHead, Panel } from "../components/ui-bits";
 
 function StageRow({ stage, index, openStages, count, onDelete }: { stage: Stage; index: number; openStages: Stage[]; count: number; onDelete: () => void }) {
   const save = useSaveStage();
@@ -50,7 +49,7 @@ function StageRow({ stage, index, openStages, count, onDelete }: { stage: Stage;
 }
 
 export function Configuracoes() {
-  const { stages, leads, team } = useComercial();
+  const { stages, leads } = useComercial();
   const create = useCreateStage();
   const del = useDeleteStage();
   const [newName, setNewName] = useState("");
@@ -89,19 +88,6 @@ export function Configuracoes() {
         </Panel>
 
         <div className="space-y-4">
-          <Panel title="Equipe">
-            <p className="mb-2 text-xs text-muted-foreground">A equipe do CRM é a mesma do Fluxo: quem está ativo aparece para ser responsável por leads e atividades. Para incluir ou mudar alguém, use Configurações → Equipe.</p>
-            <ul className="divide-y divide-border/30">
-              {team.map((m) => (
-                <li key={m.user_id} className="flex items-center gap-2.5 py-2">
-                  <OwnerAvatar member={m} size="h-7 w-7" />
-                  <span className="min-w-0 flex-1 truncate text-sm">{m.display_name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{m.role_title || initials(m.display_name)}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
           <CanaisConectados />
         </div>
       </div>

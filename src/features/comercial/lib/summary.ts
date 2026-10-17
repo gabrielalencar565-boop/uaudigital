@@ -16,6 +16,7 @@ export function triggerText(t: Trigger, ctx: SummaryCtx): string {
   const base = TRIGGERS[t.type];
   if (t.type === "form") return `${base}: ${ctx.forms.find((f) => f.id === t.formId)?.name ?? "qualquer formulário"}`;
   if (t.type === "stage") return `${base}: ${ctx.stages.find((s) => s.id === t.stage)?.name ?? "escolher etapa"}`;
+  if (t.type === "msg_back") return `Lead volta a falar depois de ${t.hours || 24}h sem contato`;
   if (t.type === "idle") return `Negócio parado há ${t.days || 7} dias`;
   if (t.type === "schedule") return `${base}: ${t.every || "definir"}`;
   return base;

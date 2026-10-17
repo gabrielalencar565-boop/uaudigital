@@ -86,7 +86,7 @@ describe("modelos prontos", () => {
   };
   it.each(Object.entries(AUTO_TPL))("automação %s tem blocos válidos e gatilho conhecido", (_k, t) => {
     check(t.steps(ctx));
-    expect(["new", "msg_in", "form", "stage", "won", "idle", "schedule"]).toContain(t.trigger(ctx).type);
+    expect(["new", "msg_in", "msg_back", "form", "stage", "won", "idle", "schedule"]).toContain(t.trigger(ctx).type);
   });
   it("os modelos que dependem de etapa usam o id da etapa da agência", () => {
     expect(AUTO_TPL.follow.trigger(ctx).stage).toBe("id-Reunião feita");
