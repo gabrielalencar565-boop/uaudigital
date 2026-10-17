@@ -23,7 +23,8 @@ All colors MUST be HSL.
       "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
       "Noto Color Emoji";
 
-    --background: 210 40% 98.0392%;
+    /* fundo cinza-claro: os cartões brancos se destacam dele (antes 210 40% 98%, quase branco, e os blocos se misturavam) */
+    --background: 220 14% 94.5%;
     --foreground: 265 4% 12.9%;
 
     --card: 0 0% 100%;
@@ -78,8 +79,8 @@ All colors MUST be HSL.
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 256 1.3% 92.9%;
-    --input: 256 1.3% 92.9%;
+    --border: 220 10% 88%;
+    --input: 220 10% 88%;
     --ring: 257 4% 70.4%;
 
     --radius: 0.75rem;
