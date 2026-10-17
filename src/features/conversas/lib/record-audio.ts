@@ -3,6 +3,8 @@ import { Mp3Encoder } from "@breezystack/lamejs";
 export const MAX_AUDIO_SECONDS = 300;
 
 export interface Recorder {
+  /** Volume atual do microfone, de 0 a 1 (para desenhar as ondinhas enquanto grava). */
+  level: () => number;
   /** Para a gravação e devolve o áudio já convertido para MP3 (o formato que o WhatsApp aceita em todos os navegadores). */
   finish: () => Promise<{ mp3: Blob; seconds: number }>;
   cancel: () => void;
@@ -21,9 +23,21 @@ export async function startRecording(): Promise<Recorder> {
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   const startedAt = Date.now();
   rec.start(250);
-  const release = () => stream.getTracks().forEach((t) => t.stop());
+  // mede o volume para desenhar as ondinhas da gravação
+  const meterCtx = new AudioContext();
+  const analyser = meterCtx.createAnalyser();
+  analyser.fftSize = 512;
+  meterCtx.createMediaStreamSource(stream).connect(analyser);
+  const wave = new Uint8Array(analyser.fftSize);
+  const release = () => { stream.getTracks().forEach((t) => t.stop()); void meterCtx.close().catch(() => undefined); };
 
   return {
+    level: () => {
+      analyser.getByteTimeDomainData(wave);
+      let peak = 0;
+      for (let i = 0; i < wave.length; i++) peak = Math.max(peak, Math.abs(wave[i] - 128));
+      return Math.min(1, (peak / 128) * 2.2);
+    },
     cancel: () => { try { rec.stop(); } catch { /* já parado */ } release(); },
     finish: () => new Promise((resolve, reject) => {
       rec.onstop = async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessagesSquare, Send, Trash2, Mic, X } from "lucide-react";
+import { Search, RefreshCw, MessagesSquare, Send, Trash2, Mic, X, Check, CheckCheck, AlertCircle, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +84,34 @@ function phoneKey(phone: string | null | undefined) {
   return digits.slice(-10);
 }
 
+/** Status da mensagem enviada, no estilo do WhatsApp: ✓ enviada, ✓✓ entregue, ✓✓ azul lida, ! falhou. */
+function Ticks({ status }: { status: string }) {
+  const base = "h-3.5 w-3.5 shrink-0";
+  if (status === "failed") return <span className="inline-flex items-center gap-0.5 text-red-200" title="Não foi enviada"><AlertCircle className={base} /> não enviada</span>;
+  if (status === "read") return <span title="Lida"><CheckCheck className={cn(base, "text-sky-300")} /></span>;
+  if (status === "delivered") return <span title="Entregue"><CheckCheck className={base} /></span>;
+  if (status === "sent") return <span title="Enviada"><Check className={base} /></span>;
+  return <span title="Enviando"><Clock className={base} /></span>;
+}
+
+/** Áudio que a equipe enviou fica num bucket privado: pede um link temporário só quando a mensagem aparece. */
+function StoredAudio({ file: storedRef }: { file: string }) {
+  const [bucket, ...rest] = storedRef.replace(/^storage:/, "").split("/");
+  const path = rest.join("/");
+  const url = useQuery({
+    queryKey: ["wa-audio", storedRef],
+    staleTime: 50 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+  });
+  if (url.isError) return <p className="mt-1 text-xs opacity-80">Não foi possível carregar o áudio.</p>;
+  if (!url.data) return <p className="mt-1 text-xs opacity-80">Carregando áudio…</p>;
+  return <audio controls preload="metadata" src={url.data} className="mt-1 h-9 w-full max-w-[260px]" />;
+}
+
 interface ConversasPanelProps {
   /** WhatsApp conectado: libera o campo de resposta */
   connected?: boolean;
@@ -97,6 +125,7 @@ interface ConversasPanelProps {
 export function ConversasPanel({ connected = false, onConnect, onSend, onSendAudio }: ConversasPanelProps) {
   const qc = useQueryClient();
   const [recording, setRecording] = useState<{ rec: Recorder; seconds: number } | null>(null);
+  const [levels, setLevels] = useState<number[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -216,6 +245,13 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
   useEffect(() => {
     if (!recording) return;
     const t = setInterval(() => setRecording((r) => (r ? { ...r, seconds: r.seconds + 1 } : r)), 1000);
+    return () => clearInterval(t);
+  }, [recording?.rec]);
+
+  // as ondinhas: uma barra nova a cada 90 ms, com o volume do microfone naquele instante
+  useEffect(() => {
+    if (!recording) { setLevels([]); return; }
+    const t = setInterval(() => setLevels((l) => [...l.slice(-59), recording.rec.level()]), 90);
     return () => clearInterval(t);
   }, [recording?.rec]);
 
@@ -390,15 +426,16 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
                         {own && del}
                         <div className={cn("max-w-[75%] rounded-2xl px-3 py-2 shadow-sm", own ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm")}>
                           {m.body && <div className="whitespace-pre-wrap text-sm leading-snug">{m.body}</div>}
-                          {m.media_url && m.media_type === "audio" && (
+                          {m.media_url?.startsWith("storage:") && m.media_type === "audio" && <StoredAudio file={m.media_url} />}
+                          {m.media_url && !m.media_url.startsWith("storage:") && m.media_type === "audio" && (
                             <audio controls preload="none" src={m.media_url} className="mt-1 h-9 w-full max-w-[260px]" />
                           )}
-                          {m.media_url && m.media_type !== "audio" && (
+                          {m.media_url && !m.media_url.startsWith("storage:") && m.media_type !== "audio" && (
                             <a href={m.media_url} target="_blank" rel="noreferrer" className="block text-xs underline mt-1 break-all">[{m.media_type ?? "anexo"}] abrir mídia</a>
                           )}
                           <div className={cn("text-[10px] mt-1 flex items-center gap-1", own ? "text-primary-foreground/70 justify-end" : "text-muted-foreground")}>
                             <span>{formatStamp(m.created_at)}</span>
-                            {own && <span>· {m.status}</span>}
+                            {own && <Ticks status={m.status} />}
                           </div>
                         </div>
                         {!own && del}
@@ -409,12 +446,16 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
               </div>
 
               {connected && onSend && recording ? (
-                <div className="border-t border-border p-3 flex items-center gap-3">
+                <div className="border-t border-border p-3 flex min-w-0 items-center gap-2.5">
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive" title="Cancelar gravação" aria-label="Cancelar gravação" onClick={cancelAudio} disabled={sending}><Trash2 className="h-4 w-4" /></Button>
                   <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
-                  <span className="text-sm font-medium tabular-nums">{clock(recording.seconds)}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Gravando… fale perto do microfone</span>
-                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={cancelAudio} disabled={sending}><X className="h-4 w-4" /> Cancelar</Button>
-                  <Button type="button" size="sm" className="gap-1.5" onClick={() => void sendAudio()} disabled={sending}><Send className="h-4 w-4" /> Enviar áudio</Button>
+                  <span className="w-10 shrink-0 text-sm font-medium tabular-nums">{clock(recording.seconds)}</span>
+                  <div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-[2px] overflow-hidden" aria-hidden="true">
+                    {levels.slice(-48).map((v, i) => (
+                      <span key={i} className="w-[3px] shrink-0 rounded-full bg-primary/80" style={{ height: `${Math.max(12, Math.round(v * 100))}%` }} />
+                    ))}
+                  </div>
+                  <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => void sendAudio()} disabled={sending}><Send className="h-4 w-4" /> Enviar</Button>
                 </div>
               ) : connected && onSend ? (
                 <div className="border-t border-border p-3 flex items-end gap-2">
