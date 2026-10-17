@@ -18,7 +18,7 @@ const SHORT: Record<AttentionGroup["key"], string> = {
 };
 
 export function VisaoGeral() {
-  const { leads, stages, acts, clients, clientTasks, team, contacted, today, stageOf, memberOf, leadOf, openLead, openClient, newActivity } = useComercial();
+  const { leads, stages, acts, clients, clientTasks, team, contacted, today, stageOf, memberOf, leadOf, openLead, openClient, newActivity, openChat } = useComercial();
   const [period, setPeriod] = useState("30");
   const [filter, setFilter] = useState<AttentionGroup["key"] | "all">("all");
 
@@ -104,8 +104,8 @@ export function VisaoGeral() {
                         </span>
                         {it.ago && <span className={cn("hidden shrink-0 text-xs sm:inline", tone.ago)}>{it.ago}</span>}
                         {it.action === "whats" && wa ? (
-                          <Button asChild size="sm" variant="outline" className="h-7 shrink-0 gap-1 px-2 text-xs">
-                            <a href={wa} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3 w-3" /> WhatsApp</a>
+                          <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 px-2 text-xs" onClick={() => openChat(l.phone)}>
+                            <MessageCircle className="h-3 w-3" /> WhatsApp
                           </Button>
                         ) : it.action === "task" ? (
                           <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 px-2 text-xs" onClick={() => newActivity(l.id)}>

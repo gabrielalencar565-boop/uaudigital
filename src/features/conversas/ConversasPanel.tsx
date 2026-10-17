@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Search, RefreshCw, MessagesSquare, Send, Trash2, Mic, Pause, Check, CheckCheck, AlertCircle, Clock } from "lucide-react";
 import {
   AlertDialog,
@@ -133,6 +134,14 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  // "?c=<final do telefone>" abre direto a conversa daquele lead (vem do botão WhatsApp de outras telas do CRM)
+  const [params, setParams] = useSearchParams();
+  const wanted = params.get("c");
+  useEffect(() => {
+    if (!wanted) return;
+    setActiveKey(wanted);
+    setParams((p) => { const n = new URLSearchParams(p); n.delete("c"); return n; }, { replace: true });
+  }, [wanted, setParams]);
 
   const contactsQ = useQuery({
     queryKey: ["wa-contacts"],

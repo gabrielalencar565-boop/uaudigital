@@ -26,6 +26,8 @@ export interface ComercialCtx {
   /** move o lead de etapa; ganho e perdido pedem os dados antes */
   moveLead: (lead: Lead, stageId: string) => void;
   goto: (view: ComercialView) => void;
+  /** abre a conversa daquele número em Conversas, dentro do próprio Fluxo */
+  openChat: (phone: string | null | undefined) => void;
 }
 
 export const ComercialContext = createContext<ComercialCtx | null>(null);

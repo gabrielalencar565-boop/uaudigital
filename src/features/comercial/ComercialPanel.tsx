@@ -123,6 +123,7 @@ export function ComercialPanel() {
     newLead: () => setNewLeadOpen(true),
     moveLead,
     goto: (v) => setParam({ v: v === "overview" ? null : v, lead: null, edit: null, form: null }),
+    openChat: (phone) => setParam({ v: "chat", c: (phone ?? "").replace(/\D/g, "").slice(-10) || null, lead: null, edit: null, form: null }),
   };
 
   // contadores do menu
@@ -140,12 +141,10 @@ export function ComercialPanel() {
     };
   }, [leads, stages, acts, clients, clientTasks, contacted, today]);
 
+  // contador só onde há urgência: vermelho para o que pede ação agora, roxo para conversas não lidas
   const countFor = (v: ComercialView) => {
     if (v === "overview") return <Count n={counts.overview} tone="alert" />;
-    if (v === "funil") return <Count n={counts.funil} />;
-    if (v === "leads") return <Count n={counts.leads} />;
-    if (v === "acts") return <Count n={counts.acts} tone={counts.actsLate ? "alert" : undefined} />;
-    if (v === "onb") return <Count n={counts.onb} />;
+    if (v === "acts") return counts.actsLate ? <Count n={counts.acts} tone="alert" /> : null;
     if (v === "chat" || v === "chat_wa") return <Count n={unreadQ.data ?? 0} tone="new" />;
     return null;
   };
@@ -178,14 +177,14 @@ export function ComercialPanel() {
           {/* menu horizontal: grupos em cima, itens do grupo embaixo */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <nav className="flex min-w-0 gap-1 overflow-x-auto pb-1" aria-label="Grupos do CRM">
+              <nav className="flex min-w-0 gap-0.5 overflow-x-auto rounded-xl bg-muted/50 p-1" aria-label="Grupos do CRM">
                 {GROUPS.map((g) => (
                   <button
                     key={g.key}
                     type="button"
                     onClick={() => ctx.goto(g.items[0].view)}
                     aria-current={g.key === group.key ? "page" : undefined}
-                    className={cn("shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition", g.key === group.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+                    className={cn("shrink-0 rounded-lg px-4 py-1.5 text-sm transition", g.key === group.key ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/60" : "text-muted-foreground hover:text-foreground")}
                   >
                     {g.label}
                   </button>
