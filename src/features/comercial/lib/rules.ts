@@ -227,9 +227,24 @@ export function computeOverview(
 // ───────────── "o que fazer agora" ─────────────
 
 export type AttentionSeverity = "late" | "today" | "info";
+/** "há 3 h", "ontem", "há 5 dias": quanto tempo faz desde uma data. */
+export function agoPt(iso: string | null | undefined, now: Date = new Date()): string | undefined {
+  const t = iso ? new Date(iso).getTime() : NaN;
+  if (Number.isNaN(t)) return undefined;
+  const min = Math.max(0, Math.round((now.getTime() - t) / 60000));
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "ontem" : `há ${d} dias`;
+}
+
 export interface AttentionItem {
   leadId: string;
   sub: string;
+  /** quanto tempo faz que a pendência existe ("há 3 h"), quando dá para saber */
+  ago?: string;
   action: "whats" | "open" | "task" | "onb";
   clientId?: string;
 }
@@ -257,7 +272,7 @@ export function attentionGroups(
     {
       key: "first", severity: "late", title: "leads sem primeiro contato",
       items: open.filter((l) => noFirstContact(l, stages, acts, leadIdsWithContact))
-        .map((l) => ({ leadId: l.id, sub: `${stageOf(l.stage_id)?.name} · chegou ${shortDate(l.created_at)}`, action: "whats" as const })),
+        .map((l) => ({ leadId: l.id, sub: `${stageOf(l.stage_id)?.name} · chegou ${shortDate(l.created_at)}`, ago: agoPt(l.created_at, now), action: "whats" as const })),
     },
     {
       key: "meet", severity: "today", title: "reuniões hoje",
@@ -276,7 +291,7 @@ export function attentionGroups(
     {
       key: "stale", severity: "info", title: "negócios parados há 7 dias ou mais",
       items: open.filter((l) => isStale(l, stageOf(l.stage_id), now))
-        .map((l) => ({ leadId: l.id, sub: `${stageOf(l.stage_id)?.name} desde ${shortDate(l.stage_changed_at)}`, action: "open" as const })),
+        .map((l) => ({ leadId: l.id, sub: `${stageOf(l.stage_id)?.name} desde ${shortDate(l.stage_changed_at)}`, ago: agoPt(l.stage_changed_at, now), action: "open" as const })),
     },
     {
       key: "onb", severity: "info", title: "clientes com onboarding em andamento",

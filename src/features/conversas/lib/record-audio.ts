@@ -5,6 +5,11 @@ export const MAX_AUDIO_SECONDS = 300;
 export interface Recorder {
   /** Volume atual do microfone, de 0 a 1 (para desenhar as ondinhas enquanto grava). */
   level: () => number;
+  /** Segundos gravados até agora, sem contar o tempo em pausa. */
+  seconds: () => number;
+  pause: () => void;
+  resume: () => void;
+  isPaused: () => boolean;
   /** Para a gravação e devolve o áudio já convertido para MP3 (o formato que o WhatsApp aceita em todos os navegadores). */
   finish: () => Promise<{ mp3: Blob; seconds: number }>;
   cancel: () => void;
@@ -22,6 +27,9 @@ export async function startRecording(): Promise<Recorder> {
   const chunks: Blob[] = [];
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   const startedAt = Date.now();
+  let pausedTotal = 0;
+  let pausedAt: number | null = null;
+  const elapsed = () => Math.max(0, (pausedAt ?? Date.now()) - startedAt - pausedTotal) / 1000;
   rec.start(250);
   // mede o volume para desenhar as ondinhas da gravação
   const meterCtx = new AudioContext();
@@ -32,7 +40,12 @@ export async function startRecording(): Promise<Recorder> {
   const release = () => { stream.getTracks().forEach((t) => t.stop()); void meterCtx.close().catch(() => undefined); };
 
   return {
+    seconds: () => Math.floor(elapsed()),
+    isPaused: () => pausedAt !== null,
+    pause: () => { if (pausedAt === null && rec.state === "recording") { rec.pause(); pausedAt = Date.now(); } },
+    resume: () => { if (pausedAt !== null && rec.state === "paused") { rec.resume(); pausedTotal += Date.now() - pausedAt; pausedAt = null; } },
     level: () => {
+      if (pausedAt !== null) return 0;
       analyser.getByteTimeDomainData(wave);
       let peak = 0;
       for (let i = 0; i < wave.length; i++) peak = Math.max(peak, Math.abs(wave[i] - 128));
@@ -44,7 +57,7 @@ export async function startRecording(): Promise<Recorder> {
         release();
         try {
           const blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/webm" });
-          resolve({ mp3: await toMp3(blob), seconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000)) });
+          resolve({ mp3: await toMp3(blob), seconds: Math.max(1, Math.round(elapsed())) });
         } catch (e) { reject(e); }
       };
       try { rec.stop(); } catch (e) { release(); reject(e); }
