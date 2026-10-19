@@ -58,8 +58,23 @@ Deno.serve(async (req) => {
     if (p.isGroup || p.isStatusReply || p.isStatus || p.isNewsletter || p.broadcast || p.waitingMessage) { outcome = "ignorado:grupo_status_ou_transmissao"; return ok({ ignored: "not_a_lead_chat" }); }
 
     const raw = String(p.phone ?? "");
-    if (raw.includes("@lid") || raw.includes("-")) { outcome = "ignorado:id_interno"; return ok({ ignored: "internal_id" }); }
-    const phone = raw.replace(/\D/g, "");
+    if (raw.includes("-")) { outcome = "ignorado:id_interno"; return ok({ ignored: "internal_id" }); }
+    // O que o celular envia chega com o LID do contato no lugar do número ("1234@lid"); o número vem nas mensagens recebidas
+    // (phone + chatLid juntos). Aprende o par aqui e usa quando só o LID aparece.
+    const lid = String(p.chatLid ?? (raw.includes("@lid") ? raw : "")).trim();
+    let phone = "";
+    if (raw.includes("@lid")) {
+      if (lid) {
+        const { data: map } = await admin.from("whatsapp_zapi_lids").select("phone").eq("agency_id", conn.agency_id).eq("lid", lid).maybeSingle();
+        phone = map?.phone ?? "";
+      }
+      if (!phone) { outcome = "ignorado:lid_sem_numero"; return ok({ ignored: "unmapped_lid" }); }
+    } else {
+      phone = raw.replace(/\D/g, "");
+      if (lid && phone && phone.length <= 15) {
+        await admin.from("whatsapp_zapi_lids").upsert({ agency_id: conn.agency_id, lid, phone, updated_at: new Date().toISOString() }, { onConflict: "agency_id,lid" });
+      }
+    }
     if (!phone || phone.length > 15) { outcome = "ignorado:telefone_invalido"; return ok({ ignored: "bad_phone" }); }
 
     const messageId = p.messageId ? String(p.messageId) : null;
