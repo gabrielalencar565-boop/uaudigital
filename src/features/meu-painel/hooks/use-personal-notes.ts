@@ -37,10 +37,10 @@ export function useMyNotes(userId?: string) {
 export function useCreateNote() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, dayOfWeek }: { userId: string; dayOfWeek?: number | null }): Promise<PersonalNote> => {
+    mutationFn: async ({ userId, dayOfWeek, title }: { userId: string; dayOfWeek?: number | null; title?: string }): Promise<PersonalNote> => {
       const { data, error } = await sb
         .from("personal_notes")
-        .insert({ user_id: userId, title: "", content: "", day_of_week: dayOfWeek ?? null })
+        .insert({ user_id: userId, title: title ?? "", content: title ?? "", day_of_week: dayOfWeek ?? null })
         .select()
         .single();
       if (error) throw error;

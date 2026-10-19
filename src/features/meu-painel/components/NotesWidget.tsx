@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { addDays, format, startOfWeek } from "date-fns";
 import { CheckCircle2, Circle, Clock, Plus, StickyNote, Trash2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,14 +19,14 @@ import {
 
 // ISO weekday numbering (1=segunda .. 7=domingo), Monday-first to match how the agency's
 // own week already runs everywhere else in the app (Cronograma cycles, Agenda).
-const WEEK_DAYS: { day: number; label: string }[] = [
-  { day: 1, label: "Seg" },
-  { day: 2, label: "Ter" },
-  { day: 3, label: "Qua" },
-  { day: 4, label: "Qui" },
-  { day: 5, label: "Sex" },
-  { day: 6, label: "Sáb" },
-  { day: 7, label: "Dom" },
+const WEEK_DAYS: { day: number; label: string; full: string }[] = [
+  { day: 1, label: "Seg", full: "segunda" },
+  { day: 2, label: "Ter", full: "terça" },
+  { day: 3, label: "Qua", full: "quarta" },
+  { day: 4, label: "Qui", full: "quinta" },
+  { day: 5, label: "Sex", full: "sexta" },
+  { day: 6, label: "Sáb", full: "sábado" },
+  { day: 7, label: "Dom", full: "domingo" },
 ];
 function todayIsoWeekday(): number {
   const jsDay = new Date().getDay(); // 0=domingo..6=sábado
@@ -46,9 +47,17 @@ export function NotesWidget() {
   const today = useMemo(() => todayIsoWeekday(), []);
   const [selectedDay, setSelectedDay] = useState(today);
 
-  const handleNewNote = (dayOfWeek?: number | null) => {
-    if (!user?.id) return;
-    createNote.mutate({ userId: user.id, dayOfWeek });
+  const [draft, setDraft] = useState("");
+  // número do dia (data) de cada dia da semana atual, para mostrar "19" em vez de só "S"
+  const dateOf = useMemo(() => {
+    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return (day: number) => format(addDays(monday, day - 1), "d");
+  }, []);
+
+  const addNote = (dayOfWeek: number) => {
+    const title = draft.trim();
+    if (!user?.id || !title) return;
+    createNote.mutate({ userId: user.id, dayOfWeek, title }, { onSuccess: () => setDraft("") });
   };
 
   const notesByDay = useMemo(() => {
@@ -65,6 +74,10 @@ export function NotesWidget() {
     return map;
   }, [notes]);
 
+  const dayNotes = notesByDay.get(selectedDay) ?? [];
+  const doneCount = dayNotes.filter((n) => n.done).length;
+  const selectedFull = WEEK_DAYS.find((d) => d.day === selectedDay)?.full ?? "";
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -75,45 +88,45 @@ export function NotesWidget() {
             </div>
             Notas
           </CardTitle>
-          <button
-            type="button"
-            onClick={() => handleNewNote(selectedDay)}
-            title="Nova nota"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          {dayNotes.length > 0 && (
+            <span className="text-[11px] text-muted-foreground">{doneCount} de {dayNotes.length} {dayNotes.length === 1 ? "feita" : "feitas"}</span>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="mx-4 mb-2 flex items-center justify-between gap-1">
-          {WEEK_DAYS.map(({ day, label }) => (
-            <button
-              key={day}
-              type="button"
-              onClick={() => setSelectedDay(day)}
-              title={label}
-              className={cn(
-                "flex h-7 w-7 flex-col items-center justify-center rounded-full text-[10px] font-semibold transition",
-                selectedDay === day
-                  ? "bg-primary text-primary-foreground"
-                  : day === today
-                    ? "text-primary ring-1 ring-primary/50"
-                    : "text-muted-foreground/70 hover:bg-accent hover:text-foreground",
-              )}
-            >
-              {label[0]}
-            </button>
-          ))}
+        <div className="mx-4 mb-2 flex items-stretch gap-1">
+          {WEEK_DAYS.map(({ day, label }) => {
+            const has = (notesByDay.get(day) ?? []).length > 0;
+            const selected = selectedDay === day;
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setSelectedDay(day)}
+                title={`${label}, dia ${dateOf(day)}`}
+                aria-pressed={selected}
+                className={cn(
+                  "flex flex-1 flex-col items-center rounded-xl py-1.5 text-[10.5px] transition",
+                  selected
+                    ? "bg-primary text-primary-foreground"
+                    : day === today
+                      ? "text-primary ring-1 ring-primary/40"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {label}
+                <span className={cn("text-[13px] font-medium", selected ? "text-primary-foreground" : "text-foreground")}>{dateOf(day)}</span>
+                <span className={cn("mt-0.5 h-1 w-1 rounded-full", has ? (selected ? "bg-primary-foreground" : "bg-primary") : "bg-transparent")} />
+              </button>
+            );
+          })}
         </div>
         <ScrollArea className="max-h-[280px]">
-          {(notesByDay.get(selectedDay) ?? []).length === 0 ? (
-            <div className="px-4 pb-4 text-center text-sm text-muted-foreground">
-              Nenhuma nota em {WEEK_DAYS.find((d) => d.day === selectedDay)?.label} — toque em + pra criar.
-            </div>
+          {dayNotes.length === 0 ? (
+            <div className="px-4 pb-2 pt-1 text-center text-sm text-muted-foreground">Nenhuma nota para {selectedFull}.</div>
           ) : (
             <div className="divide-y divide-border/30">
-              {(notesByDay.get(selectedDay) ?? []).map((n) => (
+              {dayNotes.map((n) => (
                 <NoteRow
                   key={n.id}
                   note={n}
@@ -126,6 +139,19 @@ export function NotesWidget() {
             </div>
           )}
         </ScrollArea>
+        <div className="px-4 pb-3 pt-1">
+          <label className="flex items-center gap-2 rounded-xl border border-dashed border-border/70 px-3 py-2 text-muted-foreground focus-within:border-primary/60">
+            <Plus className="h-4 w-4 shrink-0" />
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addNote(selectedDay); }}
+              disabled={createNote.isPending}
+              placeholder={`Adicionar nota para ${selectedFull}…`}
+              className="min-w-0 flex-1 border-none bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70"
+            />
+          </label>
+        </div>
       </CardContent>
     </Card>
   );
