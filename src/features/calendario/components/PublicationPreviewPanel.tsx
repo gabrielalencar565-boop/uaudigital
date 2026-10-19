@@ -303,7 +303,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
 
   // Several photos at once (carousel): each is centered-cropped to 1080x1350 automatically and its original is kept, so
   // nothing has to be cropped one by one — "Ajustar" re-frames any of them afterwards.
-  const MAX_CAROUSEL_IMAGES = 10;
+  const MAX_CAROUSEL_IMAGES = 20;
   const addMediaFiles = async (files: File[]) => {
     if (files.length === 0) return;
     if (files.length === 1) {
@@ -796,7 +796,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas. Máx. 10 fotos — cada uma em 1080x1350.</p>
+                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas. Máx. 20 fotos — cada uma em 1080x1350.</p>
                 </div>
               )}
 

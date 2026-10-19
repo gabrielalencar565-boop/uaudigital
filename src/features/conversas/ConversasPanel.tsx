@@ -157,6 +157,8 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
       return ((data ?? []) as Contact[]).filter((c) => !isGroupContact(c));
     },
     staleTime: 10_000,
+    // Rede de segurança caso o tempo real caia (aba em segundo plano, conexão instável): a lista se atualiza sozinha.
+    refetchInterval: 30_000,
   });
 
   const messagesQ = useQuery({
@@ -189,6 +191,12 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
+
+  // Atualiza a lista e, se houver uma conversa aberta, as mensagens dela.
+  const refreshAll = () => {
+    qc.invalidateQueries({ queryKey: ["wa-contacts"] });
+    if (activeKey) qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] });
+  };
 
   const contacts = contactsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -319,9 +327,14 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 rounded-xl border border-border bg-card overflow-hidden h-[calc(100svh-260px)] min-h-[480px]">
         <aside className="border-r border-border flex flex-col min-h-0">
           <div className="p-3 border-b border-border space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar nome ou número..." className="pl-7 h-8 text-xs" />
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar nome ou número..." className="pl-7 h-8 text-xs" />
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Atualizar conversas" title="Atualizar conversas" onClick={refreshAll}>
+                <RefreshCw className={cn("h-3.5 w-3.5", contactsQ.isFetching && "animate-spin")} />
+              </Button>
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
               <TabsList className="grid grid-cols-2 h-8">
@@ -409,7 +422,7 @@ export function ConversasPanel({ connected = false, onConnect, onSend, onSendAud
                   <div className="font-semibold leading-tight truncate">{activeContact.name ?? activeContact.phone_e164}</div>
                   <div className="text-[11px] text-muted-foreground truncate">+{activeContact.phone_e164}</div>
                 </div>
-                <Button variant="ghost" size="icon" aria-label="Atualizar" onClick={() => qc.invalidateQueries({ queryKey: ["wa-messages", activeKey] })}>
+                <Button variant="ghost" size="icon" aria-label="Atualizar" onClick={refreshAll}>
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
               </header>
