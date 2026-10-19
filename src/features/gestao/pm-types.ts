@@ -17,6 +17,8 @@ export interface PmTask {
   updated_at: string;
   parent_task_id: string | null;
   origin_task_id: string | null;
+  /** chave do post: igual em todas as cópias dele nas etapas (design, revisão, PDF…); null em posts antigos */
+  post_key?: string | null;
   cover_url: string | null;
   is_extra_demand: boolean;
   is_draft?: boolean;
@@ -77,6 +79,8 @@ export interface PmAttachment {
   drive_file_id?: string | null;
   // For a cropped feed/story photo: the uncropped original (a separate "material" attachment), used by "Ajustar".
   source_attachment_id?: string | null;
+  // Posição entre os arquivos finais (ordem de exibição no Cronograma).
+  order_index?: number | null;
 }
 
 export interface PmProject {
