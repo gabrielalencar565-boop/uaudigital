@@ -28,6 +28,8 @@ import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-ins
 import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 import { stageLabel } from "@/features/gestao/pm-constants";
 
+import { deleteSameFileRows } from "@/features/gestao/lib/attachment-sync";
+
 const sb = supabase as any;
 
 interface Props {
@@ -371,7 +373,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     // RLS only lets the uploader or an admin delete a given attachment — a delete blocked by
     // that returns success with no row back (data stays null) rather than an error, so check
     // for that explicitly or this silently no-ops while still claiming success.
-    const { data, error } = await sb.from("pm_attachments").delete().eq("id", imgId).select("drive_file_id").maybeSingle();
+    const { data, error } = await sb.from("pm_attachments").delete().eq("id", imgId).select("id, task_id, category, drive_file_id, storage_path").maybeSingle();
     if (error) {
       toast.error("Erro ao excluir imagem");
       return;
@@ -380,6 +382,8 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
       toast.error("Você não tem permissão para excluir esta imagem. Só quem enviou ou um admin pode.");
       return;
     }
+    // Conteúdo final: apagar aqui apaga o mesmo arquivo das outras etapas do post
+    await deleteSameFileRows(data);
     if (data?.drive_file_id) {
       const { error: driveErr } = await supabase.functions.invoke("drive-delete", { body: { drive_file_id: data.drive_file_id, attachment_id: imgId } });
       if (driveErr) console.warn("Drive delete error:", driveErr);

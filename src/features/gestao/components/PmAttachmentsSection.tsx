@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown, Play, FileVideo } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown, Play, FileVideo, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,6 +20,8 @@ import { addGlobalUpload, updateGlobalUpload, removeGlobalUpload } from "@/lib/u
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
 import { FEED_FORMAT, VERTICAL_FORMAT, type InstagramFormat } from "@/features/calendario/calendar-types";
 import { fastTranscodeVideo } from "@/lib/fast-video-transcode";
+
+import { copyToLinkedTasks, deleteSameFileRows, storagePathStillUsed, type AttachmentRowLike } from "../lib/attachment-sync";
 
 const sb = supabase as any;
 
@@ -493,7 +495,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [downloadingAll, setDownloadingAll] = useState(false);
-  const [duplicateConflict, setDuplicateConflict] = useState<{ file: File; category: AttachmentCategory; existing: PmAttachment; resolve: () => void } | null>(null);
+  const [duplicateConflict, setDuplicateConflict] = useState<{ file: File; category: AttachmentCategory; existing: PmAttachment; resolve: () => void; reason: "name" | "video" } | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const replaceTarget = useRef<PmAttachment | null>(null);
   const [cropRequest, setCropRequest] = useState<{ src: string; file: File } | null>(null);
   const cropResolveRef = useRef<((file: File) => void) | null>(null);
 
@@ -562,6 +566,10 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       }, 300);
     }
 
+    let uploaded = false;
+    // ids que já existiam: o que aparecer a mais depois do envio (arquivo e miniatura) é o que vai para as outras etapas do post
+    const { data: preRows } = await sb.from("pm_attachments").select("id").eq("task_id", taskId).eq("category", category);
+    const beforeIds = new Set<string>((preRows ?? []).map((r: { id: string }) => r.id));
     try {
       let fileToUpload = file;
       let compressionFailed = false;
@@ -612,6 +620,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         removeGlobalUpload(globalId);
       }, 800);
       toast.success("Arquivo anexado!");
+      uploaded = true;
       if (compressionFailed) {
         toast.warning(`"${file.name}" foi enviado sem compressão e pode não tocar corretamente no WhatsApp/Instagram. Se for um vídeo do iPhone, tente reexportar em "Mais compatível" (Ajustes > Câmera > Formatos) e reenviar.`, { duration: 12000 });
       }
@@ -629,12 +638,23 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
           }
         }
       }
+
+      // Conteúdo final: o arquivo novo vale para todas as etapas do mesmo post (design, revisão, PDF…)
+      if (category === "final") {
+        const { data: fresh } = await sb.from("pm_attachments").select("*").eq("task_id", taskId).eq("category", "final").order("created_at", { ascending: false }).limit(10);
+        const newRows = ((fresh ?? []) as AttachmentRowLike[]).filter((r) => !beforeIds.has(r.id));
+        if (newRows.length > 0 && (await copyToLinkedTasks(newRows, taskId)) > 0) {
+          queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+          queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+        }
+      }
     } catch (err: any) {
       if (interval) clearInterval(interval);
       setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
       updateGlobalUpload(globalId, { status: "error", errorMessage: err?.message ?? "Erro ao enviar arquivo" });
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
+    return uploaded;
   }, [taskId, upload, uploadResumable, cropFormat, requestFeedCrop]);
 
   // Attaching a file whose name matches one already here is ambiguous — could be an
@@ -643,8 +663,15 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const doUpload = useCallback((file: File, category: AttachmentCategory): Promise<void> => {
     if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return Promise.resolve(); }
     const existing = attachments.find(a => a.category === category && a.file_name.toLowerCase() === file.name.toLowerCase());
-    if (!existing) return performUpload(file, category);
-    return new Promise<void>((resolve) => setDuplicateConflict({ file, category, existing, resolve }));
+    if (existing) return new Promise<void>((resolve) => setDuplicateConflict({ file, category, existing, resolve, reason: "name" }));
+    // um post normalmente tem um vídeo final só: um segundo vídeo costuma ser a versão nova do primeiro, com outro nome
+    if (category === "final" && file.type.startsWith("video/")) {
+      const currentVideo = attachments
+        .filter(a => a.category === "final" && a.file_type?.startsWith("video/"))
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+      if (currentVideo) return new Promise<void>((resolve) => setDuplicateConflict({ file, category, existing: currentVideo, resolve, reason: "video" }));
+    }
+    return performUpload(file, category).then(() => undefined);
   }, [attachments, performUpload]);
 
   const nextAvailableName = (name: string, category: AttachmentCategory) => {
@@ -661,17 +688,18 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     if (!duplicateConflict) return;
     const { file, category, existing, resolve } = duplicateConflict;
     setDuplicateConflict(null);
-    await handleDeleteAttachment(existing);
+    await deleteWithPoster(existing);
     await performUpload(file, category);
     resolve();
   };
 
   const resolveDuplicateKeepBoth = async () => {
     if (!duplicateConflict) return;
-    const { file, category, resolve } = duplicateConflict;
+    const { file, category, resolve, reason } = duplicateConflict;
     setDuplicateConflict(null);
-    const renamed = new File([file], nextAvailableName(file.name, category), { type: file.type });
-    await performUpload(renamed, category);
+    // "mesmo nome" precisa de um nome novo; "segundo vídeo" já tem nome diferente e segue como está
+    const toSend = reason === "video" ? file : new File([file], nextAvailableName(file.name, category), { type: file.type });
+    await performUpload(toSend, category);
     resolve();
   };
 
@@ -681,7 +709,36 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     setDuplicateConflict(null);
   };
 
-  const handleDeleteAttachment = async (att: PmAttachment) => {
+  // Apagar um vídeo leva junto a miniatura dele (arquivo "<nome>-poster.jpg"): sem isso ela ficava para trás e, no
+  // Cronograma, o card podia continuar mostrando o quadro do vídeo antigo.
+  const deleteWithPoster = async (att: PmAttachment) => {
+    const posterName = `${att.file_name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+    const poster = att.file_type?.startsWith("video/")
+      ? attachments.find(a => a.id !== att.id && a.category === att.category && a.file_name === posterName && a.file_type?.startsWith("image/"))
+      : undefined;
+    await handleDeleteAttachment(att);
+    if (poster) await handleDeleteAttachment(poster, true);
+  };
+
+  // "Substituir arquivo": sobe o novo (qualquer nome), só depois apaga o antigo e coloca o novo na mesma posição.
+  const replaceAttachment = async (att: PmAttachment, file: File) => {
+    const category = (att.category ?? "material") as AttachmentCategory;
+    const before = new Set(attachments.map(a => a.id));
+    if (file.size > 1024 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 1GB)"); return; }
+    const ok = await performUpload(file, category);
+    if (!ok) return; // o antigo só sai se o novo subiu
+    const { data } = await sb.from("pm_attachments").select("id, file_name").eq("task_id", taskId).eq("category", category).order("created_at", { ascending: false }).limit(10);
+    const fresh = (data ?? []).find((r: { id: string; file_name: string }) => !before.has(r.id) && !/-poster\.jpg$/i.test(r.file_name));
+    await deleteWithPoster(att);
+    if (fresh && typeof att.order_index === "number") {
+      await sb.from("pm_attachments").update({ order_index: att.order_index }).eq("id", fresh.id);
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
+      queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
+    }
+    toast.success("Arquivo substituído");
+  };
+
+  const handleDeleteAttachment = async (att: PmAttachment, quiet = false) => {
     try {
       // The DB row is what actually makes the attachment disappear from the UI — delete it
       // first and let the UI update immediately. Storage/Drive cleanup are best-effort side
@@ -697,13 +754,19 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
       if (!data || data.length === 0) {
         throw new Error("Você não tem permissão para excluir este anexo. Só quem enviou ou um admin pode.");
       }
+      // Conteúdo final: apagar numa etapa apaga o mesmo arquivo das outras etapas do post (as cópias feitas quando a etapa avançou)
+      const alsoRemoved = await deleteSameFileRows(att as unknown as AttachmentRowLike);
       queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
       queryClient.invalidateQueries({ queryKey: ["pm_attachments_for_calendar"] });
       queryClient.invalidateQueries({ queryKey: ["cover_candidates"] });
-      toast.success("Anexo excluído!");
+      if (!quiet) toast.success(alsoRemoved > 0 ? "Arquivo excluído de todas as etapas do post" : "Anexo excluído!");
 
-      supabase.storage.from("pm-attachments").remove([att.storage_path]).then(({ error: storageErr }) => {
-        if (storageErr) console.warn("Storage delete error:", storageErr);
+      // o arquivo no armazenamento só sai quando nenhuma outra linha (cópia em outra etapa) ainda usa ele
+      storagePathStillUsed(att.storage_path).then((used) => {
+        if (used) return;
+        supabase.storage.from("pm-attachments").remove([att.storage_path]).then(({ error: storageErr }) => {
+          if (storageErr) console.warn("Storage delete error:", storageErr);
+        });
       });
       if (att.drive_file_id) {
         supabase.functions.invoke("drive-delete", { body: { drive_file_id: att.drive_file_id, attachment_id: att.id } }).then(({ error: driveErr }) => {
@@ -876,7 +939,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         posterMap={videoPosterMap}
         uploadingFiles={uploadingFiles.filter(u => u.category === "material")}
         onUpload={(file) => doUpload(file, "material")}
-        onDelete={handleDeleteAttachment}
+        onDelete={deleteWithPoster}
+        onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
         onRenameStart={handleRenameStart}
         onRenameCommit={handleRenameCommit}
         renamingId={renamingId}
@@ -905,7 +969,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         posterMap={videoPosterMap}
         uploadingFiles={uploadingFiles.filter(u => u.category === "final")}
         onUpload={(file) => doUpload(file, "final")}
-        onDelete={handleDeleteAttachment}
+        onDelete={deleteWithPoster}
+        onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
         onRenameStart={handleRenameStart}
         onRenameCommit={handleRenameCommit}
         renamingId={renamingId}
@@ -931,12 +996,27 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         images={viewerImages}
       />
 
+      <input
+        ref={replaceInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          const att = replaceTarget.current;
+          e.target.value = "";
+          replaceTarget.current = null;
+          if (file && att) void replaceAttachment(att, file);
+        }}
+      />
+
       <AlertDialog open={!!duplicateConflict} onOpenChange={(v) => { if (!v) resolveDuplicateCancel(); }}>
         <AlertDialogContent className="z-[200]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Já existe um arquivo com esse nome</AlertDialogTitle>
+            <AlertDialogTitle>{duplicateConflict?.reason === "video" ? "Já existe um vídeo no Conteúdo final" : "Já existe um arquivo com esse nome"}</AlertDialogTitle>
             <AlertDialogDescription>
-              "{duplicateConflict?.file.name}" já está anexado aqui. Quer substituir o arquivo existente ou manter os dois?
+              {duplicateConflict?.reason === "video"
+                ? `"${duplicateConflict.existing.file_name}" já é o vídeo final deste post. Quer substituí-lo por "${duplicateConflict.file.name}" (o antigo é apagado de tudo, inclusive do Drive) ou manter os dois?`
+                : `"${duplicateConflict?.file.name}" já está anexado aqui. Quer substituir o arquivo existente ou manter os dois?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -973,6 +1053,7 @@ interface CategorySectionProps {
   uploadingFiles: UploadingFile[];
   onUpload: (file: File) => void | Promise<void>;
   onDelete: (att: PmAttachment) => void;
+  onReplace: (att: PmAttachment) => void;
   onRenameStart: (att: PmAttachment) => void;
   onRenameCommit: (id: string) => void;
   renamingId: string | null;
@@ -996,7 +1077,7 @@ interface CategorySectionProps {
 
 function CategorySection(props: CategorySectionProps) {
   const {
-    category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete,
+    category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete, onReplace,
     onRenameStart, onRenameCommit, renamingId, renameDraft, setRenameDraft, setRenamingId,
     onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer, allAttachments, onMoveCategory,
   } = props;
@@ -1166,6 +1247,9 @@ function CategorySection(props: CategorySectionProps) {
                             <Download className="h-3.5 w-3.5" /> Baixar
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem className="text-xs gap-2" onClick={() => onReplace(att)}>
+                          <RefreshCw className="h-3.5 w-3.5" /> Substituir arquivo
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-xs gap-2" onClick={() => onRenameStart(att)}>
                           <Pencil className="h-3.5 w-3.5" /> Renomear
                         </DropdownMenuItem>

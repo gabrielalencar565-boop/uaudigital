@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Flag, GitBranch, ListChecks, MessageSquare } from "lucide-react";
-import { differenceInCalendarDays, endOfWeek, format } from "date-fns";
+import { AlertTriangle, ChevronDown, ChevronRight, GitBranch, ListChecks, MessageSquare } from "lucide-react";
+import { differenceInCalendarDays, eachDayOfInterval, endOfWeek, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +11,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { usePmTasks, useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
-import { getStageCircleColor, stageLabel } from "@/features/gestao/pm-constants";
+import { getStageCircleColor, stageAbbr, stageLabel } from "@/features/gestao/pm-constants";
 import type { PmTask } from "@/features/gestao/pm-types";
 import { CleaningTurnBanner } from "./CleaningTurnBanner";
-
-const PRIORITY_FLAG: Record<string, string> = {
-  urgente: "text-destructive",
-  alta: "text-warning",
-  media: "text-foreground/60",
-  baixa: "text-muted-foreground/40",
-};
 
 export function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
   if (!dueDate) return { text: "—", color: "text-muted-foreground" };
@@ -65,6 +59,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const currentMonthKey = format(today, "yyyy-MM");
   const weekEndKey = useMemo(() => format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd"), [todayKey]);
   const [rangeMode, setRangeMode] = useState<"hoje" | "semana">("hoje");
+  const [selectedDay, setSelectedDay] = useState<string>(todayKey);
 
   const pmTasksQ = usePmTasks();
 
@@ -213,177 +208,91 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     });
   };
 
-  const renderHeader = () => (
-    <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] gap-2 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/30">
-      <span>Nome</span>
-      <span>Prioridade</span>
-      <span>Data de vencimento</span>
-      <span>Comentários</span>
-    </div>
-  );
+  // Dias que ainda faltam na semana (de hoje até o fim dela), com quantas tarefas em aberto vencem em cada um
+  const weekDays = useMemo(() => {
+    const open = myTasks.filter((t) => t.status_global !== "concluido" && t.due_date);
+    return eachDayOfInterval({ start: new Date(todayKey + "T00:00:00"), end: new Date(weekEndKey + "T00:00:00") }).map((d) => {
+      const key = format(d, "yyyy-MM-dd");
+      return { key, letter: format(d, "EEEEE", { locale: ptBR }).toUpperCase(), full: format(d, "EEEE, d 'de' MMMM", { locale: ptBR }), count: open.filter((t) => t.due_date === key).length };
+    });
+  }, [myTasks, todayKey, weekEndKey]);
 
-  const renderRow = (t: PmTask) => {
+  // "[Doce Rio] - Design - Novembro" vira "Doce Rio" em cima e "Design · Novembro" embaixo
+  const splitTitle = (t: PmTask) => {
+    const client = clientsMap[t.client_id];
+    const bracket = t.title.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
+    if (bracket) return { main: bracket[1], sub: bracket[2].replace(/\s+-\s+/g, " · ") };
+    if (client && t.title.startsWith(`${client} - `)) return { main: client, sub: t.title.slice(client.length + 3).replace(/\s+-\s+/g, " · ") };
+    return { main: t.title, sub: client ?? "" };
+  };
+
+  const renderCard = (t: PmTask) => {
     const isDone = t.stage_current === "entrega" || t.status_global === "concluido";
     const due = dueDateLabel(t.due_date, todayKey, isDone);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
     const stageColor = getStageCircleColor(t.stage_current);
-    
-    const flagClass = PRIORITY_FLAG[t.priority] ?? PRIORITY_FLAG.baixa;
     const isExpanded = expandedTasks.has(t.id);
     const children = childTasksByParent[t.id] ?? [];
+    const { main, sub } = splitTitle(t);
 
     return (
-      <div key={t.id}>
-        <button
-          type="button"
-          onClick={() => onOpenTask(t.id)}
-          className="group w-full border-b border-border/20 px-3 py-2 text-left transition hover:bg-accent/30"
-        >
-          {/* Mobile: stacked layout */}
-          <div className="flex group-data-[wide=true]/tw:hidden min-w-0 items-start gap-2">
-            {childCount > 0 && (
-              <button
-                type="button"
-                className="shrink-0 p-0.5 rounded hover:bg-accent transition mt-0.5"
-                onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
+      <div key={t.id} className="px-4">
+        <div className="border-b border-border/30 transition hover:bg-muted/20">
+          <button type="button" onClick={() => onOpenTask(t.id)} className="w-full py-2.5 text-left">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn("rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold tracking-wide", stageColor.text)}
+                style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
               >
-                <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
-              </button>
-            )}
-            <span className={cn(
-              "h-3 w-3 shrink-0 rounded-full border-2 mt-0.5",
-              stageColor.border,
-              isDone && stageColor.bg,
-            )} />
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium text-foreground">{t.title}</span>
-              <div className="flex items-center gap-2 mt-1">
-                <Flag className={cn("h-3 w-3 shrink-0", flagClass)} />
-                <span className={cn("text-[11px] font-medium", due.color)}>{due.text}</span>
-                {commentCount > 0 && (
-                  <span className="flex items-center gap-0.5 text-muted-foreground">
-                    <MessageSquare className="h-3 w-3" />
-                    <span className="text-[10px] font-medium text-foreground">{commentCount}</span>
-                  </span>
-                )}
-                {childCount > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                    <GitBranch className="h-3 w-3" /> {childCount}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: grid layout */}
-          <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              {childCount > 0 && (
-                <button
-                  type="button"
-                  className="shrink-0 p-0.5 rounded hover:bg-accent transition"
-                  onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
-                >
-                  <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
-                </button>
-              )}
-              <span className={cn(
-                "h-3 w-3 shrink-0 rounded-full border-2",
-                stageColor.border,
-                isDone && stageColor.bg,
-              )} />
-              <span className="min-w-0 truncate text-[13px] font-medium text-foreground">
-                {t.title}
+                {stageAbbr(t.stage_current)}
               </span>
+              <span className={cn("ml-auto text-[11px] font-medium", due.color)}>{due.text}</span>
+              {commentCount > 0 && (
+                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground"><MessageSquare className="h-3 w-3" />{commentCount}</span>
+              )}
               {childCount > 0 && (
-                <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
-                  <GitBranch className="h-3 w-3" /> {childCount}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={isExpanded ? "Esconder subtarefas" : "Ver subtarefas"}
+                  onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); toggleExpand(t.id); } }}
+                  className="flex items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:bg-accent"
+                >
+                  <GitBranch className="h-3 w-3" />{childCount}
+                  <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
                 </span>
               )}
             </div>
-            <div>
-              <Flag className={cn("h-3.5 w-3.5", flagClass)} />
+            <span className="mt-1.5 block truncate text-[13px] font-medium text-foreground">{main}</span>
+            {sub && <span className="block truncate text-[11px] text-muted-foreground">{sub}</span>}
+          </button>
+          {isExpanded && children.length > 0 && (
+            <div className="space-y-0.5 pb-2 pl-3">
+              {children.map((sub2) => {
+                const subDue = dueDateLabel(sub2.due_date, todayKey, sub2.stage_current === "entrega");
+                return (
+                  <button key={sub2.id} type="button" onClick={() => onOpenTask(sub2.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-accent/40">
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", getStageCircleColor(sub2.stage_current).bg)} />
+                    <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/80">{sub2.title}</span>
+                    <span className={cn("shrink-0 text-[10px] font-medium", subDue.color)}>{subDue.text}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className={cn("text-[13px] font-medium", due.color)}>
-              {due.text}
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <MessageSquare className="h-3.5 w-3.5" />
-              {commentCount > 0 && (
-                <span className="text-[12px] font-medium text-foreground">{commentCount}</span>
-              )}
-            </div>
-          </div>
-        </button>
-
-        {/* Expanded subtasks */}
-        {isExpanded && children.length > 0 && (
-          <div className="border-b border-border/20">
-            {children.map(sub => {
-              const subStageColor = getStageCircleColor(sub.stage_current);
-              const subIsDone = sub.stage_current === "entrega";
-              const subDue = dueDateLabel(sub.due_date, todayKey, subIsDone);
-              const subFlagClass = PRIORITY_FLAG[sub.priority] ?? PRIORITY_FLAG.baixa;
-              const subCommentCount = commentCounts[sub.id] ?? 0;
-
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => onOpenTask(sub.id)}
-                  className="w-full px-3 py-1.5 text-left transition hover:bg-accent/30 pl-8 sm:pl-10"
-                >
-                  {/* Mobile subtask */}
-                  <div className="flex group-data-[wide=true]/tw:hidden min-w-0 items-start gap-2">
-                    <span className={cn(
-                      "h-2.5 w-2.5 shrink-0 rounded-full border-2 mt-0.5",
-                      subStageColor.border,
-                      subIsDone && subStageColor.bg,
-                    )} />
-                    <div className="min-w-0 flex-1">
-                      <span className={cn("block truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
-                        {sub.title}
-                      </span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Flag className={cn("h-2.5 w-2.5", subFlagClass)} />
-                        <span className={cn("text-[10px] font-medium", subDue.color)}>{subDue.text}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Desktop subtask */}
-                  <div className="hidden group-data-[wide=true]/tw:grid grid-cols-[1fr_100px_140px_100px] items-center gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className={cn(
-                        "h-2.5 w-2.5 shrink-0 rounded-full border-2",
-                        subStageColor.border,
-                        subIsDone && subStageColor.bg,
-                      )} />
-                      <span className={cn("min-w-0 truncate text-[12px] font-medium text-foreground/80", subIsDone && "line-through text-muted-foreground")}>
-                        {sub.title}
-                      </span>
-                    </div>
-                    <div>
-                      <Flag className={cn("h-3 w-3", subFlagClass)} />
-                    </div>
-                    <div className={cn("text-[12px] font-medium", subDue.color)}>
-                      {subDue.text}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <MessageSquare className="h-3 w-3" />
-                      {subCommentCount > 0 && (
-                        <span className="text-[11px] font-medium text-foreground">{subCommentCount}</span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
+
+  const groupTitle = (label: string, count: number, tone = "text-foreground") => (
+    <>
+      <span className={cn("text-[11px] font-semibold uppercase tracking-wider", tone)}>{label}</span>
+      <span className="text-[11px] text-muted-foreground">{count}</span>
+    </>
+  );
 
   if (myTasks.length === 0 && !pmTasksQ.isLoading) {
     return (
@@ -406,91 +315,6 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
   return (
     <div ref={setRootEl} data-wide={wide} className="group/tw flex flex-col gap-3">
-      {/* Alert for tasks in Alterações */}
-      {alteracoesParents.length > 0 && (
-        <div className="rounded-2xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #ffcc01 0%, #f5b800 100%)' }}>
-          <div className="px-5 pt-4 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-black/10 backdrop-blur-sm flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-black/80" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-black/90 tracking-tight">
-                  {alteracoesParents.length} {alteracoesParents.length === 1 ? "tarefa" : "tarefas"} em Alteração
-                </p>
-                <p className="text-[11px] text-black/50 font-medium">Aguardando correção</p>
-              </div>
-            </div>
-          </div>
-          <div className="px-3 pb-3 space-y-1">
-            {alteracoesParents.map(t => {
-              const subs = alteracoesChildren[t.id] ?? [];
-              const isExp = expandedAlteracoes.has(t.id);
-              return (
-                <div key={t.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenTask(t.id)}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all hover:bg-black/8 active:scale-[0.99]"
-                  >
-                    {subs.length > 0 && (
-                      <span
-                        role="button"
-                        className="shrink-0 p-1 rounded-lg hover:bg-black/10 transition"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedAlteracoes(prev => {
-                            const next = new Set(prev);
-                            if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
-                            return next;
-                          });
-                        }}
-                      >
-                        <ChevronRight className={cn("h-3.5 w-3.5 text-black/50 transition-transform", isExp && "rotate-90")} />
-                      </span>
-                    )}
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-black/70 ring-2 ring-black/10" />
-                    <span className="truncate font-semibold text-black/85">{t.title}</span>
-                    <span className="ml-auto shrink-0 rounded-md bg-black/8 px-2 py-0.5 text-[10px] font-bold text-black/50 tracking-wide">
-                      {clientsMap[t.client_id] ?? ""}
-                    </span>
-                  </button>
-                  {isExp && subs.length > 0 && (
-                    <div className="pl-10 space-y-0.5 pb-1">
-                      {subs.map(sub => (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => onOpenTask(sub.id)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/8"
-                        >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/40" />
-                          <span className="truncate font-medium text-black/70">{sub.title}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {alteracoesTasks.filter(t => t.parent_task_id && !alteracoesParents.some(p => p.id === t.parent_task_id)).map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onOpenTask(t.id)}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all hover:bg-black/8"
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full bg-black/70 ring-2 ring-black/10" />
-                <span className="truncate font-semibold text-black/85">{t.title}</span>
-                <span className="ml-auto shrink-0 rounded-md bg-black/8 px-2 py-0.5 text-[10px] font-bold text-black/50 tracking-wide">
-                  {clientsMap[t.client_id] ?? ""}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <Card className="flex-1">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
@@ -506,65 +330,132 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             </Tabs>
           </div>
         </CardHeader>
+
+        {(alteracoesParents.length > 0 || alteracoesTasks.length > 0) && (
+          <div className="mx-5 mb-3 space-y-1.5">
+            {/* cada tarefa em alteração é o seu próprio bloco amarelo */}
+            {alteracoesParents.map((t) => {
+              const subs = alteracoesChildren[t.id] ?? [];
+              const isExp = expandedAlteracoes.has(t.id);
+              return (
+                <div key={t.id} className="overflow-hidden rounded-xl bg-[#ffcc01] text-black">
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => onOpenTask(t.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-black/5 active:scale-[0.99]"
+                    >
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold">{t.title}</span>
+                      <span className="shrink-0 text-[11px] font-semibold text-black/55">{clientsMap[t.client_id] ?? ""}</span>
+                    </button>
+                    {subs.length > 0 && (
+                      <button
+                        type="button"
+                        aria-label={isExp ? "Esconder subtarefas" : "Ver subtarefas"}
+                        aria-expanded={isExp}
+                        onClick={() => setExpandedAlteracoes((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })}
+                        className="mr-1 shrink-0 rounded-lg p-2 transition hover:bg-black/10"
+                      >
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", isExp && "rotate-180")} />
+                      </button>
+                    )}
+                  </div>
+                  {isExp && subs.length > 0 && (
+                    <div className="space-y-0.5 border-t border-black/10 px-2 pb-2 pt-1.5">
+                      {subs.map((sub) => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => onOpenTask(sub.id)}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/8"
+                        >
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/40" />
+                          <span className="truncate font-medium text-black/75">{sub.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {alteracoesTasks.filter((t) => t.parent_task_id && !alteracoesParents.some((p) => p.id === t.parent_task_id)).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onOpenTask(t.id)}
+                className="flex w-full items-center gap-2.5 rounded-xl bg-[#ffcc01] px-3.5 py-2.5 text-left text-black transition hover:brightness-95 active:scale-[0.99]"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">{t.title}</span>
+                <span className="shrink-0 text-[11px] font-semibold text-black/55">{clientsMap[t.client_id] ?? ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <CleaningTurnBanner />
-        <CardContent className="p-0">
+        <CardContent className="p-0 pb-2">
         {/* Em atraso */}
         {groups.overdue.length > 0 && (
           <Collapsible open={openOverdue} onOpenChange={setOpenOverdue}>
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
                 <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openOverdue && "-rotate-90")} />
-                <span className="text-sm font-semibold text-destructive">Em atraso</span>
-                <span className="text-xs text-muted-foreground">{groups.overdue.length}</span>
+                {groupTitle("Em atraso", groups.overdue.length, "text-destructive")}
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              {renderHeader()}{groups.overdue.map(renderRow)}
-            </CollapsibleContent>
+            <CollapsibleContent>{groups.overdue.map(renderCard)}</CollapsibleContent>
           </Collapsible>
         )}
 
-        {/* Hoje */}
-        {groups.today.length > 0 && (
-          <Collapsible open={openToday} onOpenChange={setOpenToday}>
-            <CollapsibleTrigger asChild>
-              <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
-                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openToday && "-rotate-90")} />
-                <span className="text-sm font-semibold text-foreground">Hoje</span>
-                <span className="text-xs text-muted-foreground">{groups.today.length}</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {renderHeader()}{groups.today.map(renderRow)}
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Próximas */}
-        {groups.upcoming.length > 0 && (
-          <Collapsible open={openUpcoming} onOpenChange={setOpenUpcoming}>
-            <CollapsibleTrigger asChild>
-              <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
-                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openUpcoming && "-rotate-90")} />
-                <span className="text-sm font-semibold text-foreground">Próximas</span>
-                <span className="text-xs text-muted-foreground">{groups.upcoming.length}</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {renderHeader()}{groups.upcoming.map(renderRow)}
-            </CollapsibleContent>
-          </Collapsible>
+        {rangeMode === "hoje" ? (
+          groups.today.length > 0 && (
+            <Collapsible open={openToday} onOpenChange={setOpenToday}>
+              <CollapsibleTrigger asChild>
+                <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
+                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openToday && "-rotate-90")} />
+                  {groupTitle("Hoje", groups.today.length)}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>{groups.today.map(renderCard)}</CollapsibleContent>
+            </Collapsible>
+          )
+        ) : (
+          <div className="pt-1">
+            {/* faixa de dias: toque num dia para ver só as tarefas dele */}
+            <div className="flex gap-1 px-4 pb-2">
+              {weekDays.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => setSelectedDay(d.key)}
+                  title={d.full}
+                  aria-pressed={selectedDay === d.key}
+                  className={cn(
+                    "flex-1 rounded-xl border px-1 py-1.5 text-center text-[10.5px] transition",
+                    selectedDay === d.key ? "border-primary bg-primary text-primary-foreground" : "border-border/50 text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {d.letter}
+                  <span className={cn("block text-[13px] font-medium", selectedDay === d.key ? "text-primary-foreground" : d.count ? "text-foreground" : "text-muted-foreground/60")}>{d.count}</span>
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const day = weekDays.find((d) => d.key === selectedDay) ?? weekDays[0];
+              const list = myTasks.filter((t) => t.status_global !== "concluido" && t.due_date === day?.key);
+              return list.length > 0
+                ? list.map(renderCard)
+                : <p className="px-4 py-3 text-center text-xs text-muted-foreground">Nenhuma tarefa para {day?.key === todayKey ? "hoje" : "esse dia"}.</p>;
+            })()}
+          </div>
         )}
 
         {/* Sem data */}
         {groups.noDue.length > 0 && (
           <>
-            <div className="flex items-center gap-2 px-4 py-2">
-              <span className="text-sm font-semibold text-muted-foreground">Sem data</span>
-              <span className="text-xs text-muted-foreground">{groups.noDue.length}</span>
-            </div>
-            {renderHeader()}
-            {groups.noDue.map(renderRow)}
+            <div className="flex items-center gap-2 px-4 py-2">{groupTitle("Sem data", groups.noDue.length, "text-muted-foreground")}</div>
+            {groups.noDue.map(renderCard)}
           </>
         )}
 
@@ -574,13 +465,10 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
             <CollapsibleTrigger asChild>
               <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
                 <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openCompleted && "-rotate-90")} />
-                <span className="text-sm font-semibold text-success">Concluídas</span>
-                <span className="text-xs text-muted-foreground">{groups.completed.length}</span>
+                {groupTitle("Concluídas", groups.completed.length, "text-success")}
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              {renderHeader()}{groups.completed.map(renderRow)}
-            </CollapsibleContent>
+            <CollapsibleContent>{groups.completed.map(renderCard)}</CollapsibleContent>
           </Collapsible>
         )}
 
