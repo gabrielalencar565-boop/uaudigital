@@ -130,6 +130,10 @@ export interface TodayScheduledPublication {
   publishTime: string | null;
   contentType: CalendarPublication["content_type"];
   coverAttachmentId: string | null;
+  instagramStatus: CalendarPublication["instagram_status"];
+  instagramScheduled: boolean;
+  instagramPublishedAt: string | null;
+  instagramPermalink: string | null;
 }
 
 // Powers Meu Painel's "hoje no Instagram" widget — every publication due today across
@@ -157,7 +161,7 @@ export function useTodayScheduledPublications(todayKey: string) {
     queryFn: async (): Promise<TodayScheduledPublication[]> => {
       const { data: pubs, error: pubsErr } = await sb
         .from("calendar_publications")
-        .select("id, task_id, calendar_id, content_type, caption, publish_time, cover_attachment_id")
+        .select("id, task_id, calendar_id, content_type, caption, publish_time, cover_attachment_id, instagram_status, instagram_scheduled, instagram_published_at, instagram_permalink")
         .eq("publish_date", todayKey)
         .is("deleted_at", null)
         .order("publish_time", { ascending: true, nullsFirst: false });
@@ -165,6 +169,7 @@ export function useTodayScheduledPublications(todayKey: string) {
       const rows = (pubs ?? []) as {
         id: string; task_id: string; calendar_id: string; content_type: CalendarPublication["content_type"];
         caption: string | null; publish_time: string | null; cover_attachment_id: string | null;
+        instagram_status: CalendarPublication["instagram_status"]; instagram_scheduled: boolean; instagram_published_at: string | null; instagram_permalink: string | null;
       }[];
       if (rows.length === 0) return [];
 
@@ -206,6 +211,10 @@ export function useTodayScheduledPublications(todayKey: string) {
             publishTime: r.publish_time,
             contentType: r.content_type,
             coverAttachmentId: r.cover_attachment_id,
+            instagramStatus: r.instagram_status,
+            instagramScheduled: r.instagram_scheduled,
+            instagramPublishedAt: r.instagram_published_at,
+            instagramPermalink: r.instagram_permalink,
           };
         })
         .filter((v): v is TodayScheduledPublication => v !== null);

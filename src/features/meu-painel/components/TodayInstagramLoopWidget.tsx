@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, format, isToday as isSameDayAsToday } from "date-fns";
-import { Clock, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, CalendarClock, CheckCircle2, Clock, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,6 @@ import {
   useCalendarPublicationById,
   type TodayScheduledPublication,
 } from "@/features/calendario/hooks/use-calendar-data";
-import { CONTENT_TYPE_ICON, getContentTypeColor } from "@/features/calendario/components/PublicationCard";
 import { CONTENT_TYPE_LABELS } from "@/features/calendario/calendar-types";
 import { PublicationPreviewPanel } from "@/features/calendario/components/PublicationPreviewPanel";
 
@@ -20,16 +19,51 @@ interface Props {
   onOpenTask: (taskId: string) => void;
 }
 
-const ROTATE_MS = 5000;
-const VISIBLE = 2;
-// How many clone slides get padded onto each end of the strip so the last real post can
-// still slide into view instead of leaving an empty gap where the "missing" second card
-// would be — see the wrap-around comment on step() below.
-const CLONES = VISIBLE - 1;
-const GAP_PX = 8;
-// Fraction of one card's own width a drag must cross before it counts as a swipe
-// instead of snapping back.
-const SWIPE_THRESHOLD = 0.3;
+const ROTATE_MS = 2800;
+
+// Where the post stands on Instagram, shown at the right of the caption. Not-yet-published posts only get a
+// label when there is something to say (queued for auto-publish, publishing now, or the attempt failed).
+function PublicationStatusLabel({ pub }: { pub: TodayScheduledPublication }) {
+  if (pub.instagramStatus === "published") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-400">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {pub.instagramPermalink ? (
+          <a href={pub.instagramPermalink} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Publicado
+          </a>
+        ) : (
+          "Publicado"
+        )}
+      </span>
+    );
+  }
+  if (pub.instagramStatus === "failed") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-destructive">
+        <AlertCircle className="h-3.5 w-3.5" />
+        Falhou
+      </span>
+    );
+  }
+  if (pub.instagramStatus === "publishing" || pub.instagramStatus === "pending") {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-amber-400">
+        <Clock className="h-3.5 w-3.5" />
+        Publicando
+      </span>
+    );
+  }
+  if (pub.instagramScheduled) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary">
+        <CalendarClock className="h-3.5 w-3.5" />
+        Agendado
+      </span>
+    );
+  }
+  return null;
+}
 
 export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   // Defaults to today but is fully browsable — the hook just queries whatever
@@ -76,82 +110,20 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
   };
 
   const N = publications.length;
-  // With a single post there's nothing to loop (no rotation, no drag), and padding clones would
-  // just render that same post again in the second visible slot.
-  const clones = N > 1 ? CLONES : 0;
-  // Infinite loop: pad a clone of the tail before the real items and a clone of the head
-  // after them, so the visible window always has enough cards to fill it — without this,
-  // sliding to the actual last post left the second slot empty (nothing left to show).
-  // Real items live at extended indices [clones, clones + N - 1]; index starts there.
-  const extended = useMemo(() => {
-    if (N === 0) return [];
-    if (clones === 0) return publications;
-    const head = publications.slice(0, clones);
-    const tail = publications.slice(Math.max(0, N - clones));
-    return [...tail, ...publications, ...head];
-  }, [publications, N, clones]);
 
-  const [index, setIndex] = useState(clones);
+  // Cover flow: the current cover sits in the middle at full size, its neighbours peek in on both
+  // sides smaller and dimmed. It advances on its own and pauses while the pointer is over it.
+  const [cur, setCur] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [dragX, setDragX] = useState(0);
-  const [instant, setInstant] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{ startX: number; width: number } | null>(null);
-
   useEffect(() => {
-    setIndex(clones);
-  }, [N, dateKey, clones]);
-
+    setCur(0);
+  }, [dateKey, N]);
   useEffect(() => {
     if (N <= 1 || paused) return;
-    const id = setInterval(() => setIndex((i) => i + 1), ROTATE_MS);
+    const id = setInterval(() => setCur((i) => (i + 1) % N), ROTATE_MS);
     return () => clearInterval(id);
   }, [N, paused]);
-
-  // Once a slide finishes animating into a cloned slot, snap invisibly (no transition)
-  // back to the equivalent real position — that clone shows exactly the same content, so
-  // the jump is imperceptible and the loop reads as continuous in either direction.
-  const handleTransitionEnd = (e: React.TransitionEvent) => {
-    // Card buttons have their own hover-brightness transition, which bubbles up here too
-    // — only react to the track's own transform transition finishing, not a child's.
-    if (e.target !== e.currentTarget || e.propertyName !== "transform") return;
-    if (index >= clones + N) {
-      setInstant(true);
-      setIndex(index - N);
-    } else if (index < clones) {
-      setInstant(true);
-      setIndex(index + N);
-    }
-  };
-  useEffect(() => {
-    if (!instant) return;
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => setInstant(false)));
-    return () => cancelAnimationFrame(id);
-  }, [instant]);
-
-  const step = (dir: 1 | -1) => setIndex((i) => i + dir);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (N <= 1) return;
-    setPaused(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragState.current = { startX: e.clientX, width: (trackRef.current?.clientWidth ?? VISIBLE * 100) / VISIBLE };
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragState.current) return;
-    setDragX(e.clientX - dragState.current.startX);
-  };
-  const endDrag = () => {
-    if (!dragState.current) return;
-    const { width } = dragState.current;
-    if (dragX < -width * SWIPE_THRESHOLD) step(1);
-    else if (dragX > width * SWIPE_THRESHOLD) step(-1);
-    dragState.current = null;
-    setDragX(0);
-    setPaused(false);
-  };
-
-  const cardWidthPct = 100 / VISIBLE;
+  const current = publications[cur] ?? null;
 
   return (
     <Card className="flex h-full flex-col">
@@ -206,97 +178,83 @@ export function TodayInstagramLoopWidget({ onOpenTask }: Props) {
             {isToday ? "Nenhuma publicação prevista pra hoje" : "Nenhuma publicação prevista para este dia"}
           </div>
         ) : (
-          // Card stretches to match the left column's height (Atribuídas a mim +
-          // Menções stacked); the media strip itself stays at its own natural size and
-          // is centered in whatever extra vertical room that leaves, instead of
-          // distorting the posts' real Instagram aspect ratio to fill the gap.
-          <div className="relative mx-2 mb-3 flex flex-1 items-center gap-1.5">
-            {N > VISIBLE && (
-              <button
-                type="button"
-                onClick={() => step(-1)}
-                className="z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
-                aria-label="Anterior"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            )}
-
-            <div
-              ref={trackRef}
-              className="touch-none select-none overflow-hidden"
-              style={{ gap: GAP_PX }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-            >
-              <div
-                className={cn("flex", !instant && !dragState.current && "transition-transform duration-400 ease-out")}
-                onTransitionEnd={handleTransitionEnd}
-                style={{
-                  gap: GAP_PX,
-                  transform: `translateX(calc(-${index * cardWidthPct}% - ${index * GAP_PX}px + ${dragX}px))`,
-                }}
-              >
-                {extended.map((p, i) => {
-                  const cover = thumbnailFor(p);
-                  const ContentIcon = CONTENT_TYPE_ICON[p.contentType];
-                  const contentColor = getContentTypeColor(p.contentType);
-                  return (
-                    <button
-                      key={`${p.id}-${i}`}
-                      type="button"
-                      onClick={() => setOpenId(p.id)}
-                      className="relative aspect-[4/5] shrink-0 overflow-hidden rounded-lg bg-black text-left transition hover:brightness-110"
-                      style={{ width: `calc(${cardWidthPct}% - ${(GAP_PX * (VISIBLE - 1)) / VISIBLE}px)` }}
-                    >
-                      {cover ? (
-                        <img
-                          src={cover.type?.startsWith("video/") ? cover.thumbUrl : toStorageRenderUrl(cover.thumbUrl)}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-muted">
-                          <Instagram className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent p-1.5">
-                        <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-muted">
-                          {p.clientLogoUrl && <img src={toStorageRenderUrl(p.clientLogoUrl)} alt="" className="h-full w-full object-cover" draggable={false} />}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-white">{p.clientName}</span>
-                        {p.clientEnded && <span className="shrink-0 rounded-full bg-white/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-white">encerrado</span>}
+          <div className="flex flex-1 flex-col justify-start px-3 pb-3 pt-1" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+            <div className="relative aspect-[3/2] w-full">
+              {publications.map((p, k) => {
+                // Circular offset from the current cover, kept in [-half, N - half - 1].
+                const half = Math.floor(N / 2);
+                const o = ((((k - cur) % N) + N + half) % N) - half;
+                const visible = Math.abs(o) <= 1;
+                const cover = thumbnailFor(p);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    tabIndex={visible ? 0 : -1}
+                    onClick={() => (o === 0 ? setOpenId(p.id) : setCur(k))}
+                    className="absolute left-1/2 top-1/2 aspect-[4/5] w-[44%] overflow-hidden rounded-2xl bg-muted text-left transition-[transform,opacity] duration-700 ease-in-out"
+                    style={{
+                      transform: `translate(calc(-50% + ${o * 72}%), -50%) scale(${o === 0 ? 1 : 0.78})`,
+                      opacity: !visible ? 0 : o === 0 ? 1 : 0.45,
+                      zIndex: 10 - Math.abs(o),
+                      pointerEvents: visible ? "auto" : "none",
+                    }}
+                  >
+                    {cover ? (
+                      <img
+                        src={cover.type?.startsWith("video/") ? cover.thumbUrl : toStorageRenderUrl(cover.thumbUrl)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Instagram className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-1.5">
-                        <span className="flex items-center gap-1 text-[10px] text-white/80">
-                          <Clock className="h-3 w-3" />
-                          {p.publishTime ? p.publishTime.slice(0, 5) : "—"}
-                        </span>
-                        <span className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold", contentColor.bg, contentColor.text)}>
-                          <ContentIcon className="h-2.5 w-2.5" />
-                          {CONTENT_TYPE_LABELS[p.contentType]}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </button>
+                );
+              })}
+              {N > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCur((i) => (i - 1 + N) % N)}
+                    className="absolute left-0 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur transition hover:bg-background"
+                    aria-label="Anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCur((i) => (i + 1) % N)}
+                    className="absolute right-0 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur transition hover:bg-background"
+                    aria-label="Próximo"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              )}
             </div>
-
-            {N > VISIBLE && (
-              <button
-                type="button"
-                onClick={() => step(1)}
-                className="z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70 transition hover:bg-accent hover:text-foreground"
-                aria-label="Próximo"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+            {current && (
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {current.clientLogoUrl && <img src={toStorageRenderUrl(current.clientLogoUrl)} alt="" className="h-full w-full object-cover" draggable={false} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold">
+                    {current.clientName}
+                    {current.clientEnded && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">encerrado</span>}
+                  </div>
+                  <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {current.publishTime ? current.publishTime.slice(0, 5) : "—"} · {CONTENT_TYPE_LABELS[current.contentType]}
+                  </div>
+                </div>
+                <PublicationStatusLabel pub={current} />
+              </div>
             )}
           </div>
         )}

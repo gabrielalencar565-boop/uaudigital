@@ -217,12 +217,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     });
   }, [myTasks, todayKey, weekEndKey]);
 
-  // "[Doce Rio] - Design - Novembro" vira "Doce Rio" em cima e "Design · Novembro" embaixo
+  // Nome da tarefa em destaque e o cliente embaixo: "[Doce Rio] - Design - Novembro" vira "Design · Novembro" com "Doce Rio" embaixo
   const splitTitle = (t: PmTask) => {
     const client = clientsMap[t.client_id];
     const bracket = t.title.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
-    if (bracket) return { main: bracket[1], sub: bracket[2].replace(/\s+-\s+/g, " · ") };
-    if (client && t.title.startsWith(`${client} - `)) return { main: client, sub: t.title.slice(client.length + 3).replace(/\s+-\s+/g, " · ") };
+    if (bracket) return { main: bracket[2].replace(/\s+-\s+/g, " · "), sub: client ?? bracket[1] };
+    if (client && t.title.startsWith(`${client} - `)) return { main: t.title.slice(client.length + 3).replace(/\s+-\s+/g, " · "), sub: client };
     return { main: t.title, sub: client ?? "" };
   };
 
