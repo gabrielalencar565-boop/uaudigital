@@ -19,7 +19,46 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=a0463671">
+<link rel="stylesheet" href="assets/site.css?v=a00470ec">
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1699647144854204');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1699647144854204&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+<script>
+// Tráfego pago → home: o clique para falar com a UAU no WhatsApp = evento Lead no Meta.
+// Quem chega pelo anúncio (?utm_source=meta) recebe uma mensagem própria no WhatsApp, com o nome do vídeo.
+(function(){
+  var MSG='Oi! Vi o anúncio da UAU e quero a análise do marketing da minha empresa.';
+  try{var q=new URLSearchParams(location.search);
+    if(q.get('utm_source')==='meta'||q.get('fbclid'))sessionStorage.setItem('uau_anuncio',q.get('utm_content')||'meta');}catch(e){}
+  document.addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a[href*="whatsapp.com"],a[href*="wa.me"],a[href$="#contato"],a[data-lead]');
+    if(!a)return;
+    var o=null;try{o=sessionStorage.getItem('uau_anuncio');}catch(x){}
+    if(o){try{
+      var txt=MSG+(o!=='meta'?' ['+o+']':'');
+      var base=(typeof CONTATO!=='undefined'&&CONTATO.link)?CONTATO.link:'https://api.whatsapp.com/send/?phone=5599984344705';
+      var u=new URL(base);u.searchParams.set('text',txt);
+      if(typeof CONTATO!=='undefined')CONTATO.link=u.toString();
+      if(/whatsapp\.com|wa\.me/.test(a.href)){var u2=new URL(a.href);u2.searchParams.set('text',txt);a.href=u2.toString();}
+    }catch(x){}}
+    if(window.fbq)fbq('track','Lead',{content_name:'Clique WhatsApp',origem:o||'organico'});
+  },true);
+})();
+</script>
 </head>
 <body>
 <a href="#conteudo" class="sr-only">Pular para o conteúdo</a>
@@ -345,7 +384,7 @@
     </div>
     <div class="pills reveal" id="pills">
       <div class="pcol" style="--o:0"><figure class="cap a"><img src="img/time/pessoa-1.jpg" alt="Videomaker da UAU" loading="lazy"><figcaption><b>Videomaker</b></figcaption></figure><figure class="cap b"><img src="img/time/pessoa-2.jpg" alt="Designer da UAU" loading="lazy"><figcaption><b>Designer</b></figcaption></figure></div>
-      <div class="pcol" style="--o:1"><figure class="cap b"><img src="img/time/pessoa-6.jpg" alt="Editor de Vídeo da UAU" loading="lazy"><figcaption><b>Editor de Vídeo</b></figcaption></figure><figure class="cap a"><img src="img/time/pessoa-3.jpg" alt="Head de Conteúdo da UAU" loading="lazy"><figcaption><b>Head de Conteúdo</b></figcaption></figure></div>
+      <div class="pcol" style="--o:1"><figure class="cap b"><img src="img/time/editor-video.jpg" alt="Editor de Vídeo da UAU" loading="lazy"><figcaption><b>Editor de Vídeo</b></figcaption></figure><figure class="cap a"><img src="img/time/pessoa-3.jpg" alt="Head de Conteúdo da UAU" loading="lazy"><figcaption><b>Head de Conteúdo</b></figcaption></figure></div>
       <div class="pcol" style="--o:2"><figure class="cap a"><img src="img/time/pessoa-4.jpg" alt="Diretor de Operações da UAU" loading="lazy"><figcaption><b>Diretor de Operações</b></figcaption></figure><figure class="cap b"><img src="img/time/pessoa-7.jpg" alt="Social Media da UAU" loading="lazy"><figcaption><b>Social Media</b></figcaption></figure></div>
       <div class="pcol" style="--o:3"><figure class="cap b"><img src="img/time/pessoa-5.jpg" alt="Diretor Comercial da UAU" loading="lazy"><figcaption><b>Diretor Comercial</b></figcaption></figure><a href="trabalhe-conosco.html" class="cap a cap-cta"><span>Você aqui?</span><small>Trabalhe conosco ↗</small></a></div>
     </div>
@@ -430,7 +469,7 @@
 </footer>
 
 <a href="https://api.whatsapp.com/send/?phone=5599984344705&amp;text=Oi%2C+vi+o+trabalho+da+Uau+Digital+no+Instagram+e+gostaria+de+saber+como+voc%C3%AAs+podem+ajudar+meu+neg%C3%B3cio%21&amp;type=phone_number&amp;app_absent=0" target="_blank" rel="noopener" class="wa" aria-label="Falar com a UAU no WhatsApp">✆</a>
-<script src="assets/site.js?v=d2ab565f"></script>
-<script src="assets/ajuste.js?v=0d87ca51" defer></script>
+<script src="assets/site.js?v=9959d596"></script>
+<script src="assets/ajuste.js?v=3c7362df" defer></script>
 </body>
 </html>
