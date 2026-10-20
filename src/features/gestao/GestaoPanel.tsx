@@ -5,7 +5,7 @@ import { CapturasPanel, usePendingCaptureCount } from "@/features/agenda/compone
 import { tabPath } from "@/lib/app-routes";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft } from "lucide-react";
+import { Clock, Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -41,6 +41,9 @@ import { PmAssigneeFlowConfig } from "./components/PmAssigneeFlowConfig";
 import type { StageAssignees } from "./components/PmStageFlowConfig";
 import { PmPautaView } from "./components/PmPautaView";
 import { extraDisplayStage } from "./lib/extra-rules";
+import { getStageBadgeFor, stripPeriodicTime, getPeriodicTime, getPeriodicStageFallbackLabel, STAGE_BADGE_BG } from "./lib/stage-badge";
+import { AgendaTimeline } from "./components/AgendaTimeline";
+import { AgendaDayByPerson } from "./components/AgendaDayByPerson";
 import { stageLabel, stageAbbr, getStageCircleColor, tagColor, tagDisplay, isHexColor, TAG_COLORS } from "./pm-constants";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "./pm-types";
@@ -52,30 +55,6 @@ import { getIconById } from "@/features/agenda/components/IconPicker";
 import { AgendaReportsPanel } from "@/features/agenda/components/AgendaReportsPanel";
 import { TaskTrashPanel } from "@/features/agenda/components/TaskTrashPanel";
 import { useAvatarDirectory } from "@/hooks/use-avatar-directory";
-
-const STAGE_BADGE_BG: Record<string, string> = {
-  captacao: "bg-red-500", planejamento: "bg-blue-500", design: "bg-stage-design",
-  edicao_videos: "bg-purple-500", revisao: "bg-pink-500", alteracoes: "bg-stage-alteracoes", pdf: "bg-indigo-500",
-  agendamento: "bg-lime-500", entrega: "bg-emerald-500"
-};
-
-const PERIODIC_TIME_RE = /\s-\s(\d{1,2}:\d{2})\s*$/;
-
-function stripPeriodicTime(title: string) {
-  const match = title.match(PERIODIC_TIME_RE);
-  return match ? title.slice(0, match.index).trim() : title;
-}
-
-function getPeriodicTime(task: PmTask) {
-  return task.posting_time ?? task.title.match(PERIODIC_TIME_RE)?.[1] ?? null;
-}
-
-function getPeriodicStageFallbackLabel(key: string) {
-  return key
-    .replace(/^custom_/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
 
 const VIEW_TITLES: Record<string, string> = {
   agenda: "Agenda de tarefas",
@@ -574,7 +553,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     if (next.has(k)) next.delete(k); else next.add(k);
     return next;
   });
-  const [agendaView, setAgendaView] = useState<"month" | "week">("month");
+  const [agendaView, setAgendaView] = useState<"month" | "week" | "day">("month");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<string | undefined>();
@@ -693,7 +672,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   // month view only renders days within the current month (no leading/trailing padding
   // cells like the desktop grid does), so a day outside this set can't be scrolled to.
   const visibleDayKeys = useMemo(() => {
-    const rendered = agendaView === "week" ? weekDays : (isMobile ? days.filter(d => d.getMonth() === cursor.getMonth()) : days);
+    const rendered = agendaView === "week" ? weekDays : agendaView === "day" ? [cursor] : (isMobile ? days.filter(d => d.getMonth() === cursor.getMonth()) : days);
     return new Set(rendered.map(d => format(d, "yyyy-MM-dd")));
   }, [agendaView, isMobile, days, weekDays, cursor]);
 
@@ -778,12 +757,15 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       map.set(key, [...prev, asPm]);
     }
 
-    // Ordem fixa em todas as listas da Agenda: não concluídas primeiro, concluídas por último
+    // Ordem fixa em todas as listas da Agenda: não concluídas primeiro (as com horário no topo), concluídas por último
     for (const [dayKey, dayTasks] of map) {
       const ordered = dayTasks.slice().sort((a, b) => {
         const aDone = a.status_global === "concluido";
         const bDone = b.status_global === "concluido";
         if (aDone !== bDone) return aDone ? 1 : -1;
+        // Com horário marcado vêm antes (do mais cedo pro mais tarde); sem horário mantêm a ordem de sempre
+        if (a.due_time && b.due_time) return a.due_time.localeCompare(b.due_time);
+        if (a.due_time || b.due_time) return a.due_time ? -1 : 1;
         return 0;
       });
       map.set(dayKey, ordered);
@@ -794,6 +776,29 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
+  // Visão por horário (Semana/Dia): marca ou tira o horário e, se o cartão veio de outro dia, muda a data junto.
+  const setTaskSchedule = async (taskId: string, dateKey: string, time: string | null) => {
+    try {
+      await updateTask.mutateAsync({ id: taskId, due_date: dateKey, due_time: time ? `${time}:00` : null } as any);
+      toast.success(time ? `Tarefa marcada para ${format(new Date(dateKey + "T00:00:00"), "dd/MM", { locale: ptBR })} às ${time}` : "Horário removido");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Erro ao salvar o horário");
+    }
+  };
+  // Nas visões por horário: tarefas periódicas (reuniões etc.) mostram o título que a pessoa escreveu, não o cliente, e usam
+  // o horário que já carregam (posting_time ou "- HH:MM" no título) quando ainda não têm um horário de entrega.
+  const gridTaskName = (t: PmTask) => (t.periodic_stage_key ? stripPeriodicTime(t.title) : (clientsMap[t.client_id] ?? "—"));
+  const timeViewTasksByDay = useMemo(() => {
+    const out = new Map<string, PmTask[]>();
+    for (const [k, list] of tasksByDay) {
+      out.set(k, list.map((t) => {
+        if (t.due_time || !t.periodic_stage_key) return t;
+        const pt = getPeriodicTime(t);
+        return pt && /^\d{1,2}:\d{2}/.test(pt) ? { ...t, due_time: `${pt.padStart(5, "0").slice(0, 5)}:00` } : t;
+      }));
+    }
+    return out;
+  }, [tasksByDay]);
   const renderSpecialDates = (dayKey: string, compact = false) => {
     const items = daySpecialDates(dayKey);
     if (!items.length) return null;
@@ -830,79 +835,21 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       .filter((member): member is { id: string; name: string; avatar?: string } => Boolean(member.name));
   };
 
+  // Selo da etapa (sigla, cor e estilo): o mesmo cálculo do Meu Painel e das visões Semana/Dia (lib/stage-badge).
+  const getStageBadge = (t: PmTask) => getStageBadgeFor(t, childTasksMap[t.id] ?? [], periodicStages);
+
   const renderTaskCard = (t: PmTask) => {
     const isLegacy = t.id.startsWith("legacy_");
     const isDone = t.parent_task_id ? t.status_global === "concluido" : (t.status_global === "concluido" || t.stage_current === "entrega");
-    const isAlteracao = t.stage_current === "alteracoes";
-    const isRevisao = t.stage_current === "revisao";
-    // Detect mixed children (parent has both video and design subtasks)
-    const childrenOfThis = childTasksMap[t.id] ?? [];
-    const childPostTypes = new Set(childrenOfThis.map((c) => c.post_type).filter(Boolean) as string[]);
     const periodic = t.periodic_stage_key ? periodicStages.find((p) => p.key === t.periodic_stage_key) : null;
     const periodicTime = t.periodic_stage_key ? getPeriodicTime(t) : null;
     const periodicTitle = t.periodic_stage_key ? stripPeriodicTime(t.title) : null;
-    const isMixed = childPostTypes.has("video") && childPostTypes.has("design");
-    const isAlteracaoParent = isAlteracao && childrenOfThis.length > 0;
+    const isAlteracao = t.stage_current === "alteracoes";
     const isAlteracaoPlanejamento = isAlteracao && t.post_type === "planejamento";
-    // ALT with explicit video/design post_type — these are NOT plan alterations
     const isAlteracaoWithOrigin = isAlteracao && (t.post_type === "video" || t.post_type === "design");
-    // A task is "plan" alteration only when it has no specific video/design post_type
-    // (parent with mixed children, or origin without post_type)
-    const isAlteracaoPlan = isAlteracao && !isAlteracaoPlanejamento && !isAlteracaoWithOrigin && (isAlteracaoParent || !!t.origin_task_id);
-    const isAlteracaoMixed = isAlteracaoPlan;
-    const isRevisaoMixed = isRevisao && isMixed;
-    // Revisão (Planejamento): parent task on revisão stage with post_type='planejamento'
-    // OR parent task on revisão without any design/video children yet (initial pauta review)
-    const isRevisaoPlanejamento = isRevisao && !t.parent_task_id && (
-      t.post_type === "planejamento" ||
-      (!t.post_type && childrenOfThis.length === 0) ||
-      (childrenOfThis.length > 0 && !childPostTypes.has("video") && !childPostTypes.has("design"))
-    ) && t.post_type !== "video" && t.post_type !== "design";
-    const isRevisaoVideo = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && t.post_type === "video";
-    const isRevisaoDesign = isRevisao && !isRevisaoMixed && !isRevisaoPlanejamento && !isRevisaoVideo;
-    const isPdfWithOrigin = false;
-    const isPdfVideo = false;
-    const isPdfDesign = false;
-    const hasGradient = isAlteracaoWithOrigin || isAlteracaoPlanejamento || isAlteracaoMixed || isRevisao;
-    const gradientClass = isAlteracaoPlanejamento
-      ? "bg-gradient-to-r from-stage-alteracoes to-stage-planejamento"
-      : isAlteracaoMixed
-      ? "bg-gradient-to-r from-stage-alteracoes via-stage-design to-stage-edicao_videos"
-      : isAlteracaoWithOrigin
-      ? (t.post_type === "video"
-        ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
-        : "bg-gradient-to-r from-stage-alteracoes to-stage-design")
-      : isRevisaoPlanejamento
-      ? "bg-gradient-to-r from-pink-400 to-stage-planejamento"
-      : isRevisaoMixed
-      ? "bg-gradient-to-r from-pink-400 via-stage-design to-stage-edicao_videos"
-      : isRevisaoVideo
-      ? "bg-gradient-to-r from-pink-400 to-stage-edicao_videos"
-      : isRevisaoDesign
-      ? "bg-gradient-to-r from-pink-400 to-stage-design"
-      : undefined;
-    const gradientAbbr = isAlteracaoPlanejamento
-      ? "ALT/PLAN"
-      : isAlteracaoMixed
-      ? "ALT/PLAN"
-      : isAlteracaoWithOrigin
-      ? (t.post_type === "video" ? "ALT/VDO" : "ALT/DSG")
-      : isRevisaoPlanejamento
-        ? "REV/PLAN"
-        : isRevisaoMixed
-          ? "REV/PLAN"
-          : isRevisaoVideo
-            ? "REV/VDO"
-            : isRevisaoDesign
-              ? "REV/DSG"
-              : undefined;
-    // Extra concluded in Agendamento/PDF/Revisão shows what it is (DSG/VDO), not the stage it passed through
-    const typeStage = extraDisplayStage(t);
-    const shownStage = typeStage ?? t.stage_current;
-    const stageBg = (typeStage ? undefined : gradientClass) ?? (STAGE_BADGE_BG[shownStage] ?? "bg-muted");
-    const abbr = t.periodic_stage_key
-      ? (periodic?.label ?? getPeriodicStageFallbackLabel(t.periodic_stage_key)).slice(0, 3).toUpperCase()
-      : (typeStage ? undefined : gradientAbbr) ?? stageAbbr(shownStage);
+    const badge = getStageBadge(t);
+    const stageBg = badge.bg;
+    const abbr = badge.abbr;
     const assignees = getTaskAssignees(t);
     const visibleAssignees = assignees.slice(0, 2);
     const extraAssignees = Math.max(assignees.length - 2, 0);
@@ -926,22 +873,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         style={(isAlteracaoWithOrigin || isAlteracaoPlanejamento) && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
         <div className="flex items-center justify-between gap-1">
-          {(() => {
-            const ck = periodic?.color_key;
-            const isHex = ck ? isHexColor(ck) : false;
-            const periodicBgClass = periodic
-              ? (ck && !isHex ? (TAG_COLORS.find(c => c.key === ck)?.dot ?? "bg-black") : (isHex ? "" : "bg-black"))
-              : "";
-            const periodicStyle = periodic && isHex ? { backgroundColor: ck! } : undefined;
-            return (
-              <div
-                className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide text-white", periodic ? periodicBgClass : stageBg)}
-                style={periodicStyle}
-              >
-                {abbr}
-              </div>
-            );
-          })()}
+          <div
+            className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide text-white", badge.bg)}
+            style={badge.style}
+          >
+            {badge.abbr}
+          </div>
           <div className="flex items-center gap-0.5">
             <div
               className={cn("h-5 w-5 rounded-full flex items-center justify-center",
@@ -998,6 +935,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             )}
           </div>
         </div>
+        {t.due_time && (
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-primary">
+            <Clock className="h-3 w-3" />
+            {t.due_time.slice(0, 5)}
+          </p>
+        )}
       </div>
     );
   };
@@ -1006,12 +949,29 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     <div className="space-y-5 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards" }}>
       {/* Toolbar da Agenda: visualização + período + ações */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-muted/20 px-3 py-2">
-        <Tabs value={agendaView} onValueChange={(v) => setAgendaView(v as any)}>
+        <Tabs value={agendaView} onValueChange={(v) => {
+          setAgendaView(v as any);
+          // Semana/Dia abrem no dia de hoje quando ele está no mês mostrado (o cursor do mês fica no dia 1)
+          if (v !== "month" && cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear()) setCursor(new Date());
+        }}>
           <TabsList className="bg-background/60 h-9 p-1 rounded-full gap-1 border border-border/30">
             <TabsTrigger value="month" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4 transition-all">Mês</TabsTrigger>
             <TabsTrigger value="week" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4 transition-all">Semana</TabsTrigger>
+            <TabsTrigger value="day" className="h-7 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-4 transition-all">Dia</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {agendaView !== "month" && (
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label={agendaView === "day" ? "Dia anterior" : "Semana anterior"} onClick={() => setCursor((d) => addDays(d, agendaView === "day" ? -1 : -7))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-9 rounded-full px-3 text-xs" onClick={() => setCursor(new Date())}>Hoje</Button>
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label={agendaView === "day" ? "Próximo dia" : "Próxima semana"} onClick={() => setCursor((d) => addDays(d, agendaView === "day" ? 1 : 7))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Select
@@ -1212,85 +1172,29 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             })}
           </div>
         ) : (
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4 min-w-max">
-              {weekDays.map((d) => {
-                const key = format(d, "yyyy-MM-dd");
-                const dayTasks = tasksByDay.get(key) ?? [];
-                const dow = format(d, "EEEE", { locale: ptBR });
-                const dowTitle = dow.charAt(0).toUpperCase() + dow.slice(1);
-                 const isToday = key === todayKey;
-                 const doneCount = dayTasks.filter((t) => t.status_global === "concluido").length;
-                 const allDone = dayTasks.length > 0 && doneCount === dayTasks.length && !hasActiveFilter;
-
-                 return (
-                   <div
-                     key={key}
-                     data-day-key={key}
-                     className={cn(
-                       "flex-shrink-0 rounded-xl border bg-card/10 p-4 transition",
-                       allDone ? "w-[180px]" : "w-[280px]",
-                       isToday ? "border-primary ring-2 ring-primary/40" : "border-border/60",
-                       !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
-                     )}>
-                     <div className="flex items-start justify-between gap-2 mb-4">
-                       <div className="min-w-0">
-                         <p className={cn("text-sm font-medium", isToday && "text-primary")}>{dowTitle}</p>
-                         <p className={cn("mt-1 text-3xl font-semibold leading-none tracking-tight", isToday && "text-primary")}>
-                           {format(d, "dd")}
-                         </p>
-                         {dayTasks.length > 0 && (
-                           <p className="mt-2 text-xs text-muted-foreground">
-                             {doneCount}/{dayTasks.length} concluída(s)
-                           </p>
-                         )}
-                       </div>
-                     </div>
-                      {allDone ? (
-                        <div className="space-y-2.5">
-                          <button
-                            type="button"
-                            onClick={() => toggleDoneDay(key)}
-                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-2 py-2 text-xs font-semibold text-success-foreground hover:opacity-90 transition"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Ver {dayTasks.length} {dayTasks.length === 1 ? "tarefa" : "tarefas"}</span>
-                            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
-                          </button>
-                          {expandedDoneDays.has(key) && (
-                            <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                              {dayTasks.map(renderTaskCard)}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                       <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                         {renderSpecialDates(key)}
-                         {dayTasks.length ? (
-                           <>
-                             {dayTasks.slice(0, 5).map(renderTaskCard)}
-                             {dayTasks.length > 5 && (
-                               <button
-                                 type="button"
-                                 className="w-full rounded-lg bg-foreground/5 px-2 py-1.5 text-[10px] font-medium text-muted-foreground/60 hover:bg-foreground/10 hover:text-muted-foreground transition"
-                                 onClick={() => { setMoreDayKey(key); setMoreOpen(true); }}>
-                                 +{dayTasks.length - 5} mais
-                               </button>
-                             )}
-                           </>
-                         ) : daySpecialDates(key).length === 0 ? (
-                           <div className="grid min-h-[120px] place-items-center rounded-lg border border-dashed border-border/60 bg-card/5 p-4">
-                             <p className="text-sm text-muted-foreground">Sem tarefas</p>
-                           </div>
-                         ) : null}
-                       </div>
-                     )}
-                   </div>
-                );
-              })}
-            </div>
-          </div>
+          <AgendaTimeline
+            personOf={(t) => getTaskAssignees(t)[0] ?? null}
+            days={weekDays}
+            tasksByDay={timeViewTasksByDay}
+            todayKey={todayKey}
+            nameOf={gridTaskName}
+            badgeOf={getStageBadge}
+            onTaskClick={onTaskClick}
+            onSetTime={setTaskSchedule}
+          />
         )
+      ) : agendaView === "day" ? (
+        /* ── DAY VIEW ── */
+        <AgendaDayByPerson
+          day={cursor}
+          tasks={timeViewTasksByDay.get(format(cursor, "yyyy-MM-dd")) ?? []}
+          todayKey={todayKey}
+          nameOf={gridTaskName}
+          personOf={(t) => getTaskAssignees(t)[0] ?? null}
+          badgeOf={getStageBadge}
+          onTaskClick={onTaskClick}
+          onSetTime={setTaskSchedule}
+        />
       ) : isMobile ? (
         /* ── MOBILE MONTH LIST VIEW ── */
         <div className="space-y-2">

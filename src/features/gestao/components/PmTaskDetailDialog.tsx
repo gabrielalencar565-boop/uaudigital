@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
-  Image as ImageIcon, Loader2,
+  Image as ImageIcon, Loader2, Clock,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -2298,6 +2298,27 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                 onSuccess: () => toast.success(v ? `Conteúdo de ${monthLabel(v)}` : "Mês do conteúdo igual ao prazo"),
               })}
             />
+          </PropertyRow>
+
+          <PropertyRow icon={<Clock className="h-3.5 w-3.5" />} label="Horário">
+            <div className="flex items-center gap-2 min-h-[28px]">
+              <input
+                type="time"
+                value={(task.due_time ?? "").slice(0, 5)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // só grava um horário completo (HH:MM) ou a limpeza do campo
+                  if (v === "" || /^\d{2}:\d{2}$/.test(v)) updateTask.mutate({ id: task.id, due_time: v ? `${v}:00` : null } as any);
+                }}
+                className="h-7 rounded-md border border-input bg-background px-2 text-sm"
+                aria-label="Horário de entrega"
+              />
+              {task.due_time && (
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => updateTask.mutate({ id: task.id, due_time: null } as any)}>
+                  Remover
+                </button>
+              )}
+            </div>
           </PropertyRow>
 
           <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label="Demanda Extra">

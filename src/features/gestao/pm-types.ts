@@ -30,6 +30,8 @@ export interface PmTask {
   alteration_origin?: string | null;
   posting_date: string | null;
   posting_time: string | null;
+  /** horário opcional de entrega ("HH:MM:SS"); a data fica em due_date */
+  due_time?: string | null;
   caption: string | null;
   /** mês do conteúdo (primeiro dia do mês); sem valor, vale o mês do prazo — ver lib/content-month */
   reference_month?: string | null;

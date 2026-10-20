@@ -12,8 +12,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { usePmTasks, useMyChildTasks } from "@/features/gestao/hooks/use-pm-data";
 import { getStageCircleColor, stageAbbr, stageLabel } from "@/features/gestao/pm-constants";
+import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
+import { getPeriodicTime, getStageBadgeFor, stripPeriodicTime } from "@/features/gestao/lib/stage-badge";
 import type { PmTask } from "@/features/gestao/pm-types";
 import { CleaningTurnBanner } from "./CleaningTurnBanner";
+
+/** Horário da tarefa ("HH:MM"): o de entrega ou, nas periódicas (reuniões etc.), o que já vem no título/postagem. */
+function timeOf(t: PmTask): string | null {
+  if (t.due_time) return t.due_time.slice(0, 5);
+  if (t.periodic_stage_key) {
+    const pt = getPeriodicTime(t);
+    if (pt && /^\d{1,2}:\d{2}/.test(pt)) return pt.padStart(5, "0").slice(0, 5);
+  }
+  return null;
+}
 
 export function dueDateLabel(dueDate: string | null, todayKey: string, isDone = false) {
   if (!dueDate) return { text: "—", color: "text-muted-foreground" };
@@ -60,8 +72,15 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const weekEndKey = useMemo(() => format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd"), [todayKey]);
   const [rangeMode, setRangeMode] = useState<"hoje" | "semana">("hoje");
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
+  // relógio do "Próxima": atualiza a cada minuto
+  const [nowTick, setNowTick] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const pmTasksQ = usePmTasks();
+  const { data: periodicStages = [] } = usePeriodicStages();
 
   // My tasks (assigned to me, including completed and overdue) — computed before the child
   // query below so its own task ids can scope that fetch to just what this widget needs.
@@ -181,7 +200,13 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
       if (!da && !db) return 0;
       if (!da) return 1;
       if (!db) return -1;
-      return da.localeCompare(db);
+      if (da !== db) return da.localeCompare(db);
+      // mesmo dia: quem tem horário vem primeiro, do mais cedo ao mais tarde
+      const ta = timeOf(a);
+      const tb = timeOf(b);
+      if (ta && tb) return ta.localeCompare(tb);
+      if (ta || tb) return ta ? -1 : 1;
+      return 0;
     };
 
     overdue.sort(sortByDue);
@@ -191,6 +216,21 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
     return { overdue, today: todayGroup, upcoming, noDue, completed };
   }, [myTasks, todayKey, currentMonthKey, rangeMode, weekEndKey]);
+
+  // Próxima tarefa de hoje com horário que ainda não passou (sobe para o topo da aba Hoje, com quanto falta)
+  const nextToday = useMemo(() => {
+    const nowHHMM = format(nowTick, "HH:mm");
+    const upcoming = groups.today
+      .map((t) => ({ t, time: timeOf(t) }))
+      .filter((x): x is { t: PmTask; time: string } => !!x.time && x.time > nowHHMM)
+      .sort((a, b) => a.time.localeCompare(b.time));
+    if (upcoming.length === 0) return null;
+    const { t, time } = upcoming[0];
+    const [h, m] = time.split(":").map(Number);
+    const diffMin = h * 60 + m - (nowTick.getHours() * 60 + nowTick.getMinutes());
+    const left = diffMin >= 60 ? `${Math.floor(diffMin / 60)}h${diffMin % 60 ? ` ${diffMin % 60}min` : ""}` : `${diffMin}min`;
+    return { task: t, time, left };
+  }, [groups.today, nowTick]);
 
   const [openOverdue, setOpenOverdue] = useState(true);
   const [openToday, setOpenToday] = useState(true);
@@ -220,6 +260,8 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   // Nome da tarefa em destaque e o cliente embaixo: "[Doce Rio] - Design - Novembro" vira "Design · Novembro" com "Doce Rio" embaixo
   const splitTitle = (t: PmTask) => {
     const client = clientsMap[t.client_id];
+    // tarefas periódicas (reuniões etc.): o título que a pessoa escreveu (sem a hora no fim) e o cliente embaixo
+    if (t.periodic_stage_key) return { main: stripPeriodicTime(t.title), sub: client ?? "" };
     const bracket = t.title.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
     if (bracket) return { main: bracket[2].replace(/\s+-\s+/g, " · "), sub: client ?? bracket[1] };
     if (client && t.title.startsWith(`${client} - `)) return { main: t.title.slice(client.length + 3).replace(/\s+-\s+/g, " · "), sub: client };
@@ -231,7 +273,8 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     const due = dueDateLabel(t.due_date, todayKey, isDone);
     const commentCount = commentCounts[t.id] ?? 0;
     const childCount = childCounts[t.id] ?? 0;
-    const stageColor = getStageCircleColor(t.stage_current);
+    const badge = getStageBadgeFor(t, childTasksByParent[t.id] ?? [], periodicStages);
+    const time = timeOf(t);
     const isExpanded = expandedTasks.has(t.id);
     const children = childTasksByParent[t.id] ?? [];
     const { main, sub } = splitTitle(t);
@@ -241,13 +284,10 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
         <div className="border-b border-border/30 transition hover:bg-muted/20">
           <button type="button" onClick={() => onOpenTask(t.id)} className="w-full py-2.5 text-left">
             <div className="flex items-center gap-2">
-              <span
-                className={cn("rounded-md px-1.5 py-0.5 text-[9.5px] font-semibold tracking-wide", stageColor.text)}
-                style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
-              >
-                {stageAbbr(t.stage_current)}
+              <span className={cn("rounded-md px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-white", badge.bg)} style={badge.style}>
+                {badge.abbr}
               </span>
-              <span className={cn("ml-auto text-[11px] font-medium", due.color)}>{due.text}</span>
+              <span className={cn("ml-auto text-[11px] font-medium", due.color)}>{due.text}{time ? ` · ${time}` : ""}</span>
               {commentCount > 0 && (
                 <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground"><MessageSquare className="h-3 w-3" />{commentCount}</span>
               )}
@@ -408,8 +448,33 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           </Collapsible>
         )}
 
+        {rangeMode === "hoje" && nextToday && (() => {
+          const t = nextToday.task;
+          const badge = getStageBadgeFor(t, childTasksByParent[t.id] ?? [], periodicStages);
+          const { main, sub } = splitTitle(t);
+          return (
+            <button
+              type="button"
+              onClick={() => onOpenTask(t.id)}
+              className="mx-4 mb-2 mt-3 block w-[calc(100%-2rem)] rounded-[10px] bg-gradient-to-br from-[#4a2bb8] via-[#6d3fe0] to-[#8f62f2] px-2.5 py-[7px] text-left text-white transition hover:brightness-110 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-[7px]">
+                <span className="text-[10px] uppercase tracking-wide text-white/85">Próxima</span>
+                <span className="text-sm font-semibold tabular-nums leading-none">{nextToday.time}</span>
+                <span className={cn("rounded-[5px] px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-white ring-1 ring-white/30", badge.bg)} style={badge.style}>{badge.abbr}</span>
+                <span className="ml-auto whitespace-nowrap text-[10.5px] text-white/85">em {nextToday.left}</span>
+              </span>
+              <span className="mt-[3px] block truncate text-[12.5px] font-medium">
+                {main}
+                {sub && <span className="font-normal text-white/80"> · {sub}</span>}
+              </span>
+            </button>
+          );
+        })()}
+
         {rangeMode === "hoje" ? (
-          groups.today.length > 0 && (
+          // se a única tarefa de hoje é a "Próxima" (já em destaque), não sobra lista nenhuma para mostrar
+          groups.today.filter((t) => t.id !== nextToday?.task.id).length > 0 && (
             <Collapsible open={openToday} onOpenChange={setOpenToday}>
               <CollapsibleTrigger asChild>
                 <button type="button" className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-accent/20">
@@ -417,7 +482,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
                   {groupTitle("Hoje", groups.today.length)}
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent>{groups.today.map(renderCard)}</CollapsibleContent>
+              <CollapsibleContent>{groups.today.filter((t) => t.id !== nextToday?.task.id).map(renderCard)}</CollapsibleContent>
             </Collapsible>
           )
         ) : (
