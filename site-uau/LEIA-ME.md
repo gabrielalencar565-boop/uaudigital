@@ -82,3 +82,10 @@ O botão "Editar textos" deixa reescrever textos e mudar o tamanho; fica na cole
 
 ## Página Clientes
 Removida a pedido da UAU (os clientes aparecem na faixa de logos da home). `/clientes` redireciona para a home (vercel.json).
+
+## Página de anúncios (/analise)
+- `analise.html` (sem menu, `noindex`) e `analise-obrigado.html` (obrigado). Lógica em `assets/analise.js`.
+- Configurar no topo de `assets/analise.js`: `LP.pixel` (ID do Pixel da Meta) e `LP.sdr` (WhatsApp do SDR).
+- Pixel: PageView nas duas páginas; `Lead` só na de obrigado, uma vez por envio (com `eventID`).
+- O formulário manda o lead por e-mail (FormSubmit) com as UTMs do anúncio e segue para o obrigado; lá o botão abre o WhatsApp do SDR com os dados.
+- Faltam: vídeo do Ayrton (`video/ayrton.mp4`) e os números/textos dos 2 cases (campos entre colchetes).

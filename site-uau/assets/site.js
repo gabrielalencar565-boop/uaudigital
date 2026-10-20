@@ -42,16 +42,19 @@ document.querySelectorAll('.menu a, .drawer a').forEach(a=>{ if((a.getAttribute(
 
 // nav fica sólida ao rolar
 const nav=document.getElementById('nav');
-const onScroll=()=>nav.classList.toggle('solid', scrollY>40);
+const onScroll=()=>nav&&nav.classList.toggle('solid', scrollY>40);
 addEventListener('scroll', onScroll, {passive:true}); onScroll();
 
 // menu mobile
 const drawer=document.getElementById('drawer'), burger=document.getElementById('burger');
-const setDrawer=open=>{ drawer.hidden=!open; burger.setAttribute('aria-expanded',open); document.body.classList.toggle('locked',open); (open?document.getElementById('close'):burger).focus(); };
+const setDrawer=open=>{ if(!drawer) return; drawer.hidden=!open; burger.setAttribute('aria-expanded',open); document.body.classList.toggle('locked',open); (open?document.getElementById('close'):burger).focus(); };
+// páginas sem menu (ex.: /analise, para anúncios) não têm gaveta
+if(drawer&&burger){
 burger.onclick=()=>setDrawer(true);
 document.getElementById('close').onclick=()=>setDrawer(false);
 drawer.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setDrawer(false)));
 addEventListener('keydown',e=>{ if(e.key==='Escape' && !drawer.hidden) setDrawer(false); });
+}
 
 // carrossel de vídeos
 const vids=document.getElementById('videos');
@@ -333,7 +336,7 @@ const CONTATO={ email:'uaucomunicacaodigital@gmail.com', whatsapp:'5599984344705
   let last=null;
   const open=()=>{ last=document.activeElement; m.hidden=false; document.body.classList.add('lb-open'); m.offsetWidth; m.classList.add('on'); setTimeout(()=>f.querySelector('input').focus({preventScroll:true}),350); };
   const close=()=>{ m.classList.remove('on'); setTimeout(()=>{ m.hidden=true; document.body.classList.remove('lb-open'); last&&last.focus&&last.focus({preventScroll:true}); },400); };
-  document.addEventListener('click',e=>{ const a=e.target.closest('a[href$="#contato"],a[data-lead]'); if(!a) return; e.preventDefault(); if(!drawer.hidden) setDrawer(false); if(CONTATO.modo==='whatsapp'){ const w=window.open(CONTATO.link,'_blank'); if(w) w.opener=null; else location.href=CONTATO.link; return; } open(); });
+  document.addEventListener('click',e=>{ const a=e.target.closest('a[href$="#contato"],a[data-lead]'); if(!a) return; e.preventDefault(); if(drawer&&!drawer.hidden) setDrawer(false); if(CONTATO.modo==='whatsapp'){ const w=window.open(CONTATO.link,'_blank'); if(w) w.opener=null; else location.href=CONTATO.link; return; } open(); });
   m.querySelector('.lead-bg').onclick=close; m.querySelector('.lead-x').onclick=close;
   addEventListener('keydown',e=>{ if(m.hidden) return; if(e.key==='Escape') close();
     if(e.key==='Tab'){ const fs=[...m.querySelectorAll('button,input:not(.lead-hp),select,textarea,a[href]')].filter(x=>x.offsetParent); const i=fs.indexOf(document.activeElement);
