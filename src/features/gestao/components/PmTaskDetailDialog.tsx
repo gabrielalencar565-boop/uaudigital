@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
-  Image as ImageIcon, Loader2, Clock,
+  Image as ImageIcon, Loader2, Clock, MoreHorizontal,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -438,7 +438,9 @@ function StageCircle({ stageKey, size = "md" }: { stageKey: string; size?: "xs" 
 // trigger. Mirrors QuickAddPublicationDialog's "Usar tarefa existente" tab: forcing
 // stage_current to "pdf" with a posting_date inside the target cycle is what actually
 // creates the calendar_publications row, via that same trigger.
-function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: PmTask; isLeaf: boolean; onOpenInCalendario?: (taskId: string) => void }) {
+function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario, menu }: { task: PmTask; isLeaf: boolean; onOpenInCalendario?: (taskId: string) => void; menu?: boolean }) {
+  // "menu": aparece como item de lista dentro do menu "Mais ações", em vez de botão com contorno
+  const btn = menu ? { variant: "ghost" as const, className: "h-auto w-full justify-start gap-2 whitespace-normal py-2 text-left" } : { variant: "outline" as const, className: "gap-1.5" };
   const updateTask = useUpdatePmTask();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -452,7 +454,7 @@ function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: Pm
 
   if (entryQ.data) {
     return (
-      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenInCalendario?.(task.id)}>
+      <Button size="sm" variant={btn.variant} className={btn.className} onClick={() => onOpenInCalendario?.(task.id)}>
         <Calendar className="h-3.5 w-3.5" /> Ver no Cronograma
       </Button>
     );
@@ -484,7 +486,7 @@ function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: Pm
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5">
+        <Button size="sm" variant={btn.variant} className={btn.className}>
           <Calendar className="h-3.5 w-3.5" /> Enviar para o Cronograma
         </Button>
       </PopoverTrigger>
@@ -511,7 +513,8 @@ function SendToCronogramaButton({ task, isLeaf, onOpenInCalendario }: { task: Pm
 // hasn't gone yet — each one still creates its own independent calendar_publications row via
 // the same pm_task_pdf_stage_to_calendar trigger, pulling that subtask's own attachments,
 // exactly like clicking "Enviar para o Cronograma" on each subtask individually would.
-function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; childTasks: PmTask[] }) {
+function SendParentToCronogramaButton({ task, childTasks, menu }: { task: PmTask; childTasks: PmTask[]; menu?: boolean }) {
+  const btn = menu ? { variant: "ghost" as const, className: "h-auto w-full justify-start gap-2 whitespace-normal py-2 text-left" } : { variant: "outline" as const, className: "gap-1.5" };
   const updateTask = useUpdatePmTask();
   const removePublication = useRemoveCalendarPublication();
   const queryClient = useQueryClient();
@@ -561,7 +564,7 @@ function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; chil
     };
 
     return (
-      <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground" disabled={unsending} onClick={handleUnmark}>
+      <Button size="sm" variant={btn.variant} className={cn(btn.className, "text-muted-foreground", menu && "h-auto whitespace-normal py-2 text-left")} disabled={unsending} onClick={handleUnmark}>
         {unsending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
         Desmarcar — todas as subtarefas já estão no Cronograma
       </Button>
@@ -601,9 +604,11 @@ function SendParentToCronogramaButton({ task, childTasks }: { task: PmTask; chil
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5">
+        <Button size="sm" variant={btn.variant} className={btn.className}>
           <Calendar className="h-3.5 w-3.5" />
-          Enviar {pending.length === childTasks.length ? "todas as subtarefas" : `${pending.length} subtarefa(s)`} para o Cronograma
+          {menu
+            ? `Enviar ${pending.length === childTasks.length ? "todas" : `${pending.length} subtarefa(s)`} ao Cronograma`
+            : `Enviar ${pending.length === childTasks.length ? "todas as subtarefas" : `${pending.length} subtarefa(s)`} para o Cronograma`}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="z-[130] w-56 p-1.5" align="start">
@@ -2480,6 +2485,8 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           </PropertyRow>
         </div>
 
+        <div className="flex flex-wrap items-start gap-2">
+          <div className="min-w-0">
         {/* ── Concluído / Alteração action buttons ── */}
         {task.parent_task_id ? (
           /* ── Subtask-specific buttons: toggle done, send to Alteração ── */
@@ -2591,8 +2598,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           {!(isDone || isCompletedSnapshot) ? (
             <>
               <Button
-                size="sm"
-                className="gap-1.5 bg-success text-success-foreground hover:bg-success/80"
+                className="h-10 gap-2 bg-success px-5 text-success-foreground hover:bg-success/80"
                 disabled={isCompleting || childTasksLoading}
                 title={childTasksLoading ? "Carregando subtarefas..." : undefined}
                 onClick={() => {
@@ -2746,17 +2752,25 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           </>
         )}
 
-        {childTasks.length === 0 && (
-          <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
-            <SendToCronogramaButton task={task} isLeaf onOpenInCalendario={onOpenInCalendario} />
           </div>
-        )}
 
-        {childTasks.length > 0 && (
-          <div className="inline-flex w-fit flex-wrap items-center gap-2 rounded-xl border border-black/10 p-1 dark:border-white/10">
-            <SendParentToCronogramaButton task={task} childTasks={childTasks} />
-          </div>
-        )}
+          {/* Mais ações: o Cronograma sai da frente e fica num menu ao lado do botão principal */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="icon" variant="outline" className="mt-2 h-10 w-10 shrink-0" aria-label="Mais ações" title="Mais ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="z-[130] w-80 max-w-[calc(100vw-2rem)] p-1.5" align="start">
+              <p className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Cronograma</p>
+              {childTasks.length === 0 ? (
+                <SendToCronogramaButton task={task} isLeaf menu onOpenInCalendario={onOpenInCalendario} />
+              ) : (
+                <SendParentToCronogramaButton task={task} childTasks={childTasks} menu />
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Link or Date dialog for existing agenda tasks — rendered outside conditional to survive task status changes */}
         <LinkOrDateDialog

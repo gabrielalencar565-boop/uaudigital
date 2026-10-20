@@ -494,7 +494,8 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
-  const [downloadingAll, setDownloadingAll] = useState(false);
+  // qual seção está baixando tudo agora ("material" ou "final"); null = nenhuma
+  const [downloadingAll, setDownloadingAll] = useState<AttachmentCategory | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<{ file: File; category: AttachmentCategory; existing: PmAttachment; resolve: () => void; reason: "name" | "video" } | null>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const replaceTarget = useRef<PmAttachment | null>(null);
@@ -851,13 +852,14 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     });
   };
 
-  const handleDownloadAll = async () => {
-    const downloadable = attachments.filter(a => !!a.public_url);
+  // Baixa todos os arquivos de uma seção (Materiais de Produção ou Conteúdo final), os mesmos que aparecem nela.
+  const handleDownloadAll = async (items: PmAttachment[], category: AttachmentCategory) => {
+    const downloadable = items.filter(a => !!a.public_url);
     if (downloadable.length === 0) {
       toast.error("Nenhum anexo disponível para download");
       return;
     }
-    setDownloadingAll(true);
+    setDownloadingAll(category);
     toast.info(`Baixando ${downloadable.length} anexo${downloadable.length > 1 ? 's' : ''}...`);
     let failed = 0;
     for (const att of downloadable) {
@@ -877,7 +879,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         failed++;
       }
     }
-    setDownloadingAll(false);
+    setDownloadingAll(null);
     if (failed > 0) {
       toast.warning(`Download concluído. ${failed} arquivo${failed > 1 ? 's' : ''} falhou.`);
     } else {
@@ -920,15 +922,7 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
 
   return (
     <div className="space-y-5">
-      {attachments.length > 0 && (
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={handleDownloadAll} disabled={downloadingAll}>
-            {downloadingAll ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
-            Baixar todos
-          </Button>
-        </div>
-      )}
-
+      <div className="divide-y divide-border/30 [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
       <CategorySection
         category="material"
         title="Materiais de Produção"
@@ -955,6 +949,9 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         onMove={(att) => handleMoveCategory(att, "final")}
         moveLabel="Mover para Conteúdo Final"
         onOpenViewer={(att) => openViewer(att, materials)}
+        onDownloadAll={() => handleDownloadAll(materials, "material")}
+        downloadingAll={downloadingAll === "material"}
+        downloadAllDisabled={downloadingAll !== null}
         allAttachments={attachments}
         onMoveCategory={handleMoveCategory}
       />
@@ -985,9 +982,13 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
         onMove={(att) => handleMoveCategory(att, "material")}
         moveLabel="Mover para Materiais de Produção"
         onOpenViewer={(att) => openViewer(att, finals)}
+        onDownloadAll={() => handleDownloadAll(finals, "final")}
+        downloadingAll={downloadingAll === "final"}
+        downloadAllDisabled={downloadingAll !== null}
         allAttachments={attachments}
         onMoveCategory={handleMoveCategory}
       />
+      </div>
 
       <PmImageViewer
         open={viewerOpen}
@@ -1068,6 +1069,10 @@ interface CategorySectionProps {
   onMove: (att: PmAttachment) => void;
   moveLabel: string;
   onOpenViewer: (att: PmAttachment) => void;
+  /** baixa todos os arquivos desta seção */
+  onDownloadAll: () => void;
+  downloadingAll: boolean;
+  downloadAllDisabled: boolean;
   allAttachments: PmAttachment[];
   // Raw mover (unlike onMove, which is pre-bound to always send *away* from this section,
   // for the "..." menu action) — dropping a card here needs to send it *to* this section's
@@ -1079,7 +1084,7 @@ function CategorySection(props: CategorySectionProps) {
   const {
     category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete, onReplace,
     onRenameStart, onRenameCommit, renamingId, renameDraft, setRenameDraft, setRenamingId,
-    onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer, allAttachments, onMoveCategory,
+    onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer, onDownloadAll, downloadingAll, downloadAllDisabled, allAttachments, onMoveCategory,
   } = props;
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1117,30 +1122,31 @@ function CategorySection(props: CategorySectionProps) {
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className={cn("rounded-lg border bg-card/30 p-3", accentClass)}
+      className={cn("relative", dragging && "rounded-xl ring-1 ring-primary/40")}
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 transition hover:bg-accent/50"
+            title={subtitle}
+            className="group/h flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left transition hover:opacity-90"
           >
-            <div className="shrink-0">{icon}</div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold leading-tight">
-                {title} <span className="text-muted-foreground font-normal">({list.length})</span>
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
-            </div>
-            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isOpen && "rotate-180")} />
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", category === "final" ? "bg-emerald-500" : "bg-amber-500")} />
+            <span className="truncate text-sm font-medium">{title}</span>
+            <span className="text-sm text-muted-foreground">{list.length}</span>
+            <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform", isOpen && "rotate-180")} />
           </button>
         </CollapsibleTrigger>
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0}>
-          {uploadingFiles.length > 0 ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />}
-          Upload
+        {list.length > 0 && (
+          <Button size="icon" variant="outline" className="h-8 w-8" onClick={onDownloadAll} disabled={downloadAllDisabled} title="Baixar todos" aria-label={`Baixar todos de ${title}`}>
+            {downloadingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          </Button>
+        )}
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => fileRef.current?.click()} disabled={uploadingFiles.length > 0} title="Upload" aria-label={`Enviar arquivos para ${title}`}>
+          {uploadingFiles.length > 0 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleSelect} />
       </div>
@@ -1175,16 +1181,16 @@ function CategorySection(props: CategorySectionProps) {
 
         {list.length === 0 && !dragging && uploadingFiles.length === 0 && (
           <div
-            className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/40 py-6 cursor-pointer hover:border-primary/30 transition"
+            className="flex h-[70px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
             onClick={() => fileRef.current?.click()}
           >
-            <Upload className="h-5 w-5 text-muted-foreground/40 mb-1.5" />
-            <p className="text-xs text-muted-foreground">Arraste ou clique para anexar</p>
+            <Upload className="h-4 w-4" />
+            <p className="text-xs">Arraste ou clique para anexar</p>
           </div>
         )}
 
         {list.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
             {list.map((att) => {
               const isCover = currentCoverUrl === att.public_url;
               const isImg = isImage(att.file_type);
@@ -1201,31 +1207,38 @@ function CategorySection(props: CategorySectionProps) {
                     e.dataTransfer.effectAllowed = "move";
                   }}
                   className={cn(
-                    "relative group rounded-md border bg-card/30 transition-all",
-                    isCover ? "border-primary/50 ring-1 ring-primary/30" : "border-border/40",
+                    "group relative aspect-square overflow-hidden rounded-xl bg-muted/40 transition-all",
+                    isCover && "ring-2 ring-primary/60",
                   )}
                 >
-                  {att.public_url ? (
-                    <AttachmentThumbnail
-                      url={att.public_url}
-                      name={att.file_name}
-                      isKnownImage={!!isImg || isHeic(att.file_name)}
-                      isPdf={isPdf(att.file_type, att.file_name)}
-                      isVideo={isVid}
-                      posterUrl={poster?.public_url ?? undefined}
-                      onClick={() => (isImg || isHeic(att.file_name) || isPdf(att.file_type, att.file_name) || isVid) ? onOpenViewer(att) : undefined}
-                    />
-                  ) : (
-                    <div className="w-full aspect-[4/3] flex items-center justify-center overflow-hidden rounded-t-md bg-muted/50">
-                      <FileText className="h-6 w-6 text-muted-foreground/40" />
-                    </div>
+                  {/* a miniatura preenche o quadrado inteiro */}
+                  <div className="h-full w-full [&>*]:!aspect-auto [&>*]:!h-full [&>*]:!rounded-none">
+                    {att.public_url ? (
+                      <AttachmentThumbnail
+                        url={att.public_url}
+                        name={att.file_name}
+                        isKnownImage={!!isImg || isHeic(att.file_name)}
+                        isPdf={isPdf(att.file_type, att.file_name)}
+                        isVideo={isVid}
+                        posterUrl={poster?.public_url ?? undefined}
+                        onClick={() => (isImg || isHeic(att.file_name) || isPdf(att.file_type, att.file_name) || isVid) ? onOpenViewer(att) : undefined}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <FileText className="h-6 w-6 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </div>
+
+                  {isCover && (
+                    <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-primary-foreground">Capa</span>
                   )}
 
-                  <div className="absolute top-1 right-1 z-20">
+                  <div className="absolute right-1.5 top-1.5 z-20">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="secondary" className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
-                          <MoreHorizontal className="h-3 w-3" />
+                        <Button size="icon" variant="secondary" className="h-6 w-6 bg-background/80 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-52" side="bottom" sideOffset={4} style={{ zIndex: 99999 }}>
@@ -1263,7 +1276,13 @@ function CategorySection(props: CategorySectionProps) {
                     </DropdownMenu>
                   </div>
 
-                  <div className="px-1.5 py-1 space-y-0.5">
+                  {/* nome, tamanho, data e quem enviou: só ao passar o mouse (ou enquanto renomeia) */}
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2 pb-1.5 pt-6 text-white transition-opacity",
+                      renamingId === att.id ? "pointer-events-auto opacity-100" : "opacity-0 group-hover:opacity-100",
+                    )}
+                  >
                     {renamingId === att.id ? (
                       <Input
                         autoFocus
@@ -1274,25 +1293,20 @@ function CategorySection(props: CategorySectionProps) {
                           if (e.key === "Enter") onRenameCommit(att.id);
                           if (e.key === "Escape") setRenamingId(null);
                         }}
-                        className="h-5 text-[9px] px-1 py-0 rounded"
+                        className="h-6 rounded bg-background/90 px-1 py-0 text-[10px] text-foreground"
                       />
                     ) : (
-                      <>
-                        <p className="truncate text-[9px] font-medium min-w-0">
-                          {att.file_name}
-                          {isCover && <span className="ml-0.5 text-[7px] text-primary font-bold uppercase">Capa</span>}
-                        </p>
-                        {att.file_size && (
-                          <p className="text-[8px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
-                        )}
-                      </>
+                      <p className="truncate text-[10px] font-medium">{att.file_name}</p>
                     )}
-                    <div className="flex items-center gap-1 text-[8px] text-muted-foreground">
-                      <span>{format(new Date(att.created_at), "MMM dd 'às' h:mm a")}</span>
+                    <div className="mt-0.5 flex items-center gap-1 text-[9px] text-white/75">
+                      <span className="truncate">
+                        {att.file_size ? `${formatFileSize(att.file_size)} · ` : ""}
+                        {format(new Date(att.created_at), "dd/MM 'às' HH:mm")}
+                      </span>
                       {uploader && (
-                        <Avatar className="h-3.5 w-3.5 shrink-0 border border-background ml-auto">
+                        <Avatar className="ml-auto h-4 w-4 shrink-0 border border-white/30">
                           <AvatarImage src={uploader.avatar} />
-                          <AvatarFallback className="text-[5px] bg-primary/10 text-primary">
+                          <AvatarFallback className="bg-primary/20 text-[6px] text-white">
                             {initials(uploader.name)}
                           </AvatarFallback>
                         </Avatar>
