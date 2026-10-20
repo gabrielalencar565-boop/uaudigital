@@ -88,4 +88,4 @@ Removida a pedido da UAU (os clientes aparecem na faixa de logos da home). `/cli
 - Configurar no topo de `assets/analise.js`: `LP.pixel` (ID do Pixel da Meta) e `LP.sdr` (WhatsApp do SDR).
 - Pixel: PageView nas duas páginas; `Lead` só na de obrigado, uma vez por envio (com `eventID`).
 - O formulário manda o lead por e-mail (FormSubmit) com as UTMs do anúncio e segue para o obrigado; lá o botão abre o WhatsApp do SDR com os dados.
-- Faltam: vídeo do Ayrton (`video/ayrton.mp4`) e os números/textos dos 2 cases (campos entre colchetes).
+- Faltam: os números/textos dos 2 cases (campos entre colchetes).
