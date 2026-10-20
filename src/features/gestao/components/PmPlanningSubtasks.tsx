@@ -233,9 +233,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           type="video"
           icon={<Clapperboard className="h-4 w-4" />}
           label="Vídeo"
-          headerBg="bg-blue-500"
-          headerText="text-white"
-          borderColor="border-blue-500/30"
+          iconTint="bg-blue-500/15 text-blue-400"
           parentTask={parentTask}
           tasks={videoTasks}
           doneCount={videoDone}
@@ -259,9 +257,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           type="design"
           icon={<Palette className="h-4 w-4" />}
           label="Design"
-          headerBg="bg-teal-500"
-          headerText="text-white"
-          borderColor="border-teal-500/30"
+          iconTint="bg-teal-500/15 text-teal-400"
           parentTask={parentTask}
           tasks={designTasks}
           doneCount={designDone}
@@ -284,7 +280,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
 }
 
 function PlanningSection({
-  type, icon, label, headerBg, headerText, borderColor,
+  type, icon, label, iconTint,
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
   selectedIds, toggleSelect, bulkConfirmOpen,
@@ -293,9 +289,8 @@ function PlanningSection({
   type: "video" | "design";
   icon: React.ReactNode;
   label: string;
-  headerBg: string;
-  headerText: string;
-  borderColor: string;
+  /** cor do quadradinho do ícone (fundo translúcido + ícone) */
+  iconTint: string;
   parentTask: PmTask;
   tasks: PmTask[];
   doneCount: number;
@@ -416,40 +411,47 @@ function PlanningSection({
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <button className={cn(
-          "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg transition-all hover:opacity-90",
-          headerBg, headerText
-        )}>
-          {icon}
-          <span className="font-semibold text-sm">{label}</span>
-          <span className="text-xs opacity-80">{total}</span>
-          {/* Review summary badges */}
-          {reviewMode && (() => {
-            const sectionApproved = tasks.filter(t => reviews[t.id]?.status === "aprovado").length;
-            const sectionAlteracao = tasks.filter(t => reviews[t.id]?.status === "alteracao").length;
-            return (
-              <div className="flex items-center gap-1 ml-1">
-                {sectionApproved > 0 && (
-                  <span className="inline-flex items-center gap-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                    <Check className="h-2.5 w-2.5" /> {sectionApproved}
-                  </span>
-                )}
-                {sectionAlteracao > 0 && (
-                  <span className="inline-flex items-center gap-0.5 bg-amber-400/30 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                    <RotateCcw className="h-2.5 w-2.5" /> {sectionAlteracao}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-          <ChevronDown className={cn("h-3.5 w-3.5 ml-auto transition-transform", isOpen && "rotate-180")} />
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="rounded-xl border border-border/40 bg-card/30 p-3">
+      <div className="flex items-center gap-2">
+        <CollapsibleTrigger asChild>
+          <button className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left transition hover:opacity-90">
+            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]", iconTint)}>{icon}</span>
+            <span className="text-sm font-medium">{label}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{total}</span>
+            {/* Review summary badges */}
+            {reviewMode && (() => {
+              const sectionApproved = tasks.filter(t => reviews[t.id]?.status === "aprovado").length;
+              const sectionAlteracao = tasks.filter(t => reviews[t.id]?.status === "alteracao").length;
+              return (
+                <div className="ml-1 flex items-center gap-1">
+                  {sectionApproved > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                      <Check className="h-2.5 w-2.5" /> {sectionApproved}
+                    </span>
+                  )}
+                  {sectionAlteracao > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                      <RotateCcw className="h-2.5 w-2.5" /> {sectionAlteracao}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground/60 transition-transform", isOpen && "rotate-180")} />
+          </button>
+        </CollapsibleTrigger>
+        <button
+          type="button"
+          onClick={() => { setIsOpen(true); handleStartAdd(); }}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Adicionar
         </button>
-      </CollapsibleTrigger>
+      </div>
 
       <CollapsibleContent>
-        <div className={cn("ml-2 border-l-2 pl-2 mt-1", borderColor)}>
+        <div className="mt-2">
           {tasks.map((sub) => {
             const isDone = sub.stage_current === "entrega";
             const isActive = activeSubtaskId === sub.id;
@@ -781,15 +783,7 @@ function PlanningSection({
                 onBlur={handleConfirmAdd}
               />
             </div>
-          ) : (
-            <button
-              onClick={handleStartAdd}
-              className="flex items-center gap-2 px-2 py-2 w-full text-muted-foreground/60 hover:text-primary hover:bg-card/40 transition rounded-b-md"
-            >
-              <Plus className="h-3.5 w-3.5 shrink-0" />
-              <span className="text-xs">Adicionar subtarefa</span>
-            </button>
-          )}
+          ) : null}
         </div>
       </CollapsibleContent>
     </Collapsible>
