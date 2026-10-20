@@ -120,3 +120,57 @@
     try{ for(const c of [...dirty]){ await col.doc(idOf(c)).set(edits[c]); dirty.delete(c); } msg.textContent='Salvo! Avise o Claude para aplicar no site.'; }
     catch(e){ msg.textContent='Não deu para salvar ('+(e&&e.code||'erro')+').'; } };
 })();
+
+// Modo "Mover blocos": arraste fotos, selos, títulos e botões para outra posição; "Salvar posições" guarda para o Claude aplicar no site.
+(async()=>{
+  if(!window.claude||!claude.use) return;
+  const db=await claude.use('db'); if(!db) return;
+  const col=db.collection('posicoes');
+  const page=(location.pathname.split('/').pop()||'index').replace(/\.html$/,'')||'index';
+  const pathOf=el=>{ const p=[]; for(let n=el;n&&n!==document.body;n=n.parentElement){ const i=[...n.parentElement.children].indexOf(n)+1; p.unshift(n.tagName.toLowerCase()+':nth-child('+i+')'); } return 'body>'+p.join('>'); };
+  const idOf=path=>('mv_'+page+'_'+path).replace(/[^a-z0-9]+/gi,'_').slice(-190);
+  const SEL='main h1,main h2,main .eyebrow,main p,main .btn,main ul,main .lp-duo,main .lp-duo img,main .lp-badges,main .lp-badges span,main .lp-photo,main .img,main .tile,main .case,main .reel,main .vs-card,main figure,main .dep-badge';
+  const pos={};
+  const put=(el,v)=>{ el.style.translate=(v.x||v.y)?`${v.x}px ${v.y}px`:''; el.style.scale=v.s&&v.s!==1?String(v.s):''; };
+  try{ (await col.get()).docs.forEach(d=>{ const v=d.data(); if(!v||v.pagina!==page) return; const el=document.querySelector(v.caminho); if(el){ pos[v.caminho]={...v}; put(el,v); } }); }catch(_){}
+  const css=document.createElement('style'); css.textContent=`
+  .aj-mbtn{position:fixed;left:20px;bottom:132px;z-index:300;font:600 14px/1 'Bricolage Grotesque',system-ui;color:#fff;background:#141217;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:13px 18px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  body.aj .aj-mbtn,body.ajt .aj-mbtn{display:none} body.ajm .aj-btn,body.ajm .aj-tbtn{display:none}
+  body.ajm .aj-mbtn{background:#F2A04A;border-color:#F2A04A;color:#141217;bottom:20px}
+  body.ajm .track,body.ajm .lp-float,body.ajm .cap{animation-play-state:paused!important}
+  body.ajm .aj-mv{outline:1px dashed rgba(242,160,74,.6);outline-offset:2px;cursor:move}
+  body.ajm .aj-mv:hover{outline:2px dashed #F2A04A}
+  .aj-msel{outline:2px solid #F2A04A!important}
+  .aj-mpan{position:fixed;left:20px;bottom:76px;z-index:300;width:300px;background:#141217;color:#F4F2F7;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:16px;font:14px/1.4 'Bricolage Grotesque',system-ui;box-shadow:0 20px 60px rgba(0,0,0,.5);display:none}
+  body.ajm .aj-mpan{display:block}
+  .aj-mpan b{display:block;font-size:13px}.aj-mpan small{color:#8C8796;display:block;margin:2px 0 12px}
+  .aj-mpan .aj-sz{display:flex;align-items:center;gap:8px;margin-bottom:12px}.aj-mpan .aj-sz button{width:40px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:transparent;color:#fff;font:700 14px system-ui;cursor:pointer}.aj-mpan .aj-sz span{flex:1;text-align:center;font-size:13px}
+  .aj-mpan .aj-row{display:flex;gap:8px}.aj-mpan .aj-row button{flex:1;font:600 13px 'Bricolage Grotesque',system-ui;border-radius:999px;padding:10px;cursor:pointer;border:1px solid rgba(255,255,255,.18);background:transparent;color:#fff}
+  .aj-mpan .aj-msave{background:linear-gradient(90deg,#7B2FE0,#C9307A 60%,#F2A04A);border:0!important}
+  .aj-mmsg{font-size:12px;color:#B9B4C4;margin-top:8px;min-height:16px}`;
+  document.head.appendChild(css);
+  const btn=document.createElement('button'); btn.className='aj-mbtn'; btn.textContent='Mover blocos';
+  const pan=document.createElement('div'); pan.className='aj-mpan';
+  pan.innerHTML=`<b>Arraste um bloco para mudar de lugar</b><small>Foto, selos, títulos, textos e botões. Use as setas do teclado para ajuste fino.</small>
+    <div class="aj-sz"><button type="button" data-d="-0.05">−</button><span>Tamanho: 100%</span><button type="button" data-d="0.05">+</button></div>
+    <div class="aj-row"><button class="aj-mundo" type="button">Voltar ao lugar</button><button class="aj-msave" type="button">Salvar posições</button></div><div class="aj-mmsg"></div>`;
+  document.body.append(btn,pan);
+  const msg=pan.querySelector('.aj-mmsg'), szl=pan.querySelector('.aj-sz span'); const dirty=new Set(); let cur=null, drag=null;
+  const rec=el=>{ const c=pathOf(el); if(!pos[c]) pos[c]={pagina:page,caminho:c,x:0,y:0,s:1}; return pos[c]; };
+  const els=()=>[...document.querySelectorAll(SEL)].filter(el=>!el.closest('.aj-pan,.aj-tpan,.aj-mpan,.track [aria-hidden="true"]'));
+  const pick=t=>{ const all=els(); for(let n=t;n&&n!==document.body;n=n.parentElement){ if(all.includes(n)) return n; } return null; };
+  const sel=el=>{ document.querySelectorAll('.aj-msel').forEach(x=>x.classList.remove('aj-msel')); cur=el; el.classList.add('aj-msel'); szl.textContent='Tamanho: '+Math.round(rec(el).s*100)+'%'; pan.querySelector('b').textContent='Bloco selecionado'; };
+  const changed=r=>{ dirty.add(r.caminho); msg.textContent='Posições ainda não salvas.'; };
+  btn.onclick=()=>{ const on=document.body.classList.toggle('ajm'); btn.textContent=on?'Concluir':'Mover blocos'; els().forEach(el=>el.classList.toggle('aj-mv',on)); if(!on) document.querySelectorAll('.aj-msel').forEach(x=>x.classList.remove('aj-msel')); };
+  document.addEventListener('pointerdown',e=>{ if(!document.body.classList.contains('ajm')||e.target.closest('.aj-mpan,.aj-mbtn')) return; const el=pick(e.target); if(!el) return;
+    e.preventDefault(); e.stopPropagation(); sel(el); const r=rec(el); drag={x:e.clientX,y:e.clientY,ox:r.x,oy:r.y,el}; },true);
+  document.addEventListener('pointermove',e=>{ if(!drag) return; e.preventDefault(); const r=rec(drag.el); r.x=Math.round(drag.ox+e.clientX-drag.x); r.y=Math.round(drag.oy+e.clientY-drag.y); put(drag.el,r); changed(r); },true);
+  document.addEventListener('pointerup',()=>{ drag=null; },true);
+  ['click','dragstart'].forEach(t=>document.addEventListener(t,e=>{ if(document.body.classList.contains('ajm')&&!e.target.closest('.aj-mpan,.aj-mbtn')&&pick(e.target)){ e.preventDefault(); e.stopPropagation(); } },true));
+  addEventListener('keydown',e=>{ if(!cur||!document.body.classList.contains('ajm')) return; const k={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key]; if(!k) return; e.preventDefault(); const r=rec(cur), m=e.shiftKey?10:1; r.x+=k[0]*m; r.y+=k[1]*m; put(cur,r); changed(r); });
+  pan.querySelectorAll('.aj-sz button').forEach(b=>b.onclick=()=>{ if(!cur) return; const r=rec(cur); r.s=Math.max(.5,Math.min(2,Math.round((r.s+ +b.dataset.d)*100)/100)); put(cur,r); szl.textContent='Tamanho: '+Math.round(r.s*100)+'%'; changed(r); });
+  pan.querySelector('.aj-mundo').onclick=()=>{ if(!cur) return; const r=rec(cur); r.x=0; r.y=0; r.s=1; put(cur,r); szl.textContent='Tamanho: 100%'; changed(r); };
+  pan.querySelector('.aj-msave').onclick=async()=>{ if(!dirty.size){ msg.textContent='Nada para salvar.'; return; } msg.textContent='Salvando...';
+    try{ for(const c of [...dirty]){ await col.doc(idOf(c)).set(pos[c]); dirty.delete(c); } msg.textContent='Salvo! Avise o Claude para aplicar no site.'; }
+    catch(e){ msg.textContent='Não deu para salvar ('+(e&&e.code||'erro')+').'; } };
+})();
