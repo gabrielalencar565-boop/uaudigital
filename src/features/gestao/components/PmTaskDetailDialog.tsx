@@ -2863,7 +2863,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         {/* Attachments — hidden for planning parent tasks */}
         {!(!task.periodic_stage_key && (task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")) && (
           <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
-            <PmAttachmentsSection taskId={task.id} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} cropFormat={cropFormat} />
+            <PmAttachmentsSection taskId={task.id} taskTitle={task.title} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} cropFormat={cropFormat} />
           </div>
         )}
 

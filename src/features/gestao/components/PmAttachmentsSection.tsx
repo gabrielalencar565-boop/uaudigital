@@ -358,6 +358,8 @@ interface UploadingFile {
 
 interface Props {
   taskId: string;
+  /** usado no nome do .zip de "Baixar todos" */
+  taskTitle?: string;
   attachments: PmAttachment[];
   membersMap: Record<string, { name: string; avatar?: string }>;
   onSetCover?: (url: string) => void;
@@ -484,7 +486,7 @@ function AttachmentThumbnail({ url, name, isKnownImage, isPdf, isVideo, posterUr
   );
 }
 
-export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCover, currentCoverUrl, cropFormat }: Props) {
+export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMap, onSetCover, currentCoverUrl, cropFormat }: Props) {
   const upload = useUploadPmAttachment();
   const uploadResumable = useUploadPmAttachmentResumable();
   const queryClient = useQueryClient();
@@ -852,38 +854,66 @@ export function PmAttachmentsSection({ taskId, attachments, membersMap, onSetCov
     });
   };
 
-  // Baixa todos os arquivos de uma seção (Materiais de Produção ou Conteúdo final), os mesmos que aparecem nela.
+  // Baixa todos os arquivos de uma seção (Materiais de Produção ou Conteúdo final), os mesmos que aparecem nela, num único .zip.
+  // Com um arquivo só, baixa o próprio arquivo.
   const handleDownloadAll = async (items: PmAttachment[], category: AttachmentCategory) => {
     const downloadable = items.filter(a => !!a.public_url);
     if (downloadable.length === 0) {
       toast.error("Nenhum anexo disponível para download");
       return;
     }
-    setDownloadingAll(category);
-    toast.info(`Baixando ${downloadable.length} anexo${downloadable.length > 1 ? 's' : ''}...`);
-    let failed = 0;
-    for (const att of downloadable) {
-      try {
-        const res = await fetch(att.public_url!);
-        const blob = await res.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = att.file_name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(blobUrl);
-        await new Promise((r) => setTimeout(r, 150));
-      } catch {
-        failed++;
-      }
+    if (downloadable.length === 1) {
+      handleDownload(downloadable[0].public_url!, downloadable[0].file_name);
+      return;
     }
-    setDownloadingAll(null);
-    if (failed > 0) {
-      toast.warning(`Download concluído. ${failed} arquivo${failed > 1 ? 's' : ''} falhou.`);
-    } else {
-      toast.success("Download concluído!");
+    setDownloadingAll(category);
+    const toastId = toast.loading(`Preparando o zip com ${downloadable.length} arquivos...`);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const usedNames = new Map<string, number>();
+      let failed = 0;
+      for (let i = 0; i < downloadable.length; i++) {
+        const att = downloadable[i];
+        try {
+          const res = await fetch(att.public_url!);
+          if (!res.ok) throw new Error(String(res.status));
+          const blob = await res.blob();
+          // dois arquivos com o mesmo nome não podem se sobrescrever dentro do zip: o segundo vira "nome (2).ext"
+          const dot = att.file_name.lastIndexOf(".");
+          const base = dot > 0 ? att.file_name.slice(0, dot) : att.file_name;
+          const ext = dot > 0 ? att.file_name.slice(dot) : "";
+          const key = att.file_name.toLowerCase();
+          const n = (usedNames.get(key) ?? 0) + 1;
+          usedNames.set(key, n);
+          zip.file(n === 1 ? att.file_name : `${base} (${n})${ext}`, blob);
+        } catch {
+          failed++;
+        }
+        toast.loading(`Preparando o zip... ${i + 1} de ${downloadable.length}`, { id: toastId });
+      }
+      if (failed === downloadable.length) throw new Error("nenhum arquivo pôde ser baixado");
+      // fotos e vídeos já são comprimidos: guardar sem recomprimir deixa o zip muito mais rápido
+      const out = await zip.generateAsync({ type: "blob", compression: "STORE" });
+      const label = category === "final" ? "Conteudo final" : "Materiais de producao";
+      const safeTitle = (taskTitle ?? "anexos").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "anexos";
+      const blobUrl = window.URL.createObjectURL(out);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${safeTitle} - ${label}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10_000);
+      if (failed > 0) {
+        toast.warning(`Zip pronto, mas ${failed} arquivo${failed > 1 ? "s" : ""} não ${failed > 1 ? "entraram" : "entrou"}.`, { id: toastId });
+      } else {
+        toast.success("Zip pronto!", { id: toastId });
+      }
+    } catch (e) {
+      toast.error("Não foi possível gerar o zip", { id: toastId });
+    } finally {
+      setDownloadingAll(null);
     }
   };
 
