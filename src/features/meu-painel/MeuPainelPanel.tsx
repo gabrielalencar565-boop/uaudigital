@@ -25,7 +25,7 @@ import { ClientCronogramaWidget } from "@/features/meu-painel/components/ClientC
 import { MyPmTasksWidget } from "@/features/meu-painel/components/MyPmTasksWidget";
 import { PmTaskDetailDialog } from "@/features/gestao/components/PmTaskDetailDialog";
 import { openTaskInCalendario } from "@/features/calendario/open-in-calendario";
-import { usePmTasks } from "@/features/gestao/hooks/use-pm-data";
+import { usePmTasks, usePmTaskById } from "@/features/gestao/hooks/use-pm-data";
 import { useQuery } from "@tanstack/react-query";
 import { ProductivityWidget } from "@/features/meu-painel/components/ProductivityWidget";
 import { WorkBreakdownWidget } from "@/features/meu-painel/components/WorkBreakdownWidget";
@@ -720,7 +720,15 @@ function CollapsibleWidget({ title, icon, headerExtra, children }: { title: stri
 function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: string | null; onClose: () => void; isAdmin: boolean }) {
   const pmTasksQ = usePmTasks();
   const allTasks = pmTasksQ.data ?? [];
-  const task = useMemo(() => (taskId ? allTasks.find((t) => t.id === taskId) ?? null : null), [taskId, allTasks]);
+  const listTask = useMemo(() => (taskId ? allTasks.find((t) => t.id === taskId) ?? null : null), [taskId, allTasks]);
+  // A lista só tem tarefas-mãe. Se o id é de uma subtarefa (ex.: um bloco de alteração), busca a subtarefa, abre a mãe dela e já entra na subtarefa.
+  const fetchedQ = usePmTaskById(taskId && !listTask ? taskId : null);
+  const fetched = fetchedQ.data ?? null;
+  const parentId = fetched?.parent_task_id ?? null;
+  const parentFromList = useMemo(() => (parentId ? allTasks.find((t) => t.id === parentId) ?? null : null), [parentId, allTasks]);
+  const parentQ = usePmTaskById(parentId && !parentFromList ? parentId : null);
+  const task = listTask ?? (fetched && !parentId ? fetched : (parentFromList ?? parentQ.data ?? null));
+  const initialSubtaskId = !listTask && parentId && fetched ? fetched.id : undefined;
 
   const clientsQ = useQuery({
     queryKey: ["clients_all"],
@@ -744,6 +752,6 @@ function PmTaskDetailDialogWrapper({ taskId, onClose, isAdmin }: { taskId: strin
   const membersList = useMemo(() => (membersQ.data ?? []).map((m) => ({ id: m.user_id, name: m.display_name })), [membersQ.data]);
 
   return (
-    <PmTaskDetailDialog task={task} open={!!taskId} onClose={onClose} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} onOpenInCalendario={(taskId) => { onClose(); openTaskInCalendario(taskId); }} />
+    <PmTaskDetailDialog task={task} open={!!taskId} onClose={onClose} initialSubtaskId={initialSubtaskId} clientsMap={clientsMap} membersMap={membersMap} members={membersList} isAdmin={isAdmin} onOpenInCalendario={(taskId) => { onClose(); openTaskInCalendario(taskId); }} />
   );
 }
