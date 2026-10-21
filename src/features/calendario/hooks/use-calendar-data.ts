@@ -778,3 +778,64 @@ export function useUpdateCalendarShare() {
   });
 }
 
+
+function invalidateCalendars(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["publication_calendars"] });
+  qc.invalidateQueries({ queryKey: ["publication_calendars_cycle"] });
+  qc.invalidateQueries({ queryKey: ["calendar_publications"] });
+  qc.invalidateQueries({ queryKey: ["unscheduled_publications"] });
+}
+
+const PERIOD_ERRORS: Record<string, string> = {
+  periodo_invalido: "O início precisa ser antes do fim.",
+  periodo_longo_demais: "O período não pode passar de dois meses.",
+  periodo_cobre_outro_calendario: "Esse período cobre um calendário inteiro de outro mês.",
+};
+function periodError(e: unknown): Error {
+  const msg = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
+  const key = Object.keys(PERIOD_ERRORS).find((k) => msg.includes(k));
+  return new Error(key ? PERIOD_ERRORS[key] : msg);
+}
+
+/** Ajusta o período de um calendário (os calendários vizinhos do mesmo cliente acompanham e as publicações vão para o calendário da data delas). */
+export function useSetCalendarPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ calendarId, start, end }: { calendarId: string; start: string; end: string }) => {
+      const { error } = await sb.rpc("set_calendar_period", { p_calendar: calendarId, p_start: start, p_end: end });
+      if (error) throw periodError(error);
+    },
+    onSuccess: () => invalidateCalendars(qc),
+  });
+}
+
+/** Volta o calendário ao ciclo padrão do Dia D. */
+export function useResetCalendarPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (calendarId: string) => {
+      const { error } = await sb.rpc("reset_calendar_period", { p_calendar: calendarId });
+      if (error) throw periodError(error);
+    },
+    onSuccess: () => invalidateCalendars(qc),
+  });
+}
+
+/** Publicações datadas do cliente num intervalo, para mostrar quantas entram/saem antes de aplicar um novo período. */
+export function usePeriodPreview(calendarIds: string[], from: string | null, to: string | null) {
+  return useQuery({
+    enabled: calendarIds.length > 0 && !!from && !!to,
+    queryKey: ["period_preview", calendarIds.join(","), from, to],
+    queryFn: async (): Promise<{ calendar_id: string; publish_date: string }[]> => {
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("calendar_id, publish_date")
+        .in("calendar_id", calendarIds)
+        .is("deleted_at", null)
+        .gte("publish_date", from)
+        .lte("publish_date", to);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
