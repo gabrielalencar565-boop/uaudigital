@@ -70,16 +70,16 @@ export function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-// O ciclo do Cronograma segue o Dia D da agência: com Dia D = 27, o ciclo de outubro vai de 28/09 a 27/10, e do dia 28 em diante é o calendário seguinte.
-export function anchorForDate(d: Date, day: number) {
-  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+// O calendário do Cronograma é o mês inteiro (do dia 01 ao último dia): uma publicação com data depois do dia 27 continua no calendário do
+// próprio mês. O Dia D da agência vale para o Magic Number, não para estes calendários (o parâmetro `day` fica só por compatibilidade).
+export function anchorForDate(d: Date, _day?: number) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
 }
-export function cycleEnd(anchor: Date, day: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
+export function cycleEnd(anchor: Date, _day?: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
 }
-export function cycleStart(anchor: Date, day: number) {
-  const end = cycleEnd(anchor, day);
-  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
+export function cycleStart(anchor: Date, _day?: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
@@ -739,7 +739,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return out;
   }, [cursor]);
 
-  // Publicação datada fora do ciclo (dia 28 em diante já é o ciclo seguinte) aparece esmaecida e não conta neste mês
+  // Publicação datada fora do mês do calendário aparece esmaecida e não conta neste mês
   const countedPublications = useMemo(() => {
     const startKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
     const endKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
