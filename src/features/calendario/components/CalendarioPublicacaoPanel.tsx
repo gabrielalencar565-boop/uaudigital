@@ -32,6 +32,7 @@ import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS,
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 import { QuickAddPublicationDialog } from "./QuickAddPublicationDialog";
+import { CalendarPeriodButton } from "./CalendarPeriodButton";
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections } from "../hooks/use-instagram";
 import { MetricSparkCard } from "@/features/meu-painel/components/MetricSparkCard";
 
@@ -70,16 +71,18 @@ export function toGridThumbUrl(url: string): string {
   return `${rewritten}${rewritten.includes("?") ? "&" : "?"}width=480&quality=70&resize=contain`;
 }
 
-// O calendário do Cronograma é o mês inteiro (do dia 01 ao último dia): uma publicação com data depois do dia 27 continua no calendário do
-// próprio mês. O Dia D da agência vale para o Magic Number, não para estes calendários (o parâmetro `day` fica só por compatibilidade).
-export function anchorForDate(d: Date, _day?: number) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+// O ciclo do Cronograma segue o Dia D da agência: com Dia D = 27, o ciclo de outubro vai de 28/09 a 27/10, e do dia 28 em diante é o calendário seguinte.
+// Cada calendário pode ter o período ajustado (ex.: novembro começando em 21/10, levando a última semana de outubro junto): nesse caso valem as datas
+// do próprio calendário (cycle_start/cycle_end), e estas funções dão só o ciclo padrão.
+export function anchorForDate(d: Date, day: number) {
+  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
-export function cycleEnd(anchor: Date, _day?: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+export function cycleEnd(anchor: Date, day: number) {
+  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
 }
-export function cycleStart(anchor: Date, _day?: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+export function cycleStart(anchor: Date, day: number) {
+  const end = cycleEnd(anchor, day);
+  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
 }
 const UNSCHEDULED_ID = "unscheduled";
 
@@ -396,16 +399,24 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return map;
   }, [sortedClients, stageAssignees, teamMemberById]);
   const calendarsQ = useCalendarsForClient(clientId);
-  const cycleStartKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
-  const cycleEndKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
-  const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start <= cycleEndKey && c.cycle_end >= cycleEndKey) ?? null, [calendarsQ.data, cycleEndKey]);
+  // Ciclo padrão do mês mostrado (Dia D) e, quando o calendário existe, o período dele (que pode ter sido ajustado: ex. novembro começando em 21/10).
+  const stdStart = cycleStart(cursor, magicDay);
+  const stdStartKey = format(stdStart, "yyyy-MM-dd");
+  const stdEndKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
+  // o calendário é o que contém o meio do ciclo padrão: acha o calendário mesmo com as pontas ajustadas
+  const cycleMidKey = format(addDays(stdStart, 15), "yyyy-MM-dd");
+  const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start <= cycleMidKey && c.cycle_end >= cycleMidKey) ?? null, [calendarsQ.data, cycleMidKey]);
+  const cycleStartKey = calendar?.cycle_start ?? stdStartKey;
+  const cycleEndKey = calendar?.cycle_end ?? stdEndKey;
+  const periodStart = useMemo(() => parseISO(cycleStartKey), [cycleStartKey]);
+  const periodEnd = useMemo(() => parseISO(cycleEndKey), [cycleEndKey]);
 
   // "Publicações sem data" — cross-cycle (see useUnscheduledPublicationsForClient).
   const unscheduledPubsQ = useUnscheduledPublicationsForClient(clientId);
   const setPublicationDate = useSetPublicationDate();
 
   // Which clients have a calendar in the current ciclo, for the sidebar dots.
-  const cycleCalendarsQ = useCalendarsForCycle(cycleEndKey);
+  const cycleCalendarsQ = useCalendarsForCycle(cycleMidKey);
   const calendarByClientId = useMemo(() => {
     const map = new Map<string, { id: string; status: string }>();
     for (const c of cycleCalendarsQ.data ?? []) map.set(c.client_id, c);
@@ -728,8 +739,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   }, [statusFilteredPublications]);
 
   const weeks = useMemo(() => {
-    const start = cycleStart(cursor, magicDay);
-    const end = cycleEnd(cursor, magicDay);
+    const start = periodStart;
+    const end = periodEnd;
     const out: Date[][] = [];
     let weekStart = startOfWeek(start, { weekStartsOn: 0 });
     while (weekStart <= end) {
@@ -737,14 +748,12 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       weekStart = addDays(weekStart, 7);
     }
     return out;
-  }, [cursor]);
+  }, [periodStart, periodEnd]);
 
   // Publicação datada fora do mês do calendário aparece esmaecida e não conta neste mês
   const countedPublications = useMemo(() => {
-    const startKey = format(cycleStart(cursor, magicDay), "yyyy-MM-dd");
-    const endKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
-    return publications.filter((p) => !p.publish_date || (p.publish_date >= startKey && p.publish_date <= endKey));
-  }, [publications, cursor, magicDay]);
+    return publications.filter((p) => !p.publish_date || (p.publish_date >= cycleStartKey && p.publish_date <= cycleEndKey));
+  }, [publications, cycleStartKey, cycleEndKey]);
   const counts = useMemo(() => ({
     total: countedPublications.length,
     aguardando: countedPublications.filter((p) => p.status === "aguardando_aprovacao").length,
@@ -887,6 +896,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const cycleNav = (
     <div className={cn("flex w-fit items-center gap-1", !fixedClientId && "rounded-2xl border border-border/30 bg-muted/20 p-2")}>
       <MonthYearSelect value={cursor} onChange={setCursor} />
+      {calendar && (
+        <CalendarPeriodButton
+          key={`${calendar.id}-${calendar.cycle_start}-${calendar.cycle_end}`}
+          calendar={calendar}
+          stdStart={stdStartKey}
+          stdEnd={stdEndKey}
+          clientCalendarIds={(calendarsQ.data ?? []).map((c) => c.id)}
+        />
+      )}
     </div>
   );
 
@@ -1416,7 +1434,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   {(() => {
                     const days = weeks.flat().filter((d) => {
                       const key = format(d, "yyyy-MM-dd");
-                      const inCycle = d >= cycleStart(cursor, magicDay) && d <= cycleEnd(cursor, magicDay);
+                      const inCycle = d >= periodStart && d <= periodEnd;
                       return inCycle || (byDay.get(key) ?? []).length > 0;
                     });
                     return days.map((d) => {
@@ -1487,7 +1505,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                     {weeks.flat().map((d) => {
                       const key = format(d, "yyyy-MM-dd");
                       const isToday = key === todayKey;
-                      const inCycle = d >= cycleStart(cursor, magicDay) && d <= cycleEnd(cursor, magicDay);
+                      const inCycle = d >= periodStart && d <= periodEnd;
                       const dayPubs = byDay.get(key) ?? [];
                       return (
                         <DropZone
