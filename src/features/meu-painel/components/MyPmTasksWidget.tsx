@@ -154,11 +154,15 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     const allData = pmTasksQ.data ?? [];
     const childData = allChildQ.data ?? [];
     const combined = [...allData, ...childData];
+    const rootById = new Map(allData.map((r) => [r.id, r] as const));
     return combined.filter(t =>
       t.stage_current === "alteracoes" &&
       (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
       !["concluido", "cancelado"].includes(t.status_global) &&
-      !(t as any).is_draft
+      !(t as any).is_draft &&
+      // Uma subtarefa só conta como alteração enquanto a tarefa-mãe dela ainda está em alteração: se a mãe já seguiu o fluxo,
+      // a subtarefa que ficou para trás com a etapa antiga não pode voltar para Minhas tarefas (era o bug do "volta como alteração").
+      (!t.parent_task_id || rootById.get(t.parent_task_id)?.stage_current === "alteracoes")
     );
   }, [pmTasksQ.data, allChildQ.data, user?.id]);
 
@@ -173,6 +177,9 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     return m;
   }, [alteracoesTasks]);
 
+  // quem já aparece no grupo "Alteração" não repete nas outras listas (Em atraso, Hoje...)
+  const alteracaoIds = useMemo(() => new Set(alteracoesParents.map((t) => t.id)), [alteracoesParents]);
+
   // Group by overdue, today, upcoming, completed
   const groups = useMemo(() => {
     const overdue: PmTask[] = [];
@@ -183,6 +190,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     const todayDate = new Date(todayKey + "T00:00:00");
 
     myTasks.forEach(t => {
+      if (alteracaoIds.has(t.id)) return;
       if (t.status_global === "concluido") {
         if ((t.due_date ?? "").startsWith(currentMonthKey)) completed.push(t);
         return;
@@ -215,7 +223,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     completed.sort(sortByDue);
 
     return { overdue, today: todayGroup, upcoming, noDue, completed };
-  }, [myTasks, todayKey, currentMonthKey, rangeMode, weekEndKey]);
+  }, [myTasks, alteracaoIds, todayKey, currentMonthKey, rangeMode, weekEndKey]);
 
   // Próxima tarefa de hoje com horário que ainda não passou (sobe para o topo da aba Hoje, com quanto falta)
   const nextToday = useMemo(() => {
@@ -238,6 +246,7 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
   const [openCompleted, setOpenCompleted] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [expandedAlteracoes, setExpandedAlteracoes] = useState<Set<string>>(new Set());
+  const [openAlteracoes, setOpenAlteracoes] = useState(true);
 
   const toggleExpand = (taskId: string) => {
     setExpandedTasks(prev => {
@@ -250,12 +259,12 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
 
   // Dias que ainda faltam na semana (de hoje até o fim dela), com quantas tarefas em aberto vencem em cada um
   const weekDays = useMemo(() => {
-    const open = myTasks.filter((t) => t.status_global !== "concluido" && t.due_date);
+    const open = myTasks.filter((t) => t.status_global !== "concluido" && t.due_date && !alteracaoIds.has(t.id));
     return eachDayOfInterval({ start: new Date(todayKey + "T00:00:00"), end: new Date(weekEndKey + "T00:00:00") }).map((d) => {
       const key = format(d, "yyyy-MM-dd");
       return { key, letter: format(d, "EEEEE", { locale: ptBR }).toUpperCase(), full: format(d, "EEEE, d 'de' MMMM", { locale: ptBR }), count: open.filter((t) => t.due_date === key).length };
     });
-  }, [myTasks, todayKey, weekEndKey]);
+  }, [myTasks, alteracaoIds, todayKey, weekEndKey]);
 
   // Nome da tarefa em destaque e o cliente embaixo: "[Doce Rio] - Design - Novembro" vira "Design · Novembro" com "Doce Rio" embaixo
   const splitTitle = (t: PmTask) => {
@@ -371,69 +380,82 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
           </div>
         </CardHeader>
 
-        {(alteracoesParents.length > 0 || alteracoesTasks.length > 0) && (
-          <div className="mx-5 mb-3 space-y-1.5">
-            {/* cada tarefa em alteração é o seu próprio bloco amarelo */}
-            {alteracoesParents.map((t) => {
-              const subs = alteracoesChildren[t.id] ?? [];
-              const isExp = expandedAlteracoes.has(t.id);
-              return (
-                <div key={t.id} className="overflow-hidden rounded-xl bg-[#ffcc01] text-black">
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => onOpenTask(t.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-black/5 active:scale-[0.99]"
-                    >
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold">{t.title}</span>
-                      <span className="shrink-0 text-[11px] font-semibold text-black/55">{clientsMap[t.client_id] ?? ""}</span>
-                    </button>
-                    {subs.length > 0 && (
-                      <button
-                        type="button"
-                        aria-label={isExp ? "Esconder subtarefas" : "Ver subtarefas"}
-                        aria-expanded={isExp}
-                        onClick={() => setExpandedAlteracoes((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })}
-                        className="mr-1 shrink-0 rounded-lg p-2 transition hover:bg-black/10"
-                      >
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", isExp && "rotate-180")} />
+        <CleaningTurnBanner />
+        {alteracoesTasks.length > 0 && (
+          <Collapsible open={openAlteracoes} onOpenChange={setOpenAlteracoes} className="mx-3 mb-2 rounded-xl border border-[#f4c430]/35 bg-[#f4c430]/[0.06] pb-1">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left">
+                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", !openAlteracoes && "-rotate-90")} />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#f4c430]">Alteração</span>
+                <span className="ml-auto rounded-full bg-[#f4c430]/20 px-2 text-[11px] tabular-nums text-[#f4c430]">{alteracoesTasks.filter((t) => !t.parent_task_id || !alteracoesParents.some((p) => p.id === t.parent_task_id)).length}</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {alteracoesParents.map((t) => {
+                const subs = alteracoesChildren[t.id] ?? [];
+                const isExp = expandedAlteracoes.has(t.id);
+                const badge = getStageBadgeFor(t, childTasksByParent[t.id] ?? [], periodicStages);
+                const { main, sub } = splitTitle(t);
+                return (
+                  <div key={t.id}>
+                    <div className="flex items-center gap-2.5 px-3 py-2 transition hover:bg-[#f4c430]/[0.06]">
+                      <button type="button" onClick={() => onOpenTask(t.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+                        <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-white", badge.bg)} style={badge.style}>{badge.abbr}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium text-foreground">{main}</span>
+                          {sub && <span className="block truncate text-[11px] text-muted-foreground">{sub}</span>}
+                        </span>
                       </button>
+                      {subs.length > 0 ? (
+                        <button
+                          type="button"
+                          aria-label={isExp ? "Esconder subtarefas" : "Ver subtarefas"}
+                          aria-expanded={isExp}
+                          onClick={() => setExpandedAlteracoes((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })}
+                          className="flex shrink-0 items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:bg-accent"
+                        >
+                          <GitBranch className="h-3 w-3" />{subs.length}
+                          <ChevronRight className={cn("h-3 w-3 transition-transform", isExp && "rotate-90")} />
+                        </button>
+                      ) : (
+                        <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      )}
+                    </div>
+                    {isExp && subs.length > 0 && (
+                      <div className="space-y-0.5 pb-1 pl-12 pr-3">
+                        {subs.map((s2) => (
+                          <button
+                            key={s2.id}
+                            type="button"
+                            onClick={() => onOpenTask(s2.id)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition hover:bg-accent/40"
+                          >
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#f4c430]" />
+                            <span className="truncate font-medium text-foreground/90">{s2.title}</span>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {isExp && subs.length > 0 && (
-                    <div className="space-y-0.5 border-t border-black/10 px-2 pb-2 pt-1.5">
-                      {subs.map((sub) => (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => onOpenTask(sub.id)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition hover:bg-black/8"
-                        >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/40" />
-                          <span className="truncate font-medium text-black/75">{sub.title}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {alteracoesTasks.filter((t) => t.parent_task_id && !alteracoesParents.some((p) => p.id === t.parent_task_id)).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onOpenTask(t.id)}
-                className="flex w-full items-center gap-2.5 rounded-xl bg-[#ffcc01] px-3.5 py-2.5 text-left text-black transition hover:brightness-95 active:scale-[0.99]"
-              >
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate text-sm font-bold">{t.title}</span>
-                <span className="shrink-0 text-[11px] font-semibold text-black/55">{clientsMap[t.client_id] ?? ""}</span>
-              </button>
-            ))}
-          </div>
+                );
+              })}
+              {alteracoesTasks.filter((t) => t.parent_task_id && !alteracoesParents.some((p) => p.id === t.parent_task_id)).map((t) => {
+                const badge = getStageBadgeFor(t, [], periodicStages);
+                const { main, sub } = splitTitle(t);
+                return (
+                  <button key={t.id} type="button" onClick={() => onOpenTask(t.id)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition hover:bg-[#f4c430]/[0.06]">
+                    <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-white", badge.bg)} style={badge.style}>{badge.abbr}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium text-foreground">{main}</span>
+                      {sub && <span className="block truncate text-[11px] text-muted-foreground">{sub}</span>}
+                    </span>
+                    <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  </button>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
         )}
-        <CleaningTurnBanner />
         <CardContent className="p-0 pb-2">
         {/* Em atraso */}
         {groups.overdue.length > 0 && (

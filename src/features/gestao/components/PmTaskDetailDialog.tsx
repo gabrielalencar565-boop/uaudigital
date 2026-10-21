@@ -93,10 +93,15 @@ interface Props {
   members: { id: string; name: string }[];
   isAdmin: boolean;
   onOpenInCalendario?: (taskId: string) => void;
+  /** abre já dentro desta subtarefa (a tarefa em `task` é a mãe dela) */
+  initialSubtaskId?: string;
 }
 
-export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin, onOpenInCalendario }: Props) {
-  const [taskStack, setTaskStack] = useState<string[]>([]);
+export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap, members, isAdmin, onOpenInCalendario, initialSubtaskId }: Props) {
+  const [taskStack, setTaskStack] = useState<string[]>(() => (initialSubtaskId ? [initialSubtaskId] : []));
+  useEffect(() => {
+    if (open && initialSubtaskId) setTaskStack([initialSubtaskId]);
+  }, [open, initialSubtaskId, task?.id]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMergeConfirm, setShowMergeConfirm] = useState(false);
@@ -1933,6 +1938,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   };
 
   const handleReturnFromAlteracao = async () => {
+    try {
     const sb = supabase as any;
     const originId = task.origin_task_id ?? task.id;
 
@@ -1964,22 +1970,21 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       const revisaoTask = pausedRevisao[0];
 
       // Mark the current alteração task back as concluído at its original stage
-      updateTask.mutate({
+      await updateTask.mutateAsync({
         id: task.id,
         stage_current: originalStage as any,
         status_global: "concluido" as any,
         post_type: task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       });
 
-      // Mark children as concluído too
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          stage_current: originalStage as any,
-          status_global: "concluido" as any,
-          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
-        } as any);
-      }
+      // Mark children as concluído too. Cada passo espera o anterior terminar: antes, tudo saía em paralelo e, se a segunda mudança chegasse
+      // antes da primeira, subtarefas ficavam presas em "alteração" e voltavam para Minhas tarefas mesmo com o ajuste já feito.
+      await Promise.all(childTasks.map((child) => updateTask.mutateAsync({
+        id: child.id,
+        stage_current: originalStage as any,
+        status_global: "concluido" as any,
+        post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
+      } as any)));
 
       // Transfer attachments back to revisão
       await sb
@@ -2000,18 +2005,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         revisaoUpdates.assignee_id = fixedAssignee;
         revisaoUpdates.watchers = fixedWatchers;
       }
-      updateTask.mutate(revisaoUpdates);
+      await updateTask.mutateAsync(revisaoUpdates);
 
       // Transfer children from this task to revisão
-      for (const child of childTasks) {
-        updateTask.mutate({
-          id: child.id,
-          parent_task_id: revisaoTask.id,
-          stage_current: "revisao" as any,
-          status_global: "backlog" as any,
-          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
-        } as any);
-      }
+      await Promise.all(childTasks.map((child) => updateTask.mutateAsync({
+        id: child.id,
+        parent_task_id: revisaoTask.id,
+        stage_current: "revisao" as any,
+        status_global: "backlog" as any,
+        post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
+      } as any)));
 
       toast.success("Ajuste concluído. Retornou para Revisão");
     } else {
@@ -2029,9 +2032,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         updates.assignee_id = fixedAssignee;
         updates.watchers = fixedWatchers;
       }
-      updateTask.mutate(updates);
+      await updateTask.mutateAsync(updates);
 
-      for (const child of childTasks) {
+      await Promise.all(childTasks.map((child) => {
         const childUpdates: any = {
           id: child.id,
           stage_current: "revisao" as any,
@@ -2040,13 +2043,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           childUpdates.assignee_id = fixedAssignee;
           childUpdates.watchers = fixedWatchers;
         }
-        updateTask.mutate(childUpdates);
-      }
+        return updateTask.mutateAsync(childUpdates);
+      }));
 
       toast.success("Ajuste concluído. Retornou para Revisão");
     }
+    } catch (e) {
+      console.error("Erro ao concluir o ajuste:", e);
+      toast.error("Não foi possível concluir o ajuste. Tente de novo.");
+    }
   };
-
   const saveTitle = () => {
     if (titleDraft.trim() && titleDraft.trim() !== task.title) updateTask.mutate({ id: task.id, title: titleDraft.trim() });
     setEditingTitle(false);
