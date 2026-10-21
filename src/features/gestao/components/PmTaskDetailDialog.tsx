@@ -2693,7 +2693,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   invalidateAll();
                 };
 
-                if (isCompletedSnapshot) {
+                // Demanda extra concluída na própria etapa (Captação, Design...) também só volta a "pendente": a etapa continua a mesma.
+                // Sem isso ela caía no ramo abaixo, pensado para quem foi para Entregue, e era jogada para Agendamento.
+                if (isCompletedSnapshot || (task.is_extra_demand && task.stage_current !== "entrega")) {
                   // Optimistic: instantly mark as backlog in cache
                   const markBacklog = (old: PmTask[] | undefined) =>
                     old?.map(t => allIds.includes(t.id) ? { ...t, status_global: "backlog" as any } : t);
