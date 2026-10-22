@@ -70,6 +70,8 @@ export interface CalendarPublication {
   instagram_error: string | null;
   instagram_published_at: string | null;
   instagram_publish_attempted_at: string | null;
+  // Quando alguém avisou que o post foi apagado direto no Instagram (o Cronograma volta a tratá-lo como não publicado).
+  instagram_deleted_at: string | null;
 }
 
 export const CALENDAR_STATUS_LABELS: Record<CalendarStatus, string> = {

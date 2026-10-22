@@ -80,6 +80,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [confirmDeletedOpen, setConfirmDeletedOpen] = useState(false);
   const [coverDragActive, setCoverDragActive] = useState(false);
   const [mediaDragActive, setMediaDragActive] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -1138,6 +1139,9 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 const scheduleDateTime = hasDateTime
                   ? `${format(parseISO(publication.publish_date!), "dd/MM", { locale: ptBR })} às ${publication.publish_time!.slice(0, 5)}`
                   : null;
+                // Depois de apagado, "nova data escolhida" = a data/hora do post ficou depois do momento em que ele foi apagado
+                const newDateChosen = hasDateTime && !!publication.instagram_deleted_at
+                  && new Date(`${publication.publish_date}T${publication.publish_time}`).getTime() > parseISO(publication.instagram_deleted_at).getTime();
                 // Same readiness bar as agendar em massa no Cronograma (missingFieldsFor em
                 // CalendarioPublicacaoPanel.tsx) — não faz sentido liberar pro Instagram sem
                 // legenda nem mídia final selecionada.
@@ -1164,6 +1168,11 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                               ver post
                             </a>
                           )}
+                        </span>
+                      )}
+                      {!isPublished && publication.instagram_deleted_at && (
+                        <span className="flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+                          <Trash2 className="h-3 w-3" /> Apagado
                         </span>
                       )}
                       {publication.instagram_status === "failed" && (
@@ -1211,8 +1220,55 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </Button>
                     )}
 
-                    {!isPublished && hasDateTime && !publication.instagram_scheduled && (
+                    {!isPublished && publication.instagram_deleted_at && (
+                      <div className="space-y-0 pt-1 text-xs">
+                        {publishedAtFormatted && (
+                          <>
+                            <div className="flex items-start gap-2.5">
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                              <span>Publicado<br /><span className="text-muted-foreground">{publishedAtFormatted}</span></span>
+                            </div>
+                            <div className="ml-[4.5px] h-3.5 w-px bg-border" />
+                          </>
+                        )}
+                        <div className="flex items-start gap-2.5">
+                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-destructive" />
+                          <span>Apagado no Instagram<br /><span className="text-muted-foreground">{format(parseISO(publication.instagram_deleted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span></span>
+                        </div>
+                        <div className="ml-[4.5px] h-3.5 w-px bg-border" />
+                        <div className="flex items-start gap-2.5">
+                          {publication.instagram_scheduled ? (
+                            <>
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+                              <span>Nova data<br /><span className="text-muted-foreground">Agendado para {scheduleDateTime}</span></span>
+                            </>
+                          ) : newDateChosen ? (
+                            <>
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                              <span>Nova data<br /><span className="text-muted-foreground">{scheduleDateTime} · falta agendar</span></span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground" />
+                              <span className="text-muted-foreground">Nova data: ainda não escolhida<br />Troque em "Data de publicação", acima.</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {!isPublished && !publication.instagram_deleted_at && hasDateTime && !publication.instagram_scheduled && (
                       <p className="text-xs text-amber-600">Ainda não agendado nem publicado.</p>
+                    )}
+
+                    {isPublished && (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground underline hover:text-destructive"
+                        onClick={() => setConfirmDeletedOpen(true)}
+                      >
+                        <Trash2 className="h-3 w-3" /> Esse post foi apagado no Instagram
+                      </button>
                     )}
 
                     {isPublished ? (
@@ -1362,6 +1418,40 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
           </Button>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDeletedOpen} onOpenChange={setConfirmDeletedOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Esse post foi apagado no Instagram?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O post não é apagado do Instagram por aqui. Isto só avisa o Cronograma de que ele saiu do ar: volta a contar como não publicado, sai do agendamento
+              e você escolhe uma nova data para publicar de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                // volta ao estado de "não publicado": o link, o id e a data de publicação do post antigo deixam de valer
+                save({
+                  instagram_status: "not_published",
+                  instagram_scheduled: false,
+                  instagram_media_id: null,
+                  instagram_creation_id: null,
+                  instagram_permalink: null,
+                  instagram_error: null,
+                  instagram_deleted_at: new Date().toISOString(),
+                });
+                setConfirmDeletedOpen(false);
+                toast.success("Marcado como apagado no Instagram. Escolha uma nova data.");
+                setDateOpen(true);
+              }}
+            >
+              Sim, foi apagado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
         <AlertDialogContent>

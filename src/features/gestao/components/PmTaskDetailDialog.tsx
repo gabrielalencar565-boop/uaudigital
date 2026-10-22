@@ -929,24 +929,28 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         await sb.from("pm_tasks").update(linkedUpdates).eq("id", linkedTaskId);
         await cloneChildrenToNewTask(linkedTaskId, nextStage);
       } else if (nextStage === "entrega") {
-        // Final stage: mark parent + all children as delivered in a single batch
+        // Final stage: mark parent + all children as delivered in a single batch.
+        // Agendamento concluído fica na própria etapa (AGN com o check) para dar para saber qual tarefa é; só as subtarefas viram entregues.
+        const parentFinalStage = completedStage === "agendamento" ? "agendamento" : "entrega";
         const allIds = [task.id, ...childTasks.map(c => c.id)];
+        const childIds = childTasks.map(c => c.id);
 
         // Optimistic cache update — instant UI feedback
         await queryClient.cancelQueries({ queryKey: ["pm_tasks"] });
         await queryClient.cancelQueries({ queryKey: ["pm_child_tasks"] });
         await queryClient.cancelQueries({ queryKey: ["pm_child_tasks_all"] });
         const markDone = (old: PmTask[] | undefined) =>
-          old?.map(t => allIds.includes(t.id) ? { ...t, stage_current: "entrega" as any, status_global: "concluido" as any } : t);
+          old?.map(t => allIds.includes(t.id) ? { ...t, stage_current: (t.id === task.id ? parentFinalStage : "entrega") as any, status_global: "concluido" as any } : t);
         queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markDone);
         queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, markDone);
         queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markDone);
-        toast.success("Tarefa marcada como Entregue!");
+        toast.success(parentFinalStage === "agendamento" ? "Agendamento concluído!" : "Tarefa marcada como Entregue!");
 
         // Fire DB in background then resync
-        sb.from("pm_tasks")
-          .update({ stage_current: "entrega", status_global: "concluido" })
-          .in("id", allIds)
+        Promise.all([
+          sb.from("pm_tasks").update({ stage_current: parentFinalStage, status_global: "concluido" }).eq("id", task.id),
+          ...(childIds.length ? [sb.from("pm_tasks").update({ stage_current: "entrega", status_global: "concluido" }).in("id", childIds)] : []),
+        ])
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ["pm_tasks"] });
             queryClient.invalidateQueries({ queryKey: ["pm_task"] }); // also refresh the single-task query the dialog itself reads (usePmTaskById)
@@ -2704,7 +2708,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                 if (isCompletedSnapshot || (task.is_extra_demand && task.stage_current !== "entrega")) {
                   // Optimistic: instantly mark as backlog in cache
                   const markBacklog = (old: PmTask[] | undefined) =>
-                    old?.map(t => allIds.includes(t.id) ? { ...t, status_global: "backlog" as any } : t);
+                    old?.map(t => allIds.includes(t.id) ? { ...t, status_global: "backlog" as any, ...(task.stage_current === "agendamento" ? { stage_current: "agendamento" as any } : {}) } : t);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_tasks"] }, markBacklog);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks"] }, markBacklog);
                   queryClient.setQueriesData<PmTask[]>({ queryKey: ["pm_child_tasks_all"] }, markBacklog);
@@ -2716,7 +2720,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   toast.success("Tarefa desconcluída");
                   // DB in background
                   const { error } = await sbx.from("pm_tasks").update({ status_global: "backlog" }).in("id", allIds);
-                  if (error) onFailure(error); else invalidateAll();
+                  // Agendamento concluído fica na etapa e as subtarefas viram "entregues": ao desmarcar, elas voltam para Agendamento junto.
+                  const childErr = !error && task.stage_current === "agendamento" && childTasks.length
+                    ? (await sbx.from("pm_tasks").update({ stage_current: "agendamento" }).in("id", childTasks.map(c => c.id))).error
+                    : null;
+                  if (error || childErr) onFailure(error ?? childErr); else invalidateAll();
                 } else {
                   // Reverse-lookup the stage that actually points to "entrega" in this
                   // flow (flowConfig is a flat { stage: nextStage | nextStage[] } map —

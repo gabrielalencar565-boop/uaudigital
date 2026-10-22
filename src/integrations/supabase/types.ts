@@ -133,6 +133,7 @@ export type Database = {
           deleted_at: string | null
           id: string
           instagram_creation_id: string | null
+          instagram_deleted_at: string | null
           instagram_error: string | null
           instagram_media_id: string | null
           instagram_permalink: string | null
@@ -162,6 +163,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instagram_creation_id?: string | null
+          instagram_deleted_at?: string | null
           instagram_error?: string | null
           instagram_media_id?: string | null
           instagram_permalink?: string | null
@@ -191,6 +193,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instagram_creation_id?: string | null
+          instagram_deleted_at?: string | null
           instagram_error?: string | null
           instagram_media_id?: string | null
           instagram_permalink?: string | null
