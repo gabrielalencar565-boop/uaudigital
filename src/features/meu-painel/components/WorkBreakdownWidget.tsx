@@ -50,6 +50,7 @@ export function WorkBreakdownWidget({ allTasks, month, userId }: Props) {
     return allTasks.filter((t) =>
       (t.assignee_id === userId || (t.watchers ?? []).includes(userId)) &&
       t.status_global !== "cancelado" &&
+      t.status_global !== "pausado" &&
       !(t as any).is_draft &&
       !!t.due_date && t.due_date >= startKey && t.due_date <= endKey
     );

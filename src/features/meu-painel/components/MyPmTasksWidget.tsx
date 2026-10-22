@@ -88,7 +88,8 @@ export function MyPmTasksWidget({ onOpenTask }: Props) {
     if (!user?.id) return [];
     return (pmTasksQ.data ?? []).filter(t =>
       (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
-      !["cancelado"].includes(t.status_global) &&
+      // "pausado" = a revisão que já foi mandada para Alteração: a tarefa segue com quem recebeu a alteração, não fica na lista de quem revisou
+      !["cancelado", "pausado"].includes(t.status_global) &&
       !(t as any).is_draft
     );
   }, [pmTasksQ.data, user?.id]);

@@ -201,6 +201,7 @@ export function MeuPainelPanel() {
     return (pmTasksForSummaryQ.data ?? []).filter((t) =>
       (t.assignee_id === user.id || (t.watchers ?? []).includes(user.id)) &&
       t.status_global !== "cancelado" &&
+      t.status_global !== "pausado" &&
       !(t as any).is_draft &&
       !!t.due_date && t.due_date >= `${monthKey}-01` && t.due_date <= monthEndKey
     );
