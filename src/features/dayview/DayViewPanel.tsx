@@ -177,6 +177,7 @@ export function DayViewPanel() {
         .lt("due_date", todayKey)
         .neq("status_global", "concluido")
         .neq("status_global", "cancelado")
+        .neq("status_global", "pausado")
         .order("due_date", { ascending: true })
         .limit(5000);
       if (error) throw error;
@@ -254,7 +255,8 @@ export function DayViewPanel() {
         .is("parent_task_id", null)
         .is("deleted_at", null)
         .neq("status_global", "concluido")
-        .neq("status_global", "cancelado");
+        .neq("status_global", "cancelado")
+        .neq("status_global", "pausado");
       if (error) throw error;
       return data ?? [];
     },
