@@ -241,7 +241,8 @@ export function VisaoGeralTab() {
   const healthQ = useHealthScores(now.getMonth() + 1, now.getFullYear());
 
   const squads = squadsQ.data ?? [];
-  const squadBrandColor = (squadId: string) => brandSeriesColor(Math.max(0, squads.findIndex((s: any) => s.id === squadId)));
+  // Cor de cada squad nos gráficos: a mesma do cartão dele (a paleta da marca só entra se o squad não tiver cor)
+  const squadBrandColor = (squadId: string) => squads.find((s: any) => s.id === squadId)?.color ?? brandSeriesColor(Math.max(0, squads.findIndex((s: any) => s.id === squadId)));
   const allSquadMembers = membersQ.data ?? [];
   const allClientSquads = clientSquadsQ.data ?? [];
   const allTeam = teamQ.data ?? [];
