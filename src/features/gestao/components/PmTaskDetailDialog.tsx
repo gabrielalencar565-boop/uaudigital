@@ -1780,6 +1780,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         // so returning from Alteração reopens REV/PLAN instead of falling back to REV/DSG.
         post_type: isPautaReview ? "planejamento" : null,
         alteration_origin: alterationOriginToSave,
+        alteration_requested_by: user.id,
       };
       updateTask.mutate(updates);
 
@@ -1853,6 +1854,10 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         due_date: newAltDueDate,
         post_type: previousSnapshot.post_type ?? resolvedAlteracaoPostType,
         alteration_origin: alterationOriginToSave,
+        alteration_requested_by: user.id,
+        // O que a pessoa que revisou escreveu em cada subtarefa fica nesta revisão (que vai para "pausado"): leva junto para a tarefa
+        // que reabre em Alteração, senão a alteração chegava sem nenhum motivo.
+        revision_notes: (task as any).revision_notes ?? null,
       };
       updateTask.mutate(prevUpdates);
 
@@ -1913,6 +1918,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         due_date: newAltDueDate,
         post_type: resolvedAlteracaoPostType,
         alteration_origin: alterationOriginToSave,
+        alteration_requested_by: user.id,
       };
       updateTask.mutate(updates);
 
