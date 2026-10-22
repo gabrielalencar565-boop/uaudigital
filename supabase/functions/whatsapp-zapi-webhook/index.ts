@@ -68,7 +68,17 @@ Deno.serve(async (req) => {
         const { data: map } = await admin.from("whatsapp_zapi_lids").select("phone").eq("agency_id", conn.agency_id).eq("lid", lid).maybeSingle();
         phone = map?.phone ?? "";
       }
-      if (!phone) { outcome = "ignorado:lid_sem_numero"; return ok({ ignored: "unmapped_lid" }); }
+      if (!phone) {
+        // Follow-up mandado do celular para alguém que ainda não conhecemos: guarda o código para reconhecer a resposta depois
+        if (p.fromMe && lid) {
+          const nowIso = new Date().toISOString();
+          const { data: prev } = await admin.from("whatsapp_zapi_outreach").select("lid").eq("agency_id", conn.agency_id).eq("lid", lid).maybeSingle();
+          if (prev) await admin.from("whatsapp_zapi_outreach").update({ last_at: nowIso }).eq("agency_id", conn.agency_id).eq("lid", lid);
+          else await admin.from("whatsapp_zapi_outreach").insert({ agency_id: conn.agency_id, lid, first_at: nowIso, last_at: nowIso });
+        }
+        outcome = "ignorado:lid_sem_numero";
+        return ok({ ignored: "unmapped_lid" });
+      }
     } else {
       phone = raw.replace(/\D/g, "");
       if (lid && phone && phone.length <= 15) {
@@ -83,6 +93,14 @@ Deno.serve(async (req) => {
       if (existing) { outcome = "ignorado:repetida"; return ok({ dedup: true }); }
     }
 
+    // Quem responde a um follow-up nosso (mandado antes, só com o código interno) não é contato novo: a mensagem leva essa marca
+    let afterOutreach = false;
+    if (!p.fromMe && lid) {
+      const since = new Date(Date.now() - 30 * 86400 * 1000).toISOString();
+      const { data: o } = await admin.from("whatsapp_zapi_outreach").select("lid").eq("agency_id", conn.agency_id).eq("lid", lid).gte("last_at", since).maybeSingle();
+      afterOutreach = !!o;
+    }
+
     const { body, media_url, media_type } = pickBody(p);
     if (media_type === "reaction" || (!body && !media_url)) { outcome = "ignorado:sem_conteudo"; return ok({ ignored: "empty" }); }
     const fromMe = !!p.fromMe;
@@ -91,7 +109,7 @@ Deno.serve(async (req) => {
     const { error } = await admin.from("whatsapp_messages").insert({
       contact_phone: phone, direction: fromMe ? "out" : "in", body, media_url, media_type, zapi_message_id: messageId,
       status: fromMe ? "sent" : "received", source_type: fromMe ? "manual" : "webhook", agency_id: conn.agency_id,
-      raw: { provider: "zapi", type: p.type, profile_name: fromMe ? null : (p.senderName ?? p.chatName ?? null) },
+      raw: { provider: "zapi", type: p.type, profile_name: fromMe ? null : (p.senderName ?? p.chatName ?? null), ...(afterOutreach ? { after_outreach: true } : {}) },
       ...(ts ? { created_at: new Date(ts).toISOString() } : {}),
     });
     if (error) { outcome = `erro:insert_${error.message.slice(0, 80)}`; console.error("insert message:", error.message); return ok({ error: "insert_failed" }); }
