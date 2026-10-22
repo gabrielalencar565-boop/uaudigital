@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2, RotateCcw, MessageSquare, ChevronUp, Tag as TagIcon } from "lucide-react";
+import { Clapperboard, Palette, ChevronDown, Plus, Check, ChevronRight, Trash2, RotateCcw, Pencil, MessageSquare, ChevronUp, Tag as TagIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +20,7 @@ import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./P
 import type { PmTask } from "../pm-types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSession } from "@/hooks/use-session";
 import { SubtaskTrashDialog } from "./SubtaskTrashDialog";
 
 function initials(n: string) {
@@ -63,17 +64,24 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
     setReviews(prev => {
       const next: RevisionNotes = {};
       for (const child of childTasks) {
-        next[child.id] = prev[child.id] ?? existing?.[child.id] ?? { status: "pendente", note: "" };
+        // A tarefa abre com a lista leve (sem revision_notes) e o detalhe completo chega depois: o que ainda está "em branco" aqui
+        // passa a mostrar o que o revisor escreveu assim que ele chega, senão a alteração aparecia sem nenhum motivo.
+        const cur = prev[child.id];
+        const untouched = !cur || (cur.status === "pendente" && !cur.note);
+        next[child.id] = (untouched ? existing?.[child.id] : cur) ?? cur ?? { status: "pendente", note: "" };
       }
       return next;
     });
-  }, [childTasks.length]);
+  }, [childTasks.length, existing]);
 
   const saveReviewToDb = useCallback((data: RevisionNotes, change?: { childTitle: string; newStatus: string }) => {
     updateTask.mutate({ id: parentTask.id, revision_notes: data, _revision_change: change ?? null } as any);
   }, [parentTask.id, updateTask]);
 
   const isReviewEditable = reviewMode === "revisao" && !readOnly;
+  // Já em Alteração, o texto do que alterar só quem mandou para alteração (quem revisou) pode editar; as marcações continuam travadas.
+  const { user } = useSession();
+  const canEditNote = reviewMode === "alteracao" && !readOnly && !!user?.id && (parentTask as any).alteration_requested_by === user.id;
 
   const videoTasks = childTasks.filter(c => c.post_type === "video");
   const designTasks = childTasks.filter(c => c.post_type === "design");
@@ -249,6 +257,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           setReviews={setReviews}
           saveReviewToDb={saveReviewToDb}
           isReviewEditable={isReviewEditable}
+          canEditNote={canEditNote}
         />
       )}
 
@@ -273,6 +282,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           setReviews={setReviews}
           saveReviewToDb={saveReviewToDb}
           isReviewEditable={isReviewEditable}
+          canEditNote={canEditNote}
         />
       )}
     </div>
@@ -284,7 +294,7 @@ function PlanningSection({
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
   selectedIds, toggleSelect, bulkConfirmOpen,
-  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable,
+  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable, canEditNote,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -306,6 +316,7 @@ function PlanningSection({
   setReviews: React.Dispatch<React.SetStateAction<RevisionNotes>>;
   saveReviewToDb: (data: RevisionNotes) => void;
   isReviewEditable: boolean;
+  canEditNote: boolean;
 }) {
   const updateTask = useUpdatePmTask();
   const createTask = useCreatePmTask();
@@ -323,8 +334,11 @@ function PlanningSection({
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [explicitlyClosedIds, setExplicitlyClosedIds] = useState<Set<string>>(new Set());
 
+  // Quem revisa marca aprovado / precisa de alteração; já em Alteração, quem mandou para alteração continua podendo marcar
+  const canMark = isReviewEditable || canEditNote;
+
   const toggleReviewStatus = (childId: string, targetStatus: ReviewStatus) => {
-    if (!isReviewEditable) return;
+    if (!canMark) return;
     const current = reviews[childId]?.status;
     const newStatus = current === targetStatus ? "pendente" : targetStatus;
     const childTask = tasks.find(c => c.id === childId);
@@ -338,7 +352,7 @@ function PlanningSection({
   };
 
   const setReviewNote = (childId: string, note: string) => {
-    if (!isReviewEditable) return;
+    if (!isReviewEditable && !canEditNote) return;
     setReviews(prev => ({ ...prev, [childId]: { ...prev[childId], note } }));
   };
 
@@ -495,30 +509,30 @@ function PlanningSection({
                 {hasReview ? (
                   <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                     <button
-                      disabled={!isReviewEditable}
+                      disabled={!canMark}
                       onClick={() => toggleReviewStatus(sub.id, "aprovado")}
                       className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
                         review?.status === "aprovado"
                           ? "bg-emerald-500 border-emerald-500 text-white scale-105"
                           : "border-emerald-500/30 hover:border-emerald-500/60 text-emerald-500/40 hover:text-emerald-500/70",
-                        !isReviewEditable && "opacity-60 cursor-default"
+                        !canMark && "opacity-60 cursor-default"
                       )}
-                      title={isReviewEditable ? "Aprovado" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Aprovado"}
+                      title={canMark ? "Aprovado" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Aprovado"}
                     >
                       <Check className="h-3 w-3" />
                     </button>
                     <button
-                      disabled={!isReviewEditable}
+                      disabled={!canMark}
                       onClick={() => toggleReviewStatus(sub.id, "alteracao")}
                       className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center transition-all border-2",
                         review?.status === "alteracao"
                           ? "bg-amber-500 border-amber-500 text-white scale-105"
                           : "border-amber-500/30 hover:border-amber-500/60 text-amber-500/40 hover:text-amber-500/70",
-                        !isReviewEditable && "opacity-60 cursor-default"
+                        !canMark && "opacity-60 cursor-default"
                       )}
-                      title={isReviewEditable ? "Precisa de alteração" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Precisa de alteração"}
+                      title={canMark ? "Precisa de alteração" : reviewMode === "alteracao" ? "Só quem revisa pode marcar isso — volta pra Revisão pra alterar" : "Precisa de alteração"}
                     >
                       <RotateCcw className="h-3 w-3" />
                     </button>
@@ -665,8 +679,8 @@ function PlanningSection({
                           : "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
                       )}
                     >
-                      <RotateCcw className="h-3 w-3" />
-                      <span>ver alteração</span>
+                      {canEditNote ? <Pencil className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                      <span>{canEditNote ? "editar alteração" : "ver alteração"}</span>
                       {isNoteExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                   </div>
@@ -721,7 +735,7 @@ function PlanningSection({
               {/* Expandable note area for alteração */}
               {isNoteExpanded && hasAlteracao && (
                 <div className="px-3 pb-2 pt-0 bg-amber-500/5">
-                  {isReviewEditable ? (
+                  {isReviewEditable || canEditNote ? (
                     <Textarea
                       value={review.note}
                       onChange={(e) => setReviewNote(sub.id, e.target.value)}
