@@ -8,13 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   useFinExpenses, useUpsertFinExpense, useDeleteFinExpense,
-  useFinCreditCards, useUpsertFinCreditCard, useFinAllExpenses,
+  useFinCreditCards, useUpsertFinCreditCard, useFinAllExpenses, useSaveRecurringExpense,
   type FinExpense, type FinCreditCard
 } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
+
+const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const monthLabel = (index: number) => `${MONTH_NAMES[((index % 12) + 12) % 12]}/${Math.floor(index / 12)}`;
 
 const CATEGORIES = [
   { value: "administrativa", label: "Administrativa" },
@@ -112,6 +117,7 @@ export function FinDespesasDetalhadasTab() {
   const allYearExpensesQ = useFinAllExpenses(year);
   const cardsQ = useFinCreditCards();
   const upsertExp = useUpsertFinExpense();
+  const saveRecurring = useSaveRecurringExpense();
   const deleteExp = useDeleteFinExpense();
   const upsertCard = useUpsertFinCreditCard();
 
@@ -126,14 +132,20 @@ export function FinDespesasDetalhadasTab() {
   const [editingCard, setEditingCard] = useState<FinCreditCard | null>(null);
   const [editing, setEditing] = useState<FinExpense | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const emptyForm = { description: "", category: "administrativa", amount: "", is_recurring: false, installment_total: "", installment_current: "", credit_card_id: "", notes: "", due_day: "10" };
+  const emptyForm = { description: "", category: "administrativa", amount: "", kind: "unica" as "unica" | "parcelada" | "recorrente", installment_total: "", first_month: String(month), first_year: String(year), credit_card_id: "", notes: "", due_day: "10" };
   const [form, setForm] = useState(emptyForm);
   const [cardForm, setCardForm] = useState({ name: "", last_digits: "", closing_day: "1", due_day: "10", brand: "visa" });
 
+  // A parcela deste mês e o mês dela dizem em que mês caiu a 1ª parcela (é o que a pessoa lembra quando comprou)
+  const firstInstallmentOf = (e: FinExpense) => {
+    if (!e.installment_total || !e.installment_current) return { first_month: String(month), first_year: String(year) };
+    const idx = e.year * 12 + (e.month - 1) - (e.installment_current - 1);
+    return { first_month: String((((idx % 12) + 12) % 12) + 1), first_year: String(Math.floor(idx / 12)) };
+  };
   const openNew = (cardId?: string) => { setEditing(null); setForm({ ...emptyForm, credit_card_id: cardId ?? "" }); setDialogOpen(true); };
   const openEdit = (e: FinExpense) => {
     setEditing(e);
-    setForm({ description: e.description, category: e.category, amount: String(e.amount), is_recurring: e.is_recurring, installment_total: e.installment_total ? String(e.installment_total) : "", installment_current: e.installment_current ? String(e.installment_current) : "", credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "", due_day: e.due_day ? String(e.due_day) : "10" });
+    setForm({ description: e.description, category: e.category, amount: String(e.amount), kind: (e.installment_total ? "parcelada" : e.is_recurring ? "recorrente" : "unica") as "unica" | "parcelada" | "recorrente", installment_total: e.installment_total ? String(e.installment_total) : "", ...firstInstallmentOf(e), credit_card_id: e.credit_card_id ?? "", notes: e.notes ?? "", due_day: e.due_day ? String(e.due_day) : "10" });
     setDialogOpen(true);
   };
   const openEditCard = (c: FinCreditCard) => {
@@ -147,12 +159,50 @@ export function FinDespesasDetalhadasTab() {
     setCardDialogOpen(true);
   };
 
+  // Parcelamento: a partir de "total" e do mês da 1ª parcela, descobre o mês onde a despesa fica gravada e qual parcela é
+  const installmentPlan = useMemo(() => {
+    if (form.kind !== "parcelada") return null;
+    const total = parseInt(form.installment_total);
+    if (!total || total < 1) return null;
+    const firstIndex = parseInt(form.first_year) * 12 + (parseInt(form.first_month) - 1);
+    if (Number.isNaN(firstIndex)) return null;
+    const viewedIndex = year * 12 + (month - 1);
+    const lastIndex = firstIndex + total - 1;
+    const ended = lastIndex < viewedIndex;
+    const future = firstIndex > viewedIndex;
+    // grava no mês que está aberto (ou, se a 1ª parcela ainda vai chegar, no mês dela)
+    const anchorIndex = future ? firstIndex : viewedIndex;
+    return {
+      total, firstIndex, lastIndex, ended, future,
+      current: future ? 1 : viewedIndex - firstIndex + 1,
+      anchorYear: Math.floor(anchorIndex / 12), anchorMonth: (anchorIndex % 12) + 1,
+    };
+  }, [form.kind, form.installment_total, form.first_month, form.first_year, year, month]);
+
   const save = () => {
+    const plan = form.kind === "parcelada" ? installmentPlan : null;
+    const common = {
+      description: form.description, category: form.category, amount: parseFloat(form.amount) || 0,
+      credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null, notes: form.notes || null, due_day: parseInt(form.due_day) || 10,
+    };
+    // Recorrente já existente: o reajuste vale deste mês para a frente, os meses anteriores ficam como estavam
+    if (editing && editing.is_recurring && !editing.installment_total && form.kind === "recorrente") {
+      saveRecurring.mutate({ original: editing, year, month, changes: { ...common, status: "pendente", paid_at: null } },
+        { onSuccess: () => { setDialogOpen(false); toast.success("Despesa salva — vale deste mês em diante"); } });
+      return;
+    }
+    // Recorrente nova: vale a partir do mês escolhido
+    if (form.kind === "recorrente") {
+      upsertExp.mutate({
+        ...(editing ? { id: editing.id } : {}), ...common, year: parseInt(form.first_year) || year, month: parseInt(form.first_month) || month,
+        status: "pendente", paid_at: null, is_recurring: true, installment_total: null, installment_current: null, starts_at_month: true,
+      } as any, { onSuccess: () => setDialogOpen(false) });
+      return;
+    }
     upsertExp.mutate({
-      ...(editing ? { id: editing.id } : {}), description: form.description, category: form.category, amount: parseFloat(form.amount) || 0,
-      year, month, status: "pendente", is_recurring: form.is_recurring, installment_total: form.installment_total ? parseInt(form.installment_total) : null,
-      installment_current: form.installment_current ? parseInt(form.installment_current) : null,
-      credit_card_id: form.credit_card_id && form.credit_card_id !== "none" ? form.credit_card_id : null, notes: form.notes || null, due_day: parseInt(form.due_day) || 10, paid_at: null,
+      ...(editing ? { id: editing.id } : {}), ...common,
+      year: plan ? plan.anchorYear : year, month: plan ? plan.anchorMonth : month, status: "pendente", is_recurring: false,
+      installment_total: plan ? plan.total : null, installment_current: plan ? plan.current : null, starts_at_month: false, paid_at: null,
     } as any, { onSuccess: () => setDialogOpen(false) });
   };
 
@@ -344,13 +394,80 @@ export function FinDespesasDetalhadasTab() {
               <div className="space-y-2"><Label>Cartão</Label><Select value={form.credit_card_id} onValueChange={(v) => setForm((p) => ({ ...p, credit_card_id: v }))}><SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger><SelectContent><SelectItem value="none">Nenhum</SelectItem>{cards.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Dia vencimento</Label><Input type="number" min={1} max={31} value={form.due_day} onChange={(e) => setForm((p) => ({ ...p, due_day: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Parcela atual</Label><Input type="number" value={form.installment_current} onChange={(e) => setForm((p) => ({ ...p, installment_current: e.target.value }))} placeholder="Ex: 3" /></div>
-              <div className="space-y-2"><Label>Total de parcelas</Label><Input type="number" value={form.installment_total} onChange={(e) => setForm((p) => ({ ...p, installment_total: e.target.value }))} placeholder="Ex: 12" /></div>
+            <div className="space-y-2">
+              <Label>Tipo da despesa</Label>
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
+                {([["unica", "Única"], ["parcelada", "Parcelada"], ["recorrente", "Recorrente"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" onClick={() => setForm((p) => ({ ...p, kind: k }))}
+                    className={cn("rounded-lg px-3 py-1.5 text-sm transition-colors", form.kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {form.kind === "unica" && "Uma conta só, que vale apenas para este mês."}
+                {form.kind === "parcelada" && "Compra dividida em parcelas: o app conta sozinho qual parcela cai em cada mês."}
+                {form.kind === "recorrente" && "Conta que se repete todo mês (salário, aluguel, internet...)."}
+              </p>
             </div>
-            <div className="flex items-center gap-2"><Switch checked={form.is_recurring} onCheckedChange={(v) => setForm((p) => ({ ...p, is_recurring: v }))} /><Label>Despesa recorrente</Label></div>
+            {form.kind === "parcelada" && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Total de parcelas</Label><Input type="number" min={1} value={form.installment_total} onChange={(e) => setForm((p) => ({ ...p, installment_total: e.target.value }))} placeholder="Ex: 12 (vazio = sem parcelas)" /></div>
+                  <div className="space-y-2">
+                    <Label>Mês da 1ª parcela</Label>
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                      <Select value={form.first_month} onValueChange={(v) => setForm((p) => ({ ...p, first_month: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{MONTH_NAMES.map((n, i) => <SelectItem key={n} value={String(i + 1)}>{n}</SelectItem>)}</SelectContent></Select>
+                      <Input type="number" className="w-20" value={form.first_year} onChange={(e) => setForm((p) => ({ ...p, first_year: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+                {installmentPlan && form.installment_total && (() => {
+                  const perInstallment = parseFloat(form.amount) || 0;
+                  const monthName = monthLabel(year * 12 + (month - 1));
+                  const left = installmentPlan.future ? installmentPlan.total : installmentPlan.total - installmentPlan.current + 1; // este mês incluído
+                  const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  return installmentPlan.ended ? (
+                    <p className="text-xs text-destructive">
+                      Com a 1ª parcela em {monthLabel(installmentPlan.firstIndex)}, a última ({installmentPlan.total}/{installmentPlan.total}) foi em {monthLabel(installmentPlan.lastIndex)}, antes de {monthName}. Confira o mês da 1ª parcela.
+                    </p>
+                  ) : (
+                    <div className="space-y-1 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                      <div className="font-medium text-foreground">
+                        {installmentPlan.future
+                          ? `A 1ª parcela começa em ${monthLabel(installmentPlan.firstIndex)}`
+                          : `Em ${monthName} é a parcela ${installmentPlan.current} de ${installmentPlan.total}`}
+                      </div>
+                      <div className="flex justify-between text-muted-foreground"><span>Já pagas</span><span>{installmentPlan.future ? 0 : installmentPlan.current - 1}</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>Faltam{installmentPlan.future ? "" : " (com este mês)"}</span><span>{left}{perInstallment > 0 ? ` · ${fmt(left * perInstallment)}` : ""}</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>Última parcela</span><span>{monthLabel(installmentPlan.lastIndex)}</span></div>
+                      {perInstallment > 0 && <div className="flex justify-between text-muted-foreground"><span>Valor total do parcelamento</span><span>{fmt(installmentPlan.total * perInstallment)}</span></div>}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {form.kind === "recorrente" && (
+              editing && editing.is_recurring && !editing.installment_total ? (
+                <div className="space-y-1 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground">Reajuste: vale de {monthLabel(year * 12 + (month - 1))} em diante</div>
+                  <div>Os meses anteriores continuam com o valor que tinham. Para mudar o valor só a partir de outro mês, abra esse mês e edite lá.</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Vale a partir de</Label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <Select value={form.first_month} onValueChange={(v) => setForm((p) => ({ ...p, first_month: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{MONTH_NAMES.map((n, i) => <SelectItem key={n} value={String(i + 1)}>{n}</SelectItem>)}</SelectContent></Select>
+                    <Input type="number" className="w-20" value={form.first_year} onChange={(e) => setForm((p) => ({ ...p, first_year: e.target.value }))} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Entra todo mês, de {monthLabel(parseInt(form.first_year) * 12 + (parseInt(form.first_month) - 1))} até o fim do ano. Quando o valor mudar (reajuste), edite a despesa no mês da mudança: o novo valor vale dali em diante.
+                  </p>
+                </div>
+              )
+            )}
           </div>
-          <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={save} disabled={!form.description || upsertExp.isPending}>Salvar</Button></DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={save} disabled={!form.description || upsertExp.isPending || saveRecurring.isPending || (form.kind === "parcelada" && (!installmentPlan || installmentPlan.ended))}>Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

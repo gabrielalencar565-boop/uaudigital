@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards, useFinAllExpenses } from "../hooks/use-financial-data";
+import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards, useFinAllExpenses, useSaveRecurringExpense } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
 import { FinMetricCard } from "./FinMetricCard";
 import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
@@ -23,6 +23,7 @@ export function FinReceitasDespesasTab() {
   const cardsQ = useFinCreditCards();
   const upsertRev = useUpsertFinRevenue();
   const upsertExp = useUpsertFinExpense();
+  const saveRecurring = useSaveRecurringExpense();
 
   // Status timeline: cliente aparece neste mês apenas se estava 'ativo' naquele período.
   const clients = (clientsQ.data?.filter((c) => isClientActiveAt(c, year, month)) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
@@ -108,18 +109,23 @@ export function FinReceitasDespesasTab() {
     }
   };
 
-  const toggleExpStatus = (exp: typeof allExpenses[0]) => {
-    const newStatus = exp.status === "pago" ? "pendente" : "pago";
-    upsertExp.mutate({ id: exp.id, description: exp.description, category: exp.category, year, month, amount: Number(exp.amount), status: newStatus, paid_at: newStatus === "pago" ? new Date().toISOString() : null } as any);
+  // Marca pago/pendente. Recorrente (sem parcelas): vale deste mês em diante, sem mexer nos meses de antes; o resto grava no mês aberto como sempre
+  const setExpStatus = (exp: typeof allExpenses[0], newStatus: string) => {
+    const paid_at = newStatus === "pago" ? new Date().toISOString() : null;
+    if (exp.is_recurring && !exp.installment_total) {
+      saveRecurring.mutate({ original: exp, year, month, changes: { status: newStatus, paid_at } });
+      return;
+    }
+    upsertExp.mutate({ id: exp.id, description: exp.description, category: exp.category, year, month, amount: Number(exp.amount), status: newStatus, paid_at } as any);
   };
+
+  const toggleExpStatus = (exp: typeof allExpenses[0]) => setExpStatus(exp, exp.status === "pago" ? "pendente" : "pago");
 
   const toggleCardStatus = (cardId: string) => {
     const cs = cardSummaries.find(c => c.card.id === cardId);
     if (!cs) return;
     const newStatus = cs.allPaid ? "pendente" : "pago";
-    cs.expenses.forEach(exp => {
-      upsertExp.mutate({ id: exp.id, description: exp.description, category: exp.category, year, month, amount: Number(exp.amount), status: newStatus, paid_at: newStatus === "pago" ? new Date().toISOString() : null } as any);
-    });
+    cs.expenses.forEach(exp => setExpStatus(exp, newStatus));
   };
 
   return (
