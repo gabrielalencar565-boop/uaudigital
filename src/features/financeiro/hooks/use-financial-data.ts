@@ -46,6 +46,13 @@ export type FinExpense = {
   paid_at: string | null;
   notes: string | null;
   due_day: number | null;
+  /** liga as versões de uma despesa recorrente reajustada (a 1ª versão usa o próprio id) */
+  series_id?: string | null;
+  /** recorrente cadastrada com "vale a partir de": não aparece nos meses antes do mês dela */
+  starts_at_month?: boolean;
+  /** só nas cópias calculadas: ano/mês da linha que de fato vale naquele mês (onde ela está gravada) */
+  anchor_year?: number;
+  anchor_month?: number;
 };
 
 export type FinCreditCard = {
@@ -283,6 +290,64 @@ export function useUpsertFinExpense() {
       qc.invalidateQueries({ queryKey: FK.expenses(v.year, v.month) });
       qc.invalidateQueries({ queryKey: ["fin-expenses-year", v.year] });
       toast.success("Despesa salva");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+const RECURRING_VALUE_KEYS = ["amount", "description", "category", "due_day", "credit_card_id", "notes"] as const;
+
+/**
+ * Salva uma mudança numa despesa RECORRENTE sem mexer nos meses anteriores ("a partir deste mês"):
+ * - se a versão que vale hoje começa antes do mês aberto → nasce uma nova versão neste mês;
+ * - se ela começa neste mesmo mês → atualiza no lugar (e, se mudou valor e não havia versão antes, guarda o valor antigo nos meses de antes);
+ * - se o mês aberto vem antes de onde ela começa → a linha passa a começar neste mês.
+ * `original` é a linha mostrada (pode ser a cópia calculada, com anchor_year/anchor_month).
+ */
+export function useSaveRecurringExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ original, changes, year, month }: { original: FinExpense; changes: Partial<FinExpense>; year: number; month: number }) => {
+      const db = supabase as any;
+      const T = "financial_expenses";
+      const anchorYear = original.anchor_year ?? original.year;
+      const anchorMonth = original.anchor_month ?? original.month;
+      const anchorIdx = anchorYear * 12 + (anchorMonth - 1);
+      const viewIdx = year * 12 + (month - 1);
+      const seriesId = original.series_id ?? original.id;
+      const base = {
+        description: original.description, category: original.category, amount: original.amount, credit_card_id: original.credit_card_id,
+        notes: original.notes, due_day: original.due_day, is_recurring: true, installment_total: null, installment_current: null, series_id: seriesId,
+      };
+      const ensureSeries = async () => {
+        if (!original.series_id) { const { error } = await db.from(T).update({ series_id: seriesId }).eq("id", original.id); if (error) throw error; }
+      };
+
+      if (anchorIdx < viewIdx) {
+        await ensureSeries();
+        const { error } = await db.from(T).insert({ ...base, status: "pendente", paid_at: null, ...changes, year, month });
+        if (error) throw error;
+      } else if (anchorIdx === viewIdx) {
+        const valueChanged = RECURRING_VALUE_KEYS.some((k) => changes[k] !== undefined && String(changes[k] ?? "") !== String((original as any)[k] ?? ""));
+        // recorrente que só começa neste mês não precisa guardar valor antigo para os meses de antes
+        if (valueChanged && month > 1 && !original.starts_at_month) {
+          const { data: sibs, error: e1 } = await db.from(T).select("id, month").eq("year", year).or(`series_id.eq.${seriesId},id.eq.${seriesId}`);
+          if (e1) throw e1;
+          if (!(sibs ?? []).some((r: any) => r.month < month)) {
+            const { error } = await db.from(T).insert({ ...base, status: "pendente", paid_at: null, year, month: 1 });
+            if (error) throw error;
+          }
+        }
+        const { error } = await db.from(T).update({ ...changes, series_id: seriesId }).eq("id", original.id);
+        if (error) throw error;
+      } else {
+        const { error } = await db.from(T).update({ ...changes, series_id: seriesId, year, month }).eq("id", original.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+      qc.invalidateQueries({ queryKey: ["fin-expenses-year", v.year] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -528,7 +593,8 @@ export function useFinAllExpenses(year: number) {
       const { data, error } = await supabase
         .from("financial_expenses" as any)
         .select("*")
-        .eq("year", year);
+        // o ano todo + as parcelas de anos anteriores, que podem terminar neste ano (ver buildEffectiveExpenses)
+        .or(`year.eq.${year},and(year.lt.${year},installment_total.not.is.null)`);
       if (error) throw error;
       return (data ?? []) as unknown as FinExpense[];
     },

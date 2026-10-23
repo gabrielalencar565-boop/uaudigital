@@ -52,7 +52,7 @@ export function FinMargemPorCliente({ year, month }: { year: number; month?: num
       const clients = (clientsQ.data ?? [])
         .filter((c) => isClientActiveAt(c, year, m))
         .map((c) => ({ id: c.id, name: c.name, revenue: Number(c.monthly_value) }));
-      const effective = buildEffectiveExpenses(allExpenses.filter((e) => e.month === m), allExpenses, m, year);
+      const effective = buildEffectiveExpenses(allExpenses.filter((e) => e.year === year && e.month === m), allExpenses, m, year);
       const counts: StageCount[] = (wholeYear ? yearWorkloadQ.data?.get(m) : monthWorkloadQ.data) ?? [];
       const stageCounts = new Map<string, number>();
       for (const r of counts) stageCounts.set(r.client_id, (stageCounts.get(r.client_id) ?? 0) + r.stages);
