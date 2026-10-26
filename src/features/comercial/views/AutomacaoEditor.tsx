@@ -222,13 +222,31 @@ export function AutomacaoEditor({ id, onBack, onOpen }: { id: string; onBack: ()
             <Lab label="Pergunta"><textarea rows={3} className={cn(inputCls, "resize-y")} value={s.text ?? ""} onChange={(e) => setStep({ text: e.target.value })} /></Lab>
             <Lab label="Opções (uma por linha; vazio = resposta livre)"><Lines key={s.id} value={s.options ?? []} onChange={(options) => setStep({ options })} /></Lab>
             <Lab label="Salvar resposta em"><Sel value={s.saveTo ?? ""} options={Object.entries(SAVE_TO) as Array<[string, string]>} onChange={(e) => setStep({ saveTo: e.target.value })} /></Lab>
-            <p className="text-xs text-muted-foreground">A automação espera a resposta por até 3 dias e segue quando o lead responder.</p>
+            {(s.options ?? []).length > 0 && (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!s.numbered} onChange={(e) => setStep({ numbered: e.target.checked })} /> Numerar as opções (1, 2, 3…)</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!s.strict} onChange={(e) => setStep({ strict: e.target.checked })} /> Só aceitar uma das opções</label>
+                {s.strict && <p className="text-xs text-muted-foreground">Se o lead escrever outra coisa, a mensagem é guardada como nota e a pergunta é feita de novo uma vez. Se errar de novo, a automação para e uma pessoa assume.</p>}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <Lab label="Seguir sem resposta após (min)"><Input type="number" min={1} placeholder="4320 (3 dias)" value={s.timeoutMinutes ?? ""} onChange={(e) => setStep({ timeoutMinutes: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })} /></Lab>
+              <Lab label="Lembrar após (min)"><Input type="number" min={1} placeholder="sem lembrete" value={s.remindAfterMin ?? ""} onChange={(e) => setStep({ remindAfterMin: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })} /></Lab>
+            </div>
+            {!!s.remindAfterMin && <Lab label="Mensagem do lembrete"><textarea rows={2} className={cn(inputCls, "resize-y")} value={s.remindText ?? ""} onChange={(e) => setStep({ remindText: e.target.value })} /></Lab>}
+            <div className="grid grid-cols-2 gap-2">
+              <Lab label="Desistir após (min)"><Input type="number" min={1} placeholder="não desiste" value={s.giveUpAfterMin ?? ""} onChange={(e) => setStep({ giveUpAfterMin: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })} /></Lab>
+              <Lab label="Etiqueta ao desistir"><Input value={s.giveUpTag ?? ""} placeholder="Ex.: Não concluiu fluxo" onChange={(e) => setStep({ giveUpTag: e.target.value })} /></Lab>
+            </div>
+            <p className="text-xs text-muted-foreground">Sem “Seguir sem resposta”, a automação espera por até 3 dias. Ao desistir, a automação para, a etiqueta é aplicada e vira um follow-up para o comercial.</p>
           </>
         )}
         {s.type === "cond" && (
           <>
             <Lab label="Verificar"><Sel value={s.field ?? "answer"} options={Object.entries(COND_FIELDS) as Array<[string, string]>} onChange={(e) => setStep({ field: e.target.value })} /></Lab>
-            {s.field !== "replied" && <Lab label="Contém"><Input value={s.value ?? ""} onChange={(e) => setStep({ value: e.target.value })} /></Lab>}
+            {s.field === "business_hours"
+              ? <Lab label="Se estiver"><Sel value={s.value === "nao" ? "nao" : "sim"} options={[["sim", "Dentro do horário comercial"], ["nao", "Fora do horário comercial"]]} onChange={(e) => setStep({ value: e.target.value })} /></Lab>
+              : s.field !== "replied" && <Lab label="Contém"><Input value={s.value ?? ""} onChange={(e) => setStep({ value: e.target.value })} /></Lab>}
             <p className="text-xs text-muted-foreground">Se for verdade, segue pelo caminho “Sim”. Se não, pelo “Não”.</p>
           </>
         )}
@@ -273,6 +291,13 @@ export function AutomacaoEditor({ id, onBack, onOpen }: { id: string; onBack: ()
             {!s.formId && <p className="text-xs text-amber-600 dark:text-amber-400">Sem formulário escolhido, esse bloco não envia nada. Crie um em Formulários e volte aqui.</p>}
           </>
         )}
+        {s.type === "note" && (
+          <>
+            <Lab label="Texto da anotação"><textarea rows={4} className={cn(inputCls, "resize-y")} value={s.text ?? ""} onChange={(e) => setStep({ text: e.target.value })} /></Lab>
+            <p className="text-xs text-muted-foreground">Fica na linha do tempo do lead; ele não recebe. Use {"{segmento}"}, {"{momento}"}, {"{objetivo_lead}"} e {"{origem}"} para trazer as respostas.</p>
+          </>
+        )}
+        {s.type === "end" && <p className="text-xs text-muted-foreground">A automação termina aqui para esse lead. Nada é passado para ninguém.</p>}
         {s.type === "human" && (
           <>
             <Lab label="Passar para"><Sel value={s.owner ?? "lead"} options={owners} onChange={(e) => setStep({ owner: e.target.value })} /></Lab>

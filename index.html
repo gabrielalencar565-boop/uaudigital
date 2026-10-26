@@ -50,7 +50,16 @@
   </script>
   <script src="/fluxo-loader.js"></script>
   <script>
-    window.__fluxoLoader = FluxoLoader.show({ theme: "dark" });
+    // A animação de abertura não aparece nos links que o cliente abre (cronograma, aprovação, relatório, agendamento, formulário, avaliação)
+    // nem para quem a desligou no menu do usuário.
+    (function () {
+      var skip = false;
+      try {
+        skip = localStorage.getItem("fluxo-loader-intro") === "off"
+          || /^\/(cronograma|aprovacao|relatorio|agendar|f|avaliacao)\//.test(location.pathname);
+      } catch (e) {}
+      window.__fluxoLoader = skip ? null : FluxoLoader.show({ theme: "dark" });
+    })();
   </script>
 </head>
 

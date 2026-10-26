@@ -67,8 +67,16 @@ export function AutomacaoPreview({ name, desc, trigger, steps, onBack, onUse, bu
   const rows = (s: Step): Array<[string, string]> => {
     switch (s.type) {
       case "msg": return [["Mensagem", s.text ?? ""]];
-      case "ask": return [["Pergunta", s.text ?? ""], ["Opções", s.options?.length ? s.options.join(" · ") : "Resposta livre"], ["Salvar resposta em", SAVE_TO[s.saveTo ?? ""] ?? "Só guardar a resposta"]];
-      case "cond": return [["Verificar", COND_FIELDS[s.field ?? "answer"]], ...(s.field !== "replied" ? [["Contém", s.value ?? ""] as [string, string]] : [])];
+      case "ask": return [
+        ["Pergunta", s.text ?? ""], ["Opções", s.options?.length ? s.options.join(" · ") : "Resposta livre"], ["Salvar resposta em", SAVE_TO[s.saveTo ?? ""] ?? s.saveTo ?? "Só guardar a resposta"],
+        ...(s.options?.length ? [["Regras", [s.numbered && "opções numeradas", s.strict && "só aceita as opções"].filter(Boolean).join(" · ") || "—"] as [string, string]] : []),
+        ...(s.timeoutMinutes ? [["Segue sem resposta após", `${s.timeoutMinutes} min`] as [string, string]] : []),
+        ...(s.remindAfterMin ? [["Lembrete após", `${s.remindAfterMin} min: ${s.remindText ?? ""}`] as [string, string]] : []),
+        ...(s.giveUpAfterMin ? [["Desiste após", `${s.giveUpAfterMin} min · etiqueta “${s.giveUpTag ?? ""}” + follow-up para o comercial`] as [string, string]] : []),
+      ];
+      case "cond": return [["Verificar", COND_FIELDS[s.field ?? "answer"]], ...(s.field === "business_hours" ? [["Se estiver", s.value === "nao" ? "Fora do horário comercial" : "Dentro do horário comercial"] as [string, string]] : s.field !== "replied" ? [["Contém", s.value ?? ""] as [string, string]] : [])];
+      case "note": return [["Anotação", s.text ?? ""]];
+      case "end": return [["O que faz", "Encerra a automação para esse lead"]];
       case "wait": return [["Esperar por", s.until === "resposta" ? "Resposta do lead (com limite de tempo)" : "Um intervalo de tempo"], ["Quanto", `${s.amount ?? 1} ${s.unit ?? "dias"}`]];
       case "tag": return [["Etiqueta", s.tag ?? ""]];
       case "deal": return [["Mover para a etapa", stageName(s.stage) ?? "Não mover"], ["Trocar responsável", s.owner ? ownerName(s.owner, ctx) : "Não trocar"]];

@@ -105,11 +105,15 @@ Deno.serve(async (req) => {
     if (media_type === "reaction" || (!body && !media_url)) { outcome = "ignorado:sem_conteudo"; return ok({ ignored: "empty" }); }
     const fromMe = !!p.fromMe;
     const ts = Number(p.momment);
+    // Clique em anúncio (click-to-WhatsApp) vem com adContext / externalAdReply / referral: marca para o CRM saber a origem
+    const ad = p.externalAdReply ?? p.adContext ?? p.referral ?? null;
+    const hasAd = !fromMe && !!ad && typeof ad === "object";
+    const adTitle = hasAd ? String(ad.title ?? ad.headline ?? ad.sourceUrl ?? "").slice(0, 120) : "";
 
     const { error } = await admin.from("whatsapp_messages").insert({
       contact_phone: phone, direction: fromMe ? "out" : "in", body, media_url, media_type, zapi_message_id: messageId,
       status: fromMe ? "sent" : "received", source_type: fromMe ? "manual" : "webhook", agency_id: conn.agency_id,
-      raw: { provider: "zapi", type: p.type, profile_name: fromMe ? null : (p.senderName ?? p.chatName ?? null), ...(afterOutreach ? { after_outreach: true } : {}) },
+      raw: { provider: "zapi", type: p.type, profile_name: fromMe ? null : (p.senderName ?? p.chatName ?? null), ...(afterOutreach ? { after_outreach: true } : {}), ...(hasAd ? { has_ad: "true", ad_title: adTitle } : {}) },
       ...(ts ? { created_at: new Date(ts).toISOString() } : {}),
     });
     if (error) { outcome = `erro:insert_${error.message.slice(0, 80)}`; console.error("insert message:", error.message); return ok({ error: "insert_failed" }); }

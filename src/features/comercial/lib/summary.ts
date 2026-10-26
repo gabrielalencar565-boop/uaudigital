@@ -26,8 +26,10 @@ export function triggerText(t: Trigger, ctx: SummaryCtx): string {
 export function blockSummary(s: Step, ctx: SummaryCtx): { main: string; sub?: string } {
   switch (s.type) {
     case "msg": return { main: `“${fillText(s.text)}”` };
-    case "ask": return { main: `“${s.text ?? ""}”`, sub: s.options?.length ? `Opções: ${s.options.join(" · ")}` : "Resposta livre" };
-    case "cond": return { main: `Se ${COND_FIELDS[s.field ?? "answer"]} ${s.field === "replied" ? "= sim" : `contém “${s.value ?? ""}”`}` };
+    case "ask": return { main: `“${s.text ?? ""}”`, sub: s.options?.length ? `Opções: ${s.options.join(" · ")}${s.strict ? " (só aceita essas)" : ""}` : s.timeoutMinutes ? `Resposta livre · segue em ${s.timeoutMinutes} min sem resposta` : "Resposta livre" };
+    case "cond":
+      if (s.field === "business_hours") return { main: s.value === "nao" ? "Se estiver fora do horário comercial" : "Se estiver no horário comercial" };
+      return { main: `Se ${COND_FIELDS[s.field ?? "answer"]} ${s.field === "replied" ? "= sim" : `contém “${s.value ?? ""}”`}` };
     case "wait": return { main: s.until === "resposta" ? `Espera a resposta por até ${s.amount} ${s.unit}` : `Espera ${s.amount} ${s.unit}` };
     case "tag": return { main: `Etiqueta “${s.tag ?? ""}”` };
     case "deal": {
@@ -41,5 +43,7 @@ export function blockSummary(s: Step, ctx: SummaryCtx): { main: string; sub?: st
       return { main: `Link: ${f?.name ?? "escolher formulário"}` };
     }
     case "human": return { main: `Passa pra ${ownerName(s.owner, ctx)}` };
+    case "note": return { main: `Anotação: “${s.text ?? ""}”` };
+    case "end": return { main: "Encerra a automação" };
   }
 }

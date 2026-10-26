@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
-  Image as ImageIcon, Loader2, Clock, MoreHorizontal,
+  Image as ImageIcon, Loader2, Clock, MoreHorizontal, ExternalLink,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -82,6 +82,29 @@ const MIME_EXTENSIONS: Record<string, string> = {
 };
 function extensionFor(mimeType: string | null | undefined): string {
   return MIME_EXTENSIONS[mimeType ?? ""] ?? "bin";
+}
+
+// Cronograma (PDF) de design e de vídeo nascem separados: enquanto só tem um dos dois, o nome diz qual é; depois de unidos fica só "Cronograma".
+type PdfKind = "design" | "video" | "unido";
+const PDF_KIND_LABEL: Record<PdfKind, string> = { design: "Cronograma Design", video: "Cronograma Vídeo", unido: "Cronograma" };
+
+function pdfKindOf(title: string, childTypes: Array<string | null | undefined>): PdfKind {
+  // Tarefa que já diz no nome se é de design ou de vídeo (ex.: "[Cliente] - Design - Extra") vale pelo nome; as de Cronograma, pelas subtarefas
+  const nameDesign = /design/i.test(title);
+  const nameVideo = /v[ií]deo/i.test(title);
+  if (!/cronograma/i.test(title) && nameDesign !== nameVideo) return nameDesign ? "design" : "video";
+  const types = new Set(childTypes.filter(Boolean));
+  if (types.has("design") && types.has("video")) return "unido";
+  if (types.has("design")) return "design";
+  if (types.has("video")) return "video";
+  if (/v[ií]deo/i.test(title)) return "video";
+  if (/design/i.test(title)) return "design";
+  return "unido";
+}
+
+/** "Dra. Luanna - Cronograma - Outubro" vira "Dra. Luanna - Cronograma Design - Outubro" enquanto a tarefa é só de design (ou só de vídeo) */
+function pdfDisplayTitle(title: string, kind: PdfKind): string {
+  return kind === "unido" ? title : title.replace(/(\s-\s)Cronograma(\s-\s)/, `$1${PDF_KIND_LABEL[kind]}$2`);
 }
 
 interface Props {
@@ -198,6 +221,38 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     });
   }, [clientPdfTasksQ.data, currentTask, isSubtaskView]);
 
+  // Para a tela de unir: de que tipo é cada tarefa (design, vídeo ou já unida), quantas subtarefas e quantos anexos tem
+  const mergeIds = useMemo(() => mergeCandidates.map((c) => c.id), [mergeCandidates]);
+  const mergeInfoQ = useQuery({
+    queryKey: ["pdf_merge_info", currentTask?.id, mergeIds.join(",")],
+    enabled: showMergeConfirm && !!currentTask && mergeIds.length > 0,
+    queryFn: async () => {
+      const sbAny = supabase as any;
+      const ids = [currentTask!.id, ...mergeIds];
+      const { data: kids } = await sbAny.from("pm_tasks").select("id, parent_task_id, post_type").in("parent_task_id", ids).is("deleted_at", null);
+      const kidRows = (kids ?? []) as { id: string; parent_task_id: string; post_type: string | null }[];
+      const owner = new Map<string, string>(ids.map((id) => [id, id]));
+      kidRows.forEach((k) => owner.set(k.id, k.parent_task_id));
+      const { data: atts } = await sbAny.from("pm_attachments").select("task_id").in("task_id", [...owner.keys()]);
+      const info: Record<string, { types: Array<string | null>; subs: number; atts: number }> = {};
+      ids.forEach((id) => { info[id] = { types: [], subs: 0, atts: 0 }; });
+      kidRows.forEach((k) => { info[k.parent_task_id].types.push(k.post_type); info[k.parent_task_id].subs += 1; });
+      ((atts ?? []) as { task_id: string }[]).forEach((a) => { const o = owner.get(a.task_id); if (o) info[o].atts += 1; });
+      return info;
+    },
+  });
+  const mergeGroups = useMemo(() => {
+    const info = mergeInfoQ.data ?? {};
+    const rows = mergeCandidates.map((c) => {
+      const i = info[c.id];
+      const kind = pdfKindOf(c.title, i?.types ?? []);
+      return { task: c, kind, title: pdfDisplayTitle(c.title, kind), subs: i?.subs, atts: i?.atts };
+    });
+    const order: PdfKind[] = ["design", "video", "unido"];
+    return order.map((kind) => ({ kind, rows: rows.filter((r) => r.kind === kind) })).filter((g) => g.rows.length > 0);
+  }, [mergeCandidates, mergeInfoQ.data]);
+  const currentPdfKind: PdfKind | null = currentTask && mergeInfoQ.data?.[currentTask.id] ? pdfKindOf(currentTask.title, mergeInfoQ.data[currentTask.id].types) : null;
+
   // Presence: tell teammates which task this user currently has open
   // IMPORTANT: must be declared before any early return to keep hook order stable
   useEffect(() => {
@@ -270,7 +325,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               className="h-7 gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
               title="Unir esta tarefa PDF com outra tarefa PDF do mesmo cliente/mês"
               onClick={() => {
-                setSelectedMergeId(mergeCandidates[0].id);
+                setSelectedMergeId((prev) => (prev && mergeCandidates.some((c) => c.id === prev) ? prev : mergeCandidates[0].id));
                 setShowMergeConfirm(true);
               }}
             >
@@ -374,20 +429,57 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>As duas tarefas PDF do mesmo cliente serão unidas em uma só. A mais antiga é mantida e a outra é movida para a lixeira.</p>
-              {mergeCandidates.length > 1 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Escolha a tarefa para unir:</p>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {mergeCandidates.map((c) => (
-                      <label key={c.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/40 cursor-pointer hover:bg-muted/40">
-                        <input
-                          type="radio"
-                          name="merge-target"
-                          checked={selectedMergeId === c.id}
-                          onChange={() => setSelectedMergeId(c.id)}
-                        />
-                        <span className="text-sm truncate">{c.title}{c.post_type ? ` (${c.post_type === "video" ? "Vídeo" : "Design"})` : ""}{c.status_global === "concluido" ? " — concluída" : ""}</span>
-                      </label>
+              {currentPdfKind && (
+                <p className="text-xs">Esta tarefa: <span className="font-medium text-foreground">{PDF_KIND_LABEL[currentPdfKind]}</span></p>
+              )}
+              {mergeCandidates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Escolha a tarefa para unir (use “Abrir” para ver qual é):</p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-0.5">
+                    {mergeGroups.map((g) => (
+                      <div key={g.kind} className="space-y-1">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">{PDF_KIND_LABEL[g.kind]}</p>
+                        {g.rows.map(({ task: c, title, subs, atts }) => {
+                          const picked = selectedMergeId === c.id;
+                          const who = c.assignee_id ? membersMap[c.assignee_id]?.name : null;
+                          return (
+                            <label
+                              key={c.id}
+                              className={cn("block p-2 rounded-lg border cursor-pointer hover:bg-muted/40", picked ? "border-primary/60 bg-primary/5" : "border-border/40")}
+                            >
+                              <div className="flex items-center gap-2">
+                                <input type="radio" name="merge-target" checked={picked} onChange={() => setSelectedMergeId(c.id)} />
+                                <span className="text-sm truncate flex-1">{title}</span>
+                                {c.status_global === "concluido" && <span className="shrink-0 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] text-emerald-500">Concluída</span>}
+                                {c.due_date ? <span className="shrink-0 text-xs text-muted-foreground">{format(parseISO(c.due_date), "dd/MM")}</span> : null}
+                                <button
+                                  type="button"
+                                  title="Abrir esta tarefa para conferir"
+                                  aria-label={`Abrir a tarefa ${c.title}`}
+                                  className="shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-primary hover:bg-primary/10"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    // fecha a confirmação para a tarefa abrir por cima; depois é só clicar em "Unir PDF" de novo (a escolha fica guardada)
+                                    setSelectedMergeId(c.id);
+                                    setShowMergeConfirm(false);
+                                    window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId: c.id } }));
+                                  }}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" /> Abrir
+                                </button>
+                              </div>
+                              {picked && (
+                                <div className="mt-1.5 flex flex-wrap gap-1.5 pl-6 text-[11px] text-muted-foreground">
+                                  <span className="rounded-md bg-muted/50 px-1.5 py-0.5">{subs ?? "…"} subtarefa{subs === 1 ? "" : "s"}</span>
+                                  <span className="rounded-md bg-muted/50 px-1.5 py-0.5">{atts ?? "…"} anexo{atts === 1 ? "" : "s"}</span>
+                                  {who && <span className="rounded-md bg-muted/50 px-1.5 py-0.5">{who}</span>}
+                                </div>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2025,6 +2117,53 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         status_global: "backlog" as any,
         post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
       } as any)));
+
+      // Ao abrir a alteração, as subtarefas que esta tarefa tinha em Design foram escondidas (veja handleAlteracao) e as da revisão vieram para cá.
+      // Agora que elas voltaram para a Revisão, a tarefa concluída de Design fica com uma cópia da versão ajustada (subtarefas e arquivos),
+      // senão ela ficava sem nenhum conteúdo. A cópia nasce sem responsável para não disparar aviso de "nova tarefa" para ninguém.
+      try {
+        const { data: { user: copyUser } } = await supabase.auth.getUser();
+        const baseTime = Date.now();
+        const stampByChild = new Map(childTasks.map((c, i) => [c.id, new Date(baseTime + i).toISOString()]));
+        const { data: copies, error: copyError } = await sb.from("pm_tasks").insert(childTasks.map((child) => ({
+          client_id: child.client_id,
+          title: child.title,
+          description: child.description ?? null,
+          stage_current: originalStage,
+          status_global: "concluido",
+          assignee_id: null,
+          watchers: [],
+          parent_task_id: task.id,
+          post_key: child.post_key ?? child.id,
+          tags: child.tags ?? [],
+          is_extra_demand: child.is_extra_demand,
+          post_type: child.post_type ?? task.post_type ?? revisaoTask.post_type ?? resolvedReturnPostType,
+          due_date: child.due_date ?? null,
+          created_by: copyUser?.id,
+          created_at: stampByChild.get(child.id),
+        }))).select("id, created_at");
+        if (copyError) throw copyError;
+        const copyIdByStamp = new Map<string, string>((copies ?? []).map((row: any): [string, string] => [new Date(row.created_at).toISOString(), row.id]));
+        const copyIdByChild: Record<string, string> = {};
+        for (const child of childTasks) {
+          const copyId = copyIdByStamp.get(stampByChild.get(child.id)!);
+          if (copyId) copyIdByChild[child.id] = copyId;
+        }
+        const { data: childAtts } = await sb.from("pm_attachments").select("*").in("task_id", Object.keys(copyIdByChild));
+        await Promise.all((childAtts ?? []).map((att: any) => {
+          const { id: _id, created_at: _ca, ...rest } = att;
+          // Cada linha do Drive precisa do próprio token (veja cloneAttachmentRow em doAdvance)
+          if (rest.storage_provider === "drive" && rest.drive_file_id) {
+            const token = randomToken();
+            rest.access_token = token;
+            rest.public_url = `https://bzzubzjbsjwuvchuhklr.supabase.co/functions/v1/drive-file-proxy/${rest.drive_file_id}.${extensionFor(rest.file_type)}?t=${token}`;
+          }
+          return sb.from("pm_attachments").insert({ ...rest, task_id: copyIdByChild[att.task_id] });
+        }));
+      } catch (err) {
+        console.error("Erro ao guardar a versão ajustada no Design:", err);
+        toast.warning("Ajuste concluído, mas não consegui guardar a cópia da versão ajustada no Design.");
+      }
 
       toast.success("Ajuste concluído. Retornou para Revisão");
     } else {

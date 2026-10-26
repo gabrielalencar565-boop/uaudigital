@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { BellRing, CircleHelp, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
+import { CircleHelp, LogOut, Moon, Pencil, Sun, Volume2 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,8 +19,7 @@ import { TaskSearchDropdown } from "@/components/layout/TaskSearchDropdown";
 import { ChatBellButton } from "@/features/chat/ChatBellButton";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { NotificationSoundsDialog } from "@/features/configuracoes/NotificationSoundsDialog";
-import { PushNotificationsDialog } from "@/features/configuracoes/PushNotificationsDialog";
+import { NotificationsAndSoundsDialog } from "@/features/configuracoes/NotificationsAndSoundsDialog";
 import { ReportProblemDialog } from "@/features/configuracoes/ReportProblemDialog";
 
 function initials(name: string) {
@@ -38,7 +37,6 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [soundsOpen, setSoundsOpen] = useState(false);
-  const [pushOpen, setPushOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   const userName = myProfileQ.data?.full_name ?? "Usuário";
@@ -168,18 +166,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
                 className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
               >
                 <Volume2 className="h-4 w-4 text-muted-foreground" />
-                Som de notificações
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setPushOpen(true);
-                }}
-                className="gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer"
-              >
-                <BellRing className="h-4 w-4 text-muted-foreground" />
-                Notificações push
+                Sons e notificações
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
@@ -195,8 +182,7 @@ export function TopBar({ onEditProfile, onOpenTask }: TopBarProps) {
           </DropdownMenu>
         </div>
       </div>
-      <NotificationSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
-      <PushNotificationsDialog open={pushOpen} onOpenChange={setPushOpen} />
+      <NotificationsAndSoundsDialog open={soundsOpen} onOpenChange={setSoundsOpen} />
       <ReportProblemDialog open={reportOpen} onOpenChange={setReportOpen} />
     </header>
 

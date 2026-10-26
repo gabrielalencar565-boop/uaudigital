@@ -4,7 +4,7 @@ import { SERVICES } from "./rules";
 
 // ───────────── tipos ─────────────
 
-export type StepType = "msg" | "ask" | "cond" | "wait" | "tag" | "deal" | "task" | "meet" | "form" | "human";
+export type StepType = "msg" | "ask" | "cond" | "wait" | "tag" | "deal" | "task" | "meet" | "form" | "human" | "note" | "end";
 export type TriggerType = "new" | "msg_in" | "msg_back" | "form" | "stage" | "won" | "idle" | "schedule";
 
 export interface Step {
@@ -28,6 +28,18 @@ export interface Step {
   days?: number;
   formId?: string;
   formKey?: string;
+  /** Pergunta: lista as opções com número (1., 2., 3.) e aceita "2" como resposta */
+  numbered?: boolean;
+  /** Pergunta: só aceita uma das opções; fora disso pede de novo uma vez e na segunda passa para uma pessoa */
+  strict?: boolean;
+  /** Pergunta: minutos até seguir sem resposta (padrão 3 dias) */
+  timeoutMinutes?: number;
+  /** Pergunta: lembrete único depois desses minutos sem resposta */
+  remindAfterMin?: number;
+  remindText?: string;
+  /** Pergunta: depois desses minutos sem resposta, etiqueta, cria follow-up e pausa a automação */
+  giveUpAfterMin?: number;
+  giveUpTag?: string;
 }
 
 export interface Trigger {
@@ -110,6 +122,8 @@ export const BLOCKS: Record<StepType, { name: string; group: "msg" | "logic" | "
   meet: { name: "Agendar reunião", group: "msg", desc: "Oferece horários e registra a reunião" },
   form: { name: "Enviar formulário", group: "msg", desc: "Manda o link de um formulário" },
   human: { name: "Transferir para humano", group: "act", desc: "Pausa a automação e passa pra uma pessoa" },
+  note: { name: "Anotação interna", group: "act", desc: "Registra um resumo na linha do tempo do lead (o lead não vê)" },
+  end: { name: "Encerrar fluxo", group: "act", desc: "Termina a automação aqui, sem passar para ninguém" },
 };
 
 export const TRIGGERS: Record<TriggerType, string> = {
@@ -125,8 +139,20 @@ export const TRIGGERS: Record<TriggerType, string> = {
 
 export const COND_FIELDS: Record<string, string> = {
   answer: "Última resposta", services: "Serviço de interesse", segment: "Segmento", source: "Origem", tags: "Etiquetas", replied: "Lead respondeu",
+  business_hours: "Horário comercial (seg a sex, 8h às 18h)",
 };
-export const SAVE_TO: Record<string, string> = { "": "Só guardar a resposta", services: "Serviço de interesse", segment: "Segmento", budget: "Orçamento" };
+export const SAVE_TO: Record<string, string> = {
+  "": "Só guardar a resposta", services: "Serviço de interesse", segment: "Segmento", budget: "Orçamento",
+  triagem: "Triagem (guardada no fluxo)", momento: "Momento de marketing", objetivo_lead: "Objetivo do lead",
+};
+
+/** Seg a sex, das 8h às 18h no horário de Brasília — igual à função comercial_is_business_hours do banco. */
+export function isBusinessHours(at: Date = new Date()): boolean {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "numeric", hour12: false }).formatToParts(at);
+  const wd = p.find((x) => x.type === "weekday")?.value ?? "";
+  const h = Number(p.find((x) => x.type === "hour")?.value ?? 0) % 24;
+  return !["Sat", "Sun"].includes(wd) && h >= 8 && h < 18;
+}
 
 export const FIELD_TYPES: Record<FieldType, string> = {
   text: "Texto curto", long: "Texto longo", phone: "WhatsApp / telefone", email: "E-mail", number: "Número", choice: "Múltipla escolha (uma)",
@@ -152,11 +178,17 @@ export const makeSlug = (name: string): string => `${slugify(name)}-${Math.rando
 
 const firstName = (name: string) => name.replace(/^(dra?\.?)\s+/i, "").trim().split(/\s+/)[0] ?? "";
 
-/** {nome} e {empresa}, como o motor do banco troca na hora de enviar. */
-export function fillText(t: string | undefined, lead?: { name?: string; company?: string | null }): string {
+/** {nome} e {empresa}, como o motor do banco troca na hora de enviar. `answers` são as respostas já guardadas no fluxo ({segmento}, {momento}, {objetivo_lead}…). */
+export function fillText(t: string | undefined, lead?: { name?: string; company?: string | null }, answers?: Record<string, string>): string {
   const nome = lead?.name ? firstName(lead.name) : "Fulano";
-  return String(t ?? "").replace(/\{nome\}/g, nome).replace(/\{empresa\}/g, lead?.company || "Empresa");
+  let out = String(t ?? "");
+  for (const [k, v] of Object.entries(answers ?? {})) out = out.split(`{${k}}`).join(v.trim() || "—");
+  return out.replace(/\{(segmento|momento|objetivo|objetivo_lead)\}/g, "—").replace(/\{nome\}/g, nome).replace(/\{empresa\}/g, lead?.company || "Empresa");
 }
+
+/** Algum passo olha o horário comercial? (o teste pergunta se é dentro ou fora do horário) */
+export const usesBusinessHours = (list: Step[] = []): boolean =>
+  list.some((s) => (s.type === "cond" && s.field === "business_hours") || (s.type === "cond" && (usesBusinessHours(s.yes) || usesBusinessHours(s.no))));
 
 export const countSteps = (list: Step[] = []): number => list.reduce((a, s) => a + 1 + (s.type === "cond" ? countSteps(s.yes) + countSteps(s.no) : 0), 0);
 
@@ -200,13 +232,16 @@ export function makeStep(type: StepType, firstFormId?: string): Step {
     case "meet": return { ...base, text: "Escolha o melhor horário pra nossa conversa:", options: ["Amanhã 10h", "Amanhã 15h"] };
     case "form": return { ...base, formId: firstFormId };
     case "human": return { ...base, owner: "lead" };
+    case "note": return { ...base, text: "" };
+    case "end": return base;
   }
 }
 
 /** Condição do fluxo, igual à do motor do banco (para o botão "Testar"). */
-export function condTrue(s: Step, lead: { services: string[]; tags: string[]; segment?: string | null; source?: string }, vars: { answer?: string; replied?: boolean }): boolean {
+export function condTrue(s: Step, lead: { services: string[]; tags: string[]; segment?: string | null; source?: string }, vars: { answer?: string; replied?: boolean; businessHours?: boolean }): boolean {
   if (s.field === "replied") return !!vars.replied;
-  const v = s.field === "answer" ? vars.answer ?? ""
+  const v = s.field === "business_hours" ? ((vars.businessHours ?? isBusinessHours()) ? "sim" : "nao")
+    : s.field === "answer" ? vars.answer ?? ""
     : s.field === "services" ? lead.services.join(", ")
     : s.field === "tags" ? lead.tags.join(", ")
     : s.field === "segment" ? lead.segment ?? ""
@@ -267,6 +302,33 @@ export const AUTO_TPL: Record<string, AutoTemplate> = {
     S("msg", { text: "Oi! Aqui é da UAU Digital. Que bom ter você por aqui 😊" }),
     S("ask", { text: "Qual serviço você procura?", options: ["Redes sociais", "Tráfego pago", "Posicionamento de marca"], saveTo: "services" }),
     S("tag", { tag: "Novo contato WhatsApp" }), S("human", { owner: "lead" })] },
+  qualificacao: { name: "Qualificação UAU (WhatsApp)", desc: "Triagem (crescer, já é cliente ou vagas) → ramo → momento de marketing → objetivo → resumo para o comercial.", trigger: () => ({ type: "msg_in" }), steps: () => {
+    const lembrete = "Oi! Ficou alguma dúvida? É só responder aqui que eu continuo 😊";
+    const espera = { numbered: true, strict: true, remindAfterMin: 120, remindText: lembrete, giveUpAfterMin: 1440, giveUpTag: "Não concluiu fluxo" } satisfies Partial<Step>;
+    const momento = (value: string, tag: string) => S("cond", { field: "answer", value, yes: [S("tag", { tag })], no: [] });
+    return [
+      S("cond", { field: "business_hours", value: "nao", yes: [S("msg", { text: "Oi! Aqui é a UAU Digital 😊 Nosso time responde em horário comercial, mas já vou adiantando seu atendimento por aqui." })], no: [] }),
+      S("ask", { text: "Oi, {nome}! Aqui é a UAU Digital 😊 Pra eu te direcionar certinho, você…", options: ["Quero crescer minha empresa/marca", "Já sou cliente", "Vagas ou parcerias"], saveTo: "triagem", ...espera }),
+      S("cond", { field: "answer", value: "cliente", yes: [
+        S("tag", { tag: "Cliente atual" }), S("msg", { text: "Show! Vou te passar agora pro time de atendimento 💜" }),
+        S("note", { text: "Já é cliente: passado para o time de atendimento." }), S("human", { owner: "lead" })], no: [] }),
+      S("cond", { field: "answer", value: "vagas", yes: [
+        S("tag", { tag: "Vagas/Parcerias" }),
+        S("msg", { text: "Que legal o interesse! Envie seu contato/portfólio para [E-MAIL_OU_LINK] que nosso time analisa 😉" }), S("end")], no: [] }),
+      S("ask", { text: "Qual é o ramo do seu negócio?", options: ["Saúde", "Jurídico", "Comércio/varejo", "Outro"], saveTo: "segment", ...espera }),
+      S("tag", { tag: "Segmento: {segmento}" }),
+      S("ask", { text: "E hoje vocês já fazem marketing?", options: ["Sim, com agência ou equipe", "Sim, por conta própria", "Ainda não"], saveTo: "momento", ...espera }),
+      momento("agência", "Momento: já tem agência"), momento("própria", "Momento: faz sozinho"), momento("ainda", "Momento: começando"),
+      S("ask", { text: "Perfeito! Pra adiantar, me conta em uma frase: o que você mais quer melhorar no marketing hoje?", options: [], saveTo: "objetivo_lead", timeoutMinutes: 10 }),
+      S("cond", { field: "business_hours", value: "sim",
+        yes: [S("msg", { text: "Anotado! Nosso comercial vai continuar com você em instantes 🙌" })],
+        no: [S("msg", { text: "Anotado! Nosso comercial te responde no próximo horário comercial 🙌" })] }),
+      S("tag", { tag: "Lead WhatsApp" }),
+      S("cond", { field: "source", value: "meta", yes: [S("tag", { tag: "Origem: Meta Ads" })], no: [S("tag", { tag: "Origem: WhatsApp orgânico" })] }),
+      S("note", { text: "Novo lead • Ramo: {segmento} • Marketing hoje: {momento} • Objetivo: {objetivo_lead} • Origem: {origem}" }),
+      S("human", { owner: "lead" }),
+    ];
+  } },
   retorno: { name: "Retorno de lead", desc: "Quem já tinha falado escreve de novo → recebe uma resposta → alerta a equipe.", trigger: () => ({ type: "msg_back", hours: 24 }), steps: () => [
     S("msg", { text: "Oi, {nome}! Que bom te ver de novo por aqui 😊 Em que posso te ajudar hoje?" }),
     S("task", { ttype: "Follow-up", title: "Responder lead que voltou a falar", days: 0, owner: "lead" }), S("human", { owner: "lead" })] },

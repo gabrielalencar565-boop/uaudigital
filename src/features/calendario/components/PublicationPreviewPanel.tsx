@@ -1267,7 +1267,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                         className="flex items-center gap-1 text-xs text-muted-foreground underline hover:text-destructive"
                         onClick={() => setConfirmDeletedOpen(true)}
                       >
-                        <Trash2 className="h-3 w-3" /> Esse post foi apagado no Instagram
+                        <Trash2 className="h-3 w-3" /> Apagou esse post no Instagram? Avisar aqui
                       </button>
                     )}
 

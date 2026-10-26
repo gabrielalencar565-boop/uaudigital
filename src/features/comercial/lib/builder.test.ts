@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AUTO_TPL, BLOCKS, FORM_TPL, condTrue, countSteps, fillText, findList, findStep, linkFormSteps, makeSlug, makeStep, reid, sendsMessages, slugify, type Step } from "./builder";
+import { AUTO_TPL, BLOCKS, FORM_TPL, condTrue, countSteps, fillText, findList, findStep, isBusinessHours, linkFormSteps, makeSlug, makeStep, reid, sendsMessages, slugify, usesBusinessHours, type Step } from "./builder";
 
 const ctx = { stageByName: (n: string) => `id-${n}` };
 
@@ -117,5 +117,39 @@ describe("modelos aplicados", () => {
   it("avisa que o fluxo envia mensagem só quando há passo que fala com o lead", () => {
     expect(sendsMessages([makeStep("tag"), makeStep("human")])).toBe(false);
     expect(sendsMessages([{ ...makeStep("cond"), yes: [makeStep("msg")], no: [] }])).toBe(true);
+  });
+});
+
+describe("qualificação UAU", () => {
+  const steps = AUTO_TPL.qualificacao.steps(ctx);
+  const asks = steps.filter((s) => s.type === "ask");
+
+  it("começa pelo aviso fora do horário e faz a triagem com as 3 opções numeradas", () => {
+    expect(steps[0]).toMatchObject({ type: "cond", field: "business_hours", value: "nao" });
+    expect(usesBusinessHours(steps)).toBe(true);
+    expect(asks[0].options).toEqual(["Quero crescer minha empresa/marca", "Já sou cliente", "Vagas ou parcerias"]);
+    expect(asks.slice(0, 3).every((a) => a.numbered && a.strict && a.remindAfterMin === 120 && a.giveUpAfterMin === 1440 && a.giveUpTag === "Não concluiu fluxo")).toBe(true);
+  });
+  it("cliente atual vai para uma pessoa e vagas/parcerias encerra, sem passar pelo comercial", () => {
+    const [, , cliente, vagas] = steps;
+    expect(cliente.yes!.map((s) => s.type)).toEqual(["tag", "msg", "note", "human"]);
+    expect(vagas.yes!.map((s) => s.type)).toEqual(["tag", "msg", "end"]);
+    expect(vagas.yes![1].text).toContain("[E-MAIL_OU_LINK]");
+  });
+  it("a pergunta aberta segue sozinha em 10 minutos e o fluxo termina passando para humano", () => {
+    expect(asks[3]).toMatchObject({ saveTo: "objetivo_lead", timeoutMinutes: 10, options: [] });
+    expect(steps[steps.length - 1].type).toBe("human");
+    expect(steps[steps.length - 2]).toMatchObject({ type: "note" });
+  });
+  it("horário comercial: condição usa o valor simulado e o fuso de Brasília", () => {
+    const c = { ...makeStep("cond"), field: "business_hours", value: "nao" };
+    expect(condTrue(c, { services: [], tags: [] }, { businessHours: false })).toBe(true);
+    expect(condTrue(c, { services: [], tags: [] }, { businessHours: true })).toBe(false);
+    expect(isBusinessHours(new Date("2026-10-21T15:00:00Z"))).toBe(true); // quarta 12h
+    expect(isBusinessHours(new Date("2026-10-21T22:00:00Z"))).toBe(false); // quarta 19h
+    expect(isBusinessHours(new Date("2026-10-24T15:00:00Z"))).toBe(false); // sábado
+  });
+  it("preenche as respostas guardadas e usa — quando ainda não há resposta", () => {
+    expect(fillText("Ramo: {segmento} • Objetivo: {objetivo_lead}", undefined, { segmento: "Saúde" })).toBe("Ramo: Saúde • Objetivo: —");
   });
 });

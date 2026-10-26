@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useClients, useCreateTask, useDeleteTask, useFreelancerClient, useProfiles, useSetTaskStatus, useTasks, useTeamMembers, useUpdateTask, useMagicNumberConfig, type TaskRow } from "@/features/data/queries";
 import { AgendaTaskCard } from "@/features/agenda/components/AgendaTaskCard";
 import { AgendaWeekTaskItem } from "@/features/agenda/components/AgendaWeekTaskItem";
+import { pdfKindFromTypes } from "@/features/gestao/lib/pdf-kind";
 import { EditTaskDialog } from "@/features/agenda/components/EditTaskDialog";
 import { MemberMultiSelect } from "@/features/agenda/components/MemberMultiSelect";
 import { DraggableTaskCard } from "@/features/agenda/components/DraggableTaskCard";
@@ -271,9 +272,18 @@ export function AgendaPanel() {
       const sb = supabase as any;
       const { data } = await sb
         .from("pm_tasks")
-        .select("id, post_type, parent_task_id")
+        .select("id, post_type, parent_task_id, stage_current")
         .in("id", pmTaskIdsForPostType);
       const rows = data ?? [];
+      // Cronograma (PDF) não tem tipo próprio: é "design" ou "video" quando as subtarefas são só de um tipo (selo CRO/DSG, CRO/VDO)
+      const pdfRootIds = rows.filter((r: any) => r.stage_current === "pdf" && !r.post_type && !r.parent_task_id).map((r: any) => r.id);
+      const pdfKinds: Record<string, string | null> = {};
+      if (pdfRootIds.length > 0) {
+        const { data: kids } = await sb.from("pm_tasks").select("parent_task_id, post_type").in("parent_task_id", pdfRootIds).is("deleted_at", null);
+        const byParent = new Map<string, string[]>();
+        for (const k of kids ?? []) if (k.post_type) byParent.set(k.parent_task_id, [...(byParent.get(k.parent_task_id) ?? []), k.post_type]);
+        for (const id of pdfRootIds) pdfKinds[id] = pdfKindFromTypes(byParent.get(id) ?? []);
+      }
       // Collect parents that need fallback lookup
       const parentIds = [...new Set(rows.filter((r: any) => !r.post_type && r.parent_task_id).map((r: any) => r.parent_task_id))];
       const parentMap: Record<string, string | null> = {};
@@ -283,7 +293,7 @@ export function AgendaPanel() {
       }
       const result: Record<string, string | null> = {};
       for (const row of rows) {
-        result[row.id] = row.post_type ?? (row.parent_task_id ? parentMap[row.parent_task_id] ?? null : null);
+        result[row.id] = row.post_type ?? pdfKinds[row.id] ?? (row.parent_task_id ? parentMap[row.parent_task_id] ?? null : null);
       }
       return result;
     },
