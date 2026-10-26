@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { PmTask } from "@/features/gestao/pm-types";
 import { stageAbbr, isHexColor, TAG_COLORS } from "@/features/gestao/pm-constants";
 import { extraDisplayStage } from "./extra-rules";
+import { PDF_KIND_GRADIENT, pdfKindAbbr, pdfKindFromTypes } from "./pdf-kind";
 
 // Selo da etapa (sigla + cor) de uma tarefa. É o único lugar onde isso é decidido: o cartão do Mês, as visões Semana e Dia
 // da Agenda e a lista Minhas tarefas, do Meu Painel, usam esta função e por isso mostram o mesmo selo.
@@ -116,6 +117,9 @@ export function getStageBadgeFor(t: PmTask, childTasks: PmTask[] = [], periodicS
     const bg = periodic ? (ck && !isHex ? (TAG_COLORS.find((c) => c.key === ck)?.dot ?? "bg-black") : (isHex ? "" : "bg-black")) : "bg-black";
     return { abbr, bg, style: periodic && isHex ? { backgroundColor: ck! } : undefined };
   }
+  // Cronograma (PDF) só de design ou só de vídeo: CRO/DSG ou CRO/VDO com degradê; já unido, fica o selo simples
+  const pdfKind = !typeStage && t.stage_current === "pdf" && !t.parent_task_id ? pdfKindFromTypes(childTasks.map((c) => c.post_type)) : null;
+  if (pdfKind) return { abbr: pdfKindAbbr(pdfKind), bg: PDF_KIND_GRADIENT[pdfKind] };
   return {
     abbr: (typeStage ? undefined : gradientAbbr) ?? stageAbbr(shownStage),
     bg: (typeStage ? undefined : gradientClass) ?? (STAGE_BADGE_BG[shownStage] ?? "bg-muted"),

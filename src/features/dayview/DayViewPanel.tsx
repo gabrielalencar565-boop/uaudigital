@@ -34,6 +34,7 @@ import {
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { usePeriodicStages } from "@/features/gestao/hooks/use-periodic-stages";
 import { TAG_COLORS, isHexColor, stageAbbr as stageAbbrFor } from "@/features/gestao/pm-constants";
+import { PDF_KIND_GRADIENT, pdfKindAbbr, pdfKindFromTypes } from "@/features/gestao/lib/pdf-kind";
 
 function getPeriodicStageFallbackLabel(key: string) {
   return key.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -934,7 +935,11 @@ export function DayViewPanel() {
       const isRevisaoPlanejamento = isRevisao && t.post_type === "planejamento";
       const isRevisaoVideo = isRevisao && t.post_type === "video";
       const isRevisaoDesign = isRevisao && t.post_type === "design";
-      const gradientClass = isAlteracaoWithOrigin
+      // Cronograma (PDF) só de design ou só de vídeo: CRO/DSG ou CRO/VDO
+      const pdfKind = t.stage === "pdf" && !t.post_type && !t.parent_task_id ? pdfKindFromTypes(t.childPostTypes ?? []) : null;
+      const gradientClass = pdfKind
+        ? PDF_KIND_GRADIENT[pdfKind]
+        : isAlteracaoWithOrigin
         ? (t.post_type === "video"
           ? "bg-gradient-to-r from-stage-alteracoes to-stage-edicao_videos"
           : t.post_type === "design"
@@ -947,7 +952,9 @@ export function DayViewPanel() {
         : isRevisaoDesign
         ? "bg-gradient-to-r from-pink-400 to-stage-design"
         : undefined;
-      const gradientAbbr = isAlteracaoWithOrigin
+      const gradientAbbr = pdfKind
+        ? pdfKindAbbr(pdfKind)
+        : isAlteracaoWithOrigin
         ? (t.post_type === "video" ? "ALT/VDO" : t.post_type === "design" ? "ALT/DSG" : "ALT/PLAN")
         : isRevisaoPlanejamento
         ? "REV/PLAN"

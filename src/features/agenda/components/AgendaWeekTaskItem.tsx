@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { StageKey } from "@/lib/uau";
 import { stageAbbr } from "@/features/gestao/pm-constants";
+import { PDF_KIND_GRADIENT, pdfKindAbbr, type PdfKind } from "@/features/gestao/lib/pdf-kind";
 
 /** Abreviações curtas para pills da agenda */
 function initials(name: string) {
@@ -97,13 +98,19 @@ export function AgendaWeekTaskItem({
   const isRevisaoPlanejamento = stage === "revisao" && postType === "planejamento";
   const isRevisaoWithOrigin = stage === "revisao" && !!postType && postType !== "planejamento";
   const isAlteracaoWithOrigin = stage === "alteracoes" && !!postType;
-  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin || isRevisaoPlanejamento;
-  const gradientShort = isRevisaoPlanejamento
+  // Cronograma (PDF) só de design ou só de vídeo: CRO/DSG ou CRO/VDO
+  const pdfKind: PdfKind | null = stage === "pdf" && (postType === "design" || postType === "video") ? postType : null;
+  const hasGradientPill = isRevisaoWithOrigin || isAlteracaoWithOrigin || isRevisaoPlanejamento || !!pdfKind;
+  const gradientShort = pdfKind
+    ? pdfKindAbbr(pdfKind)
+    : isRevisaoPlanejamento
     ? "REV/PLAN"
     : isAlteracaoWithOrigin
       ? (postType === "video" ? "ALT/VDO" : "ALT/DSG")
       : (postType === "video" ? "REV/VDO" : "REV/DSG");
-  const gradientClass = isRevisaoPlanejamento
+  const gradientClass = pdfKind
+    ? `${PDF_KIND_GRADIENT[pdfKind]} text-white`
+    : isRevisaoPlanejamento
     ? "bg-gradient-to-r from-pink-400 to-stage-planejamento text-white"
     : isAlteracaoWithOrigin
       ? (postType === "video"

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { BLOCKS, SAVE_TO, condTrue, fillText, type ComercialAutomation, type Step } from "../lib/builder";
+import { BLOCKS, SAVE_TO, condTrue, fillText, usesBusinessHours, type ComercialAutomation, type Step } from "../lib/builder";
 import { useComercial } from "../ComercialContext";
 import { blockSummary, triggerText } from "../lib/summary";
 import { useForms } from "../hooks/use-builder";
@@ -32,21 +32,32 @@ export function AutomationTest({ automation, open, onClose }: { automation: Come
     const me = ++runId.current;
     setLog([]); setAsk(null);
     const lead = { name: "Lead de teste", company: "Empresa Teste", services: [] as string[], tags: [] as string[], segment: "Saúde", source: "WhatsApp" };
-    const vars: { answer?: string; replied?: boolean } = {};
+    const vars: { answer?: string; replied?: boolean; businessHours?: boolean } = {};
+    const answers: Record<string, string> = {};
     const ctx = { stages, team, forms };
+    const fill = (t?: string) => fillText(t, lead, { ...answers, origem: lead.source === "Meta Ads" ? "Meta Ads" : "WhatsApp orgânico" });
     push("sys", `Gatilho · ${triggerText(automation.trigger, ctx)}`);
+    if (usesBusinessHours(automation.steps)) {
+      push("sys", "Esse fluxo muda conforme o horário. Quando o lead chamou?");
+      const h = await choose(["Dentro do horário comercial", "Fora do horário comercial"], false);
+      if (me !== runId.current) return;
+      vars.businessHours = h.startsWith("Dentro"); push("me", h);
+    }
 
     const walk = async (list: Step[]): Promise<"stop" | void> => {
       for (const s of list) {
         if (me !== runId.current) return "stop";
         switch (s.type) {
-          case "msg": push("bot", fillText(s.text, lead)); break;
+          case "msg": push("bot", fill(s.text)); break;
           case "ask": {
-            push("bot", fillText(s.text, lead));
-            const r = await choose(s.options ?? [], !(s.options ?? []).length);
+            const opts = s.options ?? [];
+            push("bot", fill(s.text) + (opts.length ? "\n" + opts.map((o, i) => (s.numbered ? `${i + 1}. ${o}` : `• ${o}`)).join("\n") : ""));
+            const quiet = !opts.length && !!s.timeoutMinutes;
+            const r = await choose(quiet ? [`Não respondeu (segue em ${s.timeoutMinutes} min)`] : opts, !opts.length);
             if (me !== runId.current) return "stop";
+            if (quiet && r.startsWith("Não respondeu")) { push("me", "(sem resposta)"); vars.replied = false; push("sys", `Passaram ${s.timeoutMinutes} min sem resposta: o fluxo segue`); break; }
             push("me", r); vars.answer = r; vars.replied = true;
-            if (s.saveTo) push("sys", `Resposta salva em ${SAVE_TO[s.saveTo] ?? s.saveTo}`);
+            if (s.saveTo) { answers[s.saveTo === "segment" ? "segmento" : s.saveTo] = r; if (s.saveTo === "segment") lead.segment = r; push("sys", `Resposta salva em ${SAVE_TO[s.saveTo] ?? s.saveTo}`); }
             break;
           }
           case "meet": {
@@ -73,7 +84,13 @@ export function AutomationTest({ automation, open, onClose }: { automation: Come
             if ((await walk((ok ? s.yes : s.no) ?? [])) === "stop") return "stop";
             break;
           }
-          case "tag": if (s.tag && !lead.tags.includes(s.tag)) lead.tags.push(s.tag); push("act", `${BLOCKS[s.type].name} · ${blockSummary(s, ctx).main}`); break;
+          case "tag": {
+            const tg = fill(s.tag).trim();
+            if (tg && !lead.tags.includes(tg)) lead.tags.push(tg);
+            push("act", `${BLOCKS[s.type].name} · Etiqueta “${tg}”`); break;
+          }
+          case "note": push("act", `Anotação interna · ${fill(s.text)}`); break;
+          case "end": push("sys", "Fluxo encerrado."); return "stop";
           case "human": push("sys", `Transferido · ${blockSummary(s, ctx).main}. Automação pausada.`); return "stop";
           default: push("act", `${BLOCKS[s.type].name} · ${blockSummary(s, ctx).main}`);
         }

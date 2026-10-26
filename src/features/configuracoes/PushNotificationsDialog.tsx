@@ -20,7 +20,7 @@ import {
   unsubscribeFromPush,
 } from "@/lib/push-notifications";
 
-function PushNotificationsPanel() {
+export function PushNotificationsPanel() {
   const { user } = useSession();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);

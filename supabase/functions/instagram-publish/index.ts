@@ -391,6 +391,73 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
   return json({ processed: processed.length, results: processed });
 }
 
+// Post publicado que alguém apagou direto no Instagram: o Graph API responde "objeto não existe" (code 100, subcode 33) quando se pede o
+// id dele. Essa mesma resposta também vem de falta de permissão, por isso só vale como "apagado" quando a conexão do cliente está
+// funcionando (a conta responde) e o post em si não. Qualquer outra falha (token vencido, timeout, limite de uso) deixa tudo como está.
+type MediaProbe = "exists" | "gone" | "unknown";
+
+async function probeMedia(graphHost: GraphHost, mediaId: string, accessToken: string): Promise<MediaProbe> {
+  try {
+    await graphGet(graphHost, mediaId, accessToken, { fields: "id" });
+    return "exists";
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return /"code":\s*100\b/.test(msg) && /"error_subcode":\s*33\b/.test(msg) ? "gone" : "unknown";
+  }
+}
+
+async function handleCheckDeleted(admin: ReturnType<typeof createClient>, dryRun: boolean) {
+  const sinceIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: pubs, error } = await admin
+    .from("calendar_publications")
+    .select("id, calendar_id, instagram_media_id")
+    .eq("instagram_status", "published")
+    .neq("content_type", "story") // story some sozinho do Instagram em 24h: não é "apagado"
+    .is("instagram_deleted_at", null)
+    .not("instagram_media_id", "is", null)
+    .gte("instagram_published_at", sinceIso)
+    .limit(500);
+  if (error) throw error;
+  const list = (pubs ?? []) as { id: string; calendar_id: string; instagram_media_id: string }[];
+  if (list.length === 0) return json({ checked: 0, deleted: [] });
+
+  const { data: cals } = await admin.from("publication_calendars").select("id, client_id").in("id", [...new Set(list.map((p) => p.calendar_id))]);
+  const clientByCalendar = new Map(((cals ?? []) as { id: string; client_id: string }[]).map((c) => [c.id, c.client_id]));
+  const byClient = new Map<string, typeof list>();
+  for (const p of list) {
+    const clientId = clientByCalendar.get(p.calendar_id);
+    if (clientId) byClient.set(clientId, [...(byClient.get(clientId) ?? []), p]);
+  }
+
+  const deleted: string[] = [];
+  let checked = 0;
+  const skipped: string[] = [];
+  await Promise.all([...byClient.entries()].map(async ([clientId, items]) => {
+    const { data: conn } = await admin
+      .from("instagram_connections")
+      .select("instagram_business_account_id, access_token, status, auth_provider")
+      .eq("client_id", clientId)
+      .maybeSingle();
+    if (!conn || conn.status !== "active" || !conn.access_token) return;
+    const host = graphHostForProvider(conn.auth_provider as string);
+    const token = conn.access_token as string;
+    // a conexão precisa estar respondendo, senão "não encontrado" não prova nada
+    try { await graphGet(host, conn.instagram_business_account_id as string, token, { fields: "id" }); } catch { skipped.push(clientId); return; }
+    for (const p of items) {
+      checked++;
+      if ((await probeMedia(host, p.instagram_media_id, token)) !== "gone") continue;
+      deleted.push(p.id);
+      if (dryRun) continue;
+      // mesmo efeito do botão "avisar" do Cronograma: volta a não publicado e deixa escolher nova data
+      await admin.from("calendar_publications").update({
+        instagram_status: "not_published", instagram_scheduled: false, instagram_media_id: null, instagram_creation_id: null,
+        instagram_permalink: null, instagram_error: null, instagram_deleted_at: new Date().toISOString(),
+      }).eq("id", p.id).eq("instagram_media_id", p.instagram_media_id);
+    }
+  }));
+  return json({ checked, deleted, skippedClients: skipped.length, dryRun });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -413,6 +480,13 @@ Deno.serve(async (req) => {
       const { data: validSecret } = await admin.rpc("verify_instagram_cron_secret", { candidate: cronSecret });
       if (!validSecret) return json({ error: "unauthorized" }, 401);
       return await handleRefreshTokens(admin);
+    }
+
+    if (action === "check_deleted") {
+      const cronSecret = req.headers.get("X-Cron-Secret");
+      const { data: validSecret } = await admin.rpc("verify_instagram_cron_secret", { candidate: cronSecret });
+      if (!validSecret) return json({ error: "unauthorized" }, 401);
+      return await handleCheckDeleted(admin, body.dry_run === true);
     }
 
     if (action === "publish_one") {
