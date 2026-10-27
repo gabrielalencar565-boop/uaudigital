@@ -25,3 +25,7 @@ export const PDF_KIND_GRADIENT: Record<PdfKind, string> = {
 export function pdfKindAbbr(kind: PdfKind): string {
   return `${stageAbbr("pdf").slice(0, 3)}/${kind === "video" ? "VDO" : "DSG"}`;
 }
+
+/** Selo do Cronograma já unido (design e vídeo juntos): só a sigla da etapa, na cor do Cronograma */
+export const PDF_UNIDO_BG = "bg-indigo-500";
+export const pdfUnidoAbbr = (): string => stageAbbr("pdf");

@@ -714,19 +714,27 @@ export function useTaskCompletionMap(taskIds: string[]) {
   });
 }
 
+async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+/** Remove do calendário sem apagar: a publicação vai para "Removidas" e dá para restaurar com legenda, data e capa como estavam. */
 export function useRemoveCalendarPublication() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, calendarId, taskId }: { id: string; calendarId: string; taskId?: string }) => {
-      const { error } = await sb.from("calendar_publications").delete().eq("id", id);
+      const { error } = await sb.from("calendar_publications").update({ deleted_at: new Date().toISOString(), deleted_by: await currentUserId() }).eq("id", id);
       if (error) throw error;
       return { id, calendarId, taskId };
     },
     onSuccess: ({ calendarId, taskId }) => {
       qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
+      qc.invalidateQueries({ queryKey: ["removed_publications"] });
       // Lets the "Enviar para o Cronograma" shortcut in the Gestão task dialog notice the
       // task is unscheduled again instead of still offering a "Ver no Cronograma" link to
-      // the entry that was just deleted here.
+      // the entry that was just removed here.
       if (taskId) qc.invalidateQueries({ queryKey: ["task_calendar_entry", taskId] });
     },
   });
@@ -738,13 +746,87 @@ export function useRemoveCalendarPublications() {
   return useMutation({
     mutationFn: async (items: Array<{ id: string; calendar_id: string; task_id: string }>) => {
       if (items.length === 0) return items;
-      const { error } = await sb.from("calendar_publications").delete().in("id", items.map((i) => i.id));
+      const { error } = await sb.from("calendar_publications").update({ deleted_at: new Date().toISOString(), deleted_by: await currentUserId() }).in("id", items.map((i) => i.id));
       if (error) throw error;
       return items;
     },
     onSuccess: (items) => {
       for (const calendarId of new Set(items.map((i) => i.calendar_id))) qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
       qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
+      qc.invalidateQueries({ queryKey: ["removed_publications"] });
+      for (const i of items) qc.invalidateQueries({ queryKey: ["task_calendar_entry", i.task_id] });
+    },
+  });
+}
+
+export interface RemovedPublication extends CalendarPublication {
+  removedByName: string | null;
+  /** a tarefa original foi apagada: não dá para restaurar sem ela */
+  taskGone: boolean;
+}
+
+/** Publicações que uma pessoa removeu do Cronograma deste cliente (de todos os ciclos), as mais recentes primeiro. */
+export function useRemovedPublicationsForClient(clientId: string | null) {
+  return useQuery({
+    enabled: !!clientId,
+    queryKey: ["removed_publications", clientId],
+    queryFn: async (): Promise<RemovedPublication[]> => {
+      const { data: calendars, error: calErr } = await sb.from("publication_calendars").select("id").eq("client_id", clientId);
+      if (calErr) throw calErr;
+      const calendarIds = (calendars ?? []).map((c: { id: string }) => c.id);
+      if (calendarIds.length === 0) return [];
+      const { data, error } = await sb
+        .from("calendar_publications")
+        .select("*")
+        .in("calendar_id", calendarIds)
+        .not("deleted_at", "is", null)
+        .not("deleted_by", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const rows = (data ?? []) as CalendarPublication[];
+      if (rows.length === 0) return [];
+      const [{ data: tasks }, { data: people }] = await Promise.all([
+        sb.from("pm_tasks").select("id, deleted_at").in("id", rows.map((r) => r.task_id)),
+        sb.from("team_members").select("user_id, display_name").in("user_id", [...new Set(rows.map((r) => r.deleted_by).filter(Boolean))]),
+      ]);
+      const gone = new Set(((tasks ?? []) as { id: string; deleted_at: string | null }[]).filter((t) => t.deleted_at).map((t) => t.id));
+      const missing = new Set(rows.map((r) => r.task_id));
+      for (const t of (tasks ?? []) as { id: string }[]) missing.delete(t.id);
+      const names = new Map(((people ?? []) as { user_id: string; display_name: string }[]).map((p) => [p.user_id, p.display_name]));
+      return rows.map((r) => ({ ...r, removedByName: r.deleted_by ? names.get(r.deleted_by) ?? null : null, taskGone: gone.has(r.task_id) || missing.has(r.task_id) }));
+    },
+  });
+}
+
+/**
+ * Restaura publicações removidas: voltam para o mesmo ciclo e dia, com legenda, capa, horário e o resto como estavam.
+ * O agendamento no Instagram só continua se o horário ainda estiver no futuro; senão volta desligado (para não publicar na hora sem querer).
+ */
+export function useRestorePublications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: CalendarPublication[]) => {
+      if (items.length === 0) return items;
+      const stillFuture = (p: CalendarPublication) =>
+        !!p.publish_date && !!p.publish_time && new Date(`${p.publish_date}T${p.publish_time}-03:00`).getTime() > Date.now();
+      const keep = items.filter((p) => !p.instagram_scheduled || stillFuture(p));
+      const unschedule = items.filter((p) => p.instagram_scheduled && !stillFuture(p));
+      if (keep.length > 0) {
+        const { error } = await sb.from("calendar_publications").update({ deleted_at: null, deleted_by: null }).in("id", keep.map((p) => p.id));
+        if (error) throw error;
+      }
+      if (unschedule.length > 0) {
+        const { error } = await sb.from("calendar_publications").update({ deleted_at: null, deleted_by: null, instagram_scheduled: false }).in("id", unschedule.map((p) => p.id));
+        if (error) throw error;
+      }
+      return items;
+    },
+    onSuccess: (items) => {
+      for (const calendarId of new Set(items.map((i) => i.calendar_id))) qc.invalidateQueries({ queryKey: ["calendar_publications", calendarId] });
+      qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
+      qc.invalidateQueries({ queryKey: ["removed_publications"] });
+      qc.invalidateQueries({ queryKey: ["publication_calendars"] });
       for (const i of items) qc.invalidateQueries({ queryKey: ["task_calendar_entry", i.task_id] });
     },
   });
