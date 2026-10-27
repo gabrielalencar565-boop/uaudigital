@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PDF_KIND_GRADIENT, PDF_UNIDO_BG, pdfKindAbbr, pdfUnidoAbbr } from "../lib/pdf-kind";
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
@@ -323,14 +324,14 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
               variant="ghost"
               size="sm"
               className="h-7 gap-1.5 rounded-lg text-xs text-primary hover:bg-primary/10"
-              title="Unir esta tarefa PDF com outra tarefa PDF do mesmo cliente/mês"
+              title="Unir este Cronograma com outro Cronograma do mesmo cliente/mês"
               onClick={() => {
                 setSelectedMergeId((prev) => (prev && mergeCandidates.some((c) => c.id === prev) ? prev : mergeCandidates[0].id));
                 setShowMergeConfirm(true);
               }}
             >
               <Combine className="h-3.5 w-3.5" />
-              Unir PDF{mergeCandidates.length > 1 ? ` (${mergeCandidates.length})` : ""}
+              Unir Cronograma{mergeCandidates.length > 1 ? ` (${mergeCandidates.length})` : ""}
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" title="Mover para lixeira" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
@@ -425,20 +426,45 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
     <AlertDialog open={showMergeConfirm} onOpenChange={setShowMergeConfirm}>
       <AlertDialogContent className="z-[200]">
         <AlertDialogHeader>
-          <AlertDialogTitle>Unir tarefas PDF?</AlertDialogTitle>
+          <AlertDialogTitle className="text-xs font-medium text-muted-foreground">Unir cronogramas</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
-              <p>As duas tarefas PDF do mesmo cliente serão unidas em uma só. A mais antiga é mantida e a outra é movida para a lixeira.</p>
-              {currentPdfKind && (
-                <p className="text-xs">Esta tarefa: <span className="font-medium text-foreground">{PDF_KIND_LABEL[currentPdfKind]}</span></p>
-              )}
+              {currentTask && (() => {
+                const info = mergeInfoQ.data?.[currentTask.id];
+                const kind: PdfKind = currentPdfKind ?? "unido";
+                const who = currentTask.assignee_id ? membersMap[currentTask.assignee_id]?.name : null;
+                return (
+                  <div className="flex overflow-hidden rounded-xl border border-border/60">
+                    <div className={cn("w-2 shrink-0", kind === "unido" ? PDF_UNIDO_BG : PDF_KIND_GRADIENT[kind].replace("bg-gradient-to-r", "bg-gradient-to-b"))} />
+                    <div className="min-w-0 flex-1 p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("shrink-0 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide text-white", kind === "unido" ? PDF_UNIDO_BG : PDF_KIND_GRADIENT[kind])}>
+                          {kind === "unido" ? pdfUnidoAbbr() : pdfKindAbbr(kind)}
+                        </span>
+                        <span className="truncate text-sm font-semibold text-foreground">{pdfDisplayTitle(currentTask.title, kind)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                        {currentTask.due_date && <span className="rounded-md bg-muted/50 px-2 py-0.5">entrega {format(parseISO(currentTask.due_date), "dd/MM")}</span>}
+                        {who && <span className="rounded-md bg-muted/50 px-2 py-0.5">{who}</span>}
+                        {info && <span className="rounded-md bg-muted/50 px-2 py-0.5">{info.subs} subtarefa{info.subs === 1 ? "" : "s"}</span>}
+                        {info && <span className="rounded-md bg-muted/50 px-2 py-0.5">{info.atts} anexo{info.atts === 1 ? "" : "s"}</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               {mergeCandidates.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Escolha a tarefa para unir (use “Abrir” para ver qual é):</p>
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-0.5">
                     {mergeGroups.map((g) => (
                       <div key={g.kind} className="space-y-1">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground/80">{PDF_KIND_LABEL[g.kind]}</p>
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-bold tracking-wide text-white", g.kind === "unido" ? PDF_UNIDO_BG : PDF_KIND_GRADIENT[g.kind])}>
+                            {g.kind === "unido" ? pdfUnidoAbbr() : pdfKindAbbr(g.kind)}
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">{PDF_KIND_LABEL[g.kind]}</span>
+                          <span className="text-xs text-muted-foreground">· {g.rows.length}</span>
+                        </div>
                         {g.rows.map(({ task: c, title, subs, atts }) => {
                           const picked = selectedMergeId === c.id;
                           const who = c.assignee_id ? membersMap[c.assignee_id]?.name : null;
@@ -460,7 +486,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    // fecha a confirmação para a tarefa abrir por cima; depois é só clicar em "Unir PDF" de novo (a escolha fica guardada)
+                                    // fecha a confirmação para a tarefa abrir por cima; depois é só clicar em "Unir Cronograma" de novo (a escolha fica guardada)
                                     setSelectedMergeId(c.id);
                                     setShowMergeConfirm(false);
                                     window.dispatchEvent(new CustomEvent("uau:open-task", { detail: { taskId: c.id } }));
@@ -484,7 +510,6 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
                   </div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Subtarefas, anexos, comentários e responsáveis são preservados na tarefa principal. A pontuação é recalculada automaticamente.</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

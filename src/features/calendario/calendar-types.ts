@@ -72,6 +72,9 @@ export interface CalendarPublication {
   instagram_publish_attempted_at: string | null;
   // Quando alguém avisou que o post foi apagado direto no Instagram (o Cronograma volta a tratá-lo como não publicado).
   instagram_deleted_at: string | null;
+  // Removida do calendário (lixeira): quando e por quem. Some das telas, mas dá para restaurar como estava.
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export const CALENDAR_STATUS_LABELS: Record<CalendarStatus, string> = {

@@ -344,6 +344,7 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
     .not("publish_time", "is", null)
     .eq("instagram_scheduled", true)
     .in("instagram_status", ["not_published", "failed", "publishing"])
+    .is("deleted_at", null) // removida do calendário (lixeira) não é publicada
     .lte("publish_date", todayIso);
   if (error) throw error;
 
@@ -414,6 +415,7 @@ async function handleCheckDeleted(admin: ReturnType<typeof createClient>, dryRun
     .eq("instagram_status", "published")
     .neq("content_type", "story") // story some sozinho do Instagram em 24h: não é "apagado"
     .is("instagram_deleted_at", null)
+    .is("deleted_at", null)
     .not("instagram_media_id", "is", null)
     .gte("instagram_published_at", sinceIso)
     .limit(500);

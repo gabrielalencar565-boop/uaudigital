@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send, SquareCheck, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send, SquareCheck, Trash2, X, ArchiveRestore } from "lucide-react";
 import { TAG_COLORS, stageLabel } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -27,7 +27,8 @@ import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
 import {
   useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate,
-  type ClientInstagramRisk, useRemoveCalendarPublications } from "../hooks/use-calendar-data";
+  type ClientInstagramRisk, useRemoveCalendarPublications, useRemovedPublicationsForClient, useRestorePublications } from "../hooks/use-calendar-data";
+import { PublicacoesRemovidasDialog } from "./PublicacoesRemovidasDialog";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
@@ -336,6 +337,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   const [bulkIds, setBulkIds] = useState<Set<string>>(new Set());
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const removeBulk = useRemoveCalendarPublications();
+  const restorePubs = useRestorePublications();
+  const [removedOpen, setRemovedOpen] = useState(false);
   const toggleBulk = (id: string) => setBulkIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const openPub = (id: string) => (selectMode ? toggleBulk(id) : setSelectedId(id));
   const exitSelect = () => { setSelectMode(false); setBulkIds(new Set()); };
@@ -413,6 +416,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
   // "Publicações sem data" — cross-cycle (see useUnscheduledPublicationsForClient).
   const unscheduledPubsQ = useUnscheduledPublicationsForClient(clientId);
+  const removedPubsQ = useRemovedPublicationsForClient(clientId);
+  const removedCount = removedPubsQ.data?.length ?? 0;
   const setPublicationDate = useSetPublicationDate();
 
   // Which clients have a calendar in the current ciclo, for the sidebar dots.
@@ -1356,12 +1361,18 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       </div>
 
       {view !== "feed" && !selectMode && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {clientId && (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-full text-xs" onClick={() => setRemovedOpen(true)}>
+              <ArchiveRestore className="h-3.5 w-3.5" /> Removidas{removedCount > 0 ? ` (${removedCount})` : ""}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-full text-xs" onClick={() => setSelectMode(true)}>
             <SquareCheck className="h-3.5 w-3.5" /> Selecionar
           </Button>
         </div>
       )}
+      <PublicacoesRemovidasDialog clientId={clientId} open={removedOpen} onOpenChange={setRemovedOpen} />
 
       {view !== "feed" && selectMode && (
         <div className="sticky top-3 z-30 flex justify-center px-2">
@@ -1384,7 +1395,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           <AlertDialogHeader>
             <AlertDialogTitle>Remover {bulkChosen.length} publicaç{bulkChosen.length === 1 ? "ão" : "ões"} do calendário?</AlertDialogTitle>
             <AlertDialogDescription>
-              As tarefas originais não serão apagadas, só os itens vinculados a elas neste calendário de aprovação. Não dá para desfazer.
+              As tarefas originais não serão apagadas, só os itens vinculados a elas neste calendário de aprovação. Dá para restaurar depois em “Removidas”, no mesmo dia e com a legenda.
               {bulkOnInstagram > 0 && ` ${bulkOnInstagram} já ${bulkOnInstagram === 1 ? "está agendada" : "estão agendadas"} no Instagram: remover do calendário não cancela o agendamento lá.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1393,9 +1404,16 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                const items = bulkChosen.map((p) => ({ id: p.id, calendar_id: p.calendar_id, task_id: p.task_id }));
+                const snapshot = [...bulkChosen];
+                const items = snapshot.map((p) => ({ id: p.id, calendar_id: p.calendar_id, task_id: p.task_id }));
                 removeBulk.mutate(items, {
-                  onSuccess: () => { toast.success(`${items.length} publicaç${items.length === 1 ? "ão removida" : "ões removidas"}.`); exitSelect(); },
+                  onSuccess: () => {
+                    toast.success(`${items.length} publicaç${items.length === 1 ? "ão removida" : "ões removidas"}.`, {
+                      duration: 12_000,
+                      action: { label: "Desfazer", onClick: () => restorePubs.mutate(snapshot, { onSuccess: () => toast.success("Restauradas."), onError: (e: any) => toast.error(e?.message ?? "Não foi possível restaurar") }) },
+                    });
+                    exitSelect();
+                  },
                   onError: (e: any) => toast.error(e?.message ?? "Não foi possível remover as publicações"),
                 });
                 setBulkConfirmOpen(false);

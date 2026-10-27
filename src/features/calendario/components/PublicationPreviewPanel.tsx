@@ -21,7 +21,7 @@ import { fitImageToFormat } from "@/lib/image-format";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTENT_TYPE_LABELS, FEED_FORMAT, VERTICAL_FORMAT, getInstagramFormat, PUBLICATION_STATUS_LABELS, type CalendarPublication, type PublicationContentType, type PublicationStatus } from "../calendar-types";
 import { AvatarCropDialog } from "@/features/meu-painel/components/AvatarCropDialog";
-import { useCoverCandidates, useRemoveCalendarPublication, useReorderCarouselImages, useUpdateCalendarPublication, useSetPublicationDate } from "../hooks/use-calendar-data";
+import { useCoverCandidates, useRemoveCalendarPublication, useRestorePublications, useReorderCarouselImages, useUpdateCalendarPublication, useSetPublicationDate } from "../hooks/use-calendar-data";
 import { useUploadPmAttachment, useUploadPmAttachmentResumable } from "@/features/gestao/hooks/use-pm-data";
 import { downscaleVideoWithFallback, fitVideoToFormat, renderVideoPoster } from "@/features/gestao/components/PmAttachmentsSection";
 import { useInstagramConnections, usePublishToInstagram } from "../hooks/use-instagram";
@@ -65,6 +65,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const updatePublication = useUpdateCalendarPublication();
   const setPublicationDate = useSetPublicationDate();
   const removePublication = useRemoveCalendarPublication();
+  const restorePublication = useRestorePublications();
   const uploadCover = useUploadPmAttachment();
   const uploadVideoResumable = useUploadPmAttachmentResumable();
   const [videoUpload, setVideoUpload] = useState<{ phase: "compressing" | "uploading"; pct: number } | null>(null);
@@ -81,6 +82,9 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [confirmDeletedOpen, setConfirmDeletedOpen] = useState(false);
+  const [confirmScheduleOpen, setConfirmScheduleOpen] = useState(false);
+  const [confirmManualOpen, setConfirmManualOpen] = useState(false);
+  const [confirmUndoManualOpen, setConfirmUndoManualOpen] = useState(false);
   const [coverDragActive, setCoverDragActive] = useState(false);
   const [mediaDragActive, setMediaDragActive] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -1135,6 +1139,8 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 const canPublish = igConnection?.status === "active" && !unsupportedType && pendingCollaborators.length === 0;
                 const isPublishing = publication.instagram_status === "publishing";
                 const isPublished = publication.instagram_status === "published";
+                // marcado à mão: não tem id do post no Instagram (quem o sistema publica sempre tem)
+                const isManualPublished = isPublished && !publication.instagram_media_id;
                 const hasDateTime = !!publication.publish_date && !!publication.publish_time;
                 const scheduleDateTime = hasDateTime
                   ? `${format(parseISO(publication.publish_date!), "dd/MM", { locale: ptBR })} às ${publication.publish_time!.slice(0, 5)}`
@@ -1162,7 +1168,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </Label>
                       {isPublished && (
                         <span className="flex items-center gap-1 text-xs text-emerald-600">
-                          <Check className="h-3.5 w-3.5" /> Publicado
+                          <Check className="h-3.5 w-3.5" /> {isManualPublished ? "Publicado manualmente" : "Publicado"}
                           {publication.instagram_permalink && (
                             <a href={publication.instagram_permalink} target="_blank" rel="noreferrer" className="underline">
                               ver post
@@ -1261,13 +1267,22 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       <p className="text-xs text-amber-600">Ainda não agendado nem publicado.</p>
                     )}
 
-                    {isPublished && (
+                    {isPublished && !isManualPublished && (
                       <button
                         type="button"
                         className="flex items-center gap-1 text-xs text-muted-foreground underline hover:text-destructive"
                         onClick={() => setConfirmDeletedOpen(true)}
                       >
                         <Trash2 className="h-3 w-3" /> Apagou esse post no Instagram? Avisar aqui
+                      </button>
+                    )}
+                    {isManualPublished && (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground underline hover:text-foreground"
+                        onClick={() => setConfirmUndoManualOpen(true)}
+                      >
+                        <RefreshCw className="h-3 w-3" /> Marcou sem querer? Desfazer
                       </button>
                     )}
 
@@ -1362,14 +1377,20 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                                 ? `Falta preencher: ${missingForSchedule.join(", ")}`
                                 : undefined
                         }
-                        onClick={() => {
-                          save({ instagram_scheduled: true });
-                          toast.success(`Publicação agendada para ${scheduleDateTime}.`);
-                        }}
+                        onClick={() => setConfirmScheduleOpen(true)}
                       >
                         <Clock className="h-3.5 w-3.5" />
                         Agendar publicação
                       </Button>
+                    )}
+
+                    {!isPublished && !publication.instagram_scheduled && (
+                      <p className="pt-0.5 text-center text-xs text-muted-foreground">
+                        Já foi postado fora do sistema?{" "}
+                        <button type="button" className="underline hover:text-foreground" onClick={() => setConfirmManualOpen(true)}>
+                          Marcar como publicado
+                        </button>
+                      </p>
                     )}
                   </div>
                 );
@@ -1419,6 +1440,90 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={confirmScheduleOpen} onOpenChange={setConfirmScheduleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Agendar essa publicação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {publication.publish_date && publication.publish_time
+                ? `Ela será publicada automaticamente no Instagram do cliente em ${format(parseISO(publication.publish_date), "dd/MM", { locale: ptBR })} às ${publication.publish_time.slice(0, 5)}. `
+                : ""}
+              Confira legenda, mídia e horário antes de confirmar. Você pode cancelar o agendamento depois.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                save({ instagram_scheduled: true });
+                toast.success(
+                  publication.publish_date && publication.publish_time
+                    ? `Publicação agendada para ${format(parseISO(publication.publish_date), "dd/MM", { locale: ptBR })} às ${publication.publish_time.slice(0, 5)}.`
+                    : "Publicação agendada.",
+                );
+              }}
+            >
+              Sim, agendar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmManualOpen} onOpenChange={setConfirmManualOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Esse post já foi publicado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Use só se ele já foi ao ar no Instagram, fora do sistema. Ele passa a contar como publicado e não será publicado por aqui.
+              Se marcar sem querer, dá para desfazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                // a hora da publicação é a planejada, a menos que ainda esteja no futuro: aí vale o momento da marcação
+                const now = new Date();
+                const planned = publication.publish_date && publication.publish_time
+                  ? new Date(`${publication.publish_date}T${publication.publish_time}`)
+                  : null;
+                const publishedAt = planned && planned.getTime() <= now.getTime() ? planned : now;
+                save({
+                  instagram_status: "published",
+                  instagram_scheduled: false,
+                  instagram_error: null,
+                  instagram_deleted_at: null,
+                  instagram_published_at: publishedAt.toISOString(),
+                });
+                toast.success("Marcado como publicado manualmente.");
+              }}
+            >
+              Sim, já foi publicado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmUndoManualOpen} onOpenChange={setConfirmUndoManualOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer "publicado manualmente"?</AlertDialogTitle>
+            <AlertDialogDescription>O post volta a contar como não publicado e você pode agendá-lo de novo.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                save({ instagram_status: "not_published", instagram_scheduled: false, instagram_published_at: null });
+                toast.success("Marcação desfeita.");
+              }}
+            >
+              Sim, desfazer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirmDeletedOpen} onOpenChange={setConfirmDeletedOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1465,7 +1570,13 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                removePublication.mutate({ id: publication.id, calendarId: publication.calendar_id, taskId: publication.task_id });
+                const removed = publication;
+                removePublication.mutate({ id: removed.id, calendarId: removed.calendar_id, taskId: removed.task_id }, {
+                  onSuccess: () => toast.success("Removida do calendário.", {
+                    duration: 12_000,
+                    action: { label: "Desfazer", onClick: () => restorePublication.mutate([removed], { onSuccess: () => toast.success("Restaurada."), onError: (e: any) => toast.error(e?.message ?? "Não foi possível restaurar") }) },
+                  }),
+                });
                 setConfirmRemoveOpen(false);
                 onClose();
               }}
