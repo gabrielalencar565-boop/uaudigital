@@ -974,10 +974,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto max-h-[400px] overflow-y-auto p-0"
+                      className="w-auto max-h-[min(400px,calc(var(--radix-popover-content-available-height,100vh)-8px))] overflow-y-auto p-0"
                       align="start"
                       side="bottom"
-                      avoidCollisions={false}
+                      collisionPadding={8}
                     >
                       <Calendar
                         mode="single"
