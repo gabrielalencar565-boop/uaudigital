@@ -1081,6 +1081,19 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTrashOpen(true)} title="Lixeira">
             <Trash2 className="h-4 w-4" />
           </Button>
+          {/* No celular não há grade com o "+" por dia (só aparece ao passar o mouse no desktop), então a criação fica aqui. */}
+          {isMobile && (
+            <Button
+              size="sm"
+              className="h-8 gap-1 rounded-full px-3"
+              onClick={() => {
+                setQuickCreateDate(agendaView === "day" ? format(cursor, "yyyy-MM-dd") : todayKey);
+                setQuickCreateOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Nova
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1133,6 +1146,14 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                      {dayTasks.length > 0 && (
                        <Badge variant="secondary" className="ml-auto text-[10px]">{doneCount}/{dayTasks.length}</Badge>
                      )}
+                     <button
+                       type="button"
+                       className={cn("grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition", dayTasks.length === 0 && "ml-auto")}
+                       onClick={() => { setQuickCreateDate(key); setQuickCreateOpen(true); }}
+                       title="Nova tarefa"
+                       aria-label="Nova tarefa neste dia">
+                       <Plus className="h-4 w-4" />
+                     </button>
                    </div>
                    {renderSpecialDates(key, true)}
                     {allDone ? (
@@ -1226,6 +1247,14 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   {dayTasks.length > 0 && (
                     <Badge variant="secondary" className="ml-auto text-[10px]">{dayTasks.length}</Badge>
                   )}
+                  <button
+                    type="button"
+                    className={cn("grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition", dayTasks.length === 0 && "ml-auto")}
+                    onClick={() => { setQuickCreateDate(key); setQuickCreateOpen(true); }}
+                    title="Nova tarefa"
+                    aria-label="Nova tarefa neste dia">
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
                 {renderSpecialDates(key, true)}
                 <div className="space-y-1.5">

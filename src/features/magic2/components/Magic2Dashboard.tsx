@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { CountdownTo27Badge } from "@/features/magic2/components/CountdownTo27Badge";
+import { Magic2CloseControl } from "@/features/magic2/components/Magic2CloseControl";
 import { useNow } from "@/hooks/use-now";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMagicNumberConfig } from "@/features/data/queries";
@@ -14,6 +15,7 @@ type Dashboard = {
   pendingStages: number;
   overallPct: number;
   clients100: number;
+  completedAt?: string | null;
   byStage: Record<Magic2StageKey, { done: number; total: number; pct: number }>;
 };
 
@@ -108,7 +110,8 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
 
 /* ── Main dashboard ── */
 
-export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean }) {
+// showCloseControl: só a página do Magic Number fecha/reabre o ciclo; a Visão do Dia apenas mostra o resultado
+export function Magic2Dashboard({ dashboard, year, month, fullscreen, showCloseControl }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean; showCloseControl?: boolean }) {
   const isMobile = useIsMobile();
   const now = useNow();
   const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
@@ -138,7 +141,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
           <GradientLayers />
           <CardHeader className="relative z-10 pb-2">
             <CardTitle className="text-base text-white drop-shadow-sm">Visão Geral</CardTitle>
-            <CountdownTo27Badge due={dueDate} now={now} />
+            <CountdownTo27Badge due={dueDate} now={now} completedAt={dashboard.completedAt} />
+            {showCloseControl && <Magic2CloseControl year={year} month={month} totalStages={dashboard.totalStages} doneStages={dashboard.doneStages} overallPct={dashboard.overallPct} completedAt={dashboard.completedAt} onGradient />}
           </CardHeader>
           <CardContent className="relative z-10 grid place-items-center p-4 pb-6">
             <ProgressRing
@@ -202,7 +206,8 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen }: { dashbo
         <CardHeader className="relative z-10 shrink-0">
           <CardTitle className="text-lg text-white drop-shadow-sm">Visão Geral</CardTitle>
           <p className="text-sm text-white/50">Percentual concluído no mês selecionado.</p>
-          <CountdownTo27Badge due={dueDate} now={now} />
+          <CountdownTo27Badge due={dueDate} now={now} completedAt={dashboard.completedAt} />
+          {showCloseControl && <Magic2CloseControl year={year} month={month} totalStages={dashboard.totalStages} doneStages={dashboard.doneStages} overallPct={dashboard.overallPct} completedAt={dashboard.completedAt} onGradient />}
         </CardHeader>
         <CardContent className="relative z-10 flex-1 flex items-center justify-center p-6">
           <ProgressRing

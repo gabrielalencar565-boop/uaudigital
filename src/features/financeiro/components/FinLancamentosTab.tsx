@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { Loader2, Sparkles, Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
+import { Loader2, Search, Sparkles, Plus, Upload, ArrowUpCircle, ArrowDownCircle, Eye, Pencil, Trash2, FileSpreadsheet, Check, X, DollarSign, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,6 +102,7 @@ export function FinLancamentosTab() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -133,9 +134,26 @@ export function FinLancamentosTab() {
   const [form, setForm] = useState(emptyForm);
 
   const filtered = useMemo(() => {
+    // Sem acento/maiúscula; cada palavra digitada precisa aparecer em algum lugar do lançamento
+    // (descrição, categoria, valor "1.200,00"/"1200,00"/"1200.00" ou data "30/09").
+    const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const terms = norm(search).split(/\s+/).filter(Boolean);
     let list = transactions.filter((t) => {
       if (typeFilter !== "all" && t.type !== typeFilter && !(t.category === "caixa")) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (terms.length > 0) {
+        const amount = Number(t.amount);
+        const [y, m, d] = String(t.date).slice(0, 10).split("-");
+        const haystack = norm([
+          t.description ?? "",
+          TRANSACTION_CATEGORIES.find((c) => c.value === t.category)?.label ?? t.category ?? "",
+          amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+          amount.toFixed(2),
+          `${d}/${m}`,
+          `${d}/${m}/${y}`,
+        ].join(" "));
+        if (!terms.every((term) => haystack.includes(term))) return false;
+      }
       return true;
     });
     if (sortField) {
@@ -148,7 +166,7 @@ export function FinLancamentosTab() {
       });
     }
     return list;
-  }, [transactions, typeFilter, statusFilter, sortField, sortDir]);
+  }, [transactions, typeFilter, statusFilter, search, sortField, sortDir]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -450,6 +468,25 @@ export function FinLancamentosTab() {
       <div className="flex flex-wrap items-center justify-between gap-3 opacity-0" style={{ animation: "fadeUp 0.5s ease-out forwards", animationDelay: "0s" }}>
         <FinMonthYearSelector month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar lançamento…"
+              className="h-10 w-56 pl-9 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                title="Limpar busca"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -525,7 +562,7 @@ export function FinLancamentosTab() {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={7} className="text-center text-muted-foreground py-12">Sem lançamentos neste período</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={7} className="text-center text-muted-foreground py-12">{search.trim() ? `Nenhum lançamento encontrado para "${search.trim()}"` : "Sem lançamentos neste período"}</td></tr>}
               </tbody>
             </table>
           </div>

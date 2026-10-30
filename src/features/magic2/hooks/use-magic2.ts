@@ -344,3 +344,66 @@ export function useSyncMagic2Year() {
     },
   });
 }
+
+export type Magic2MonthClosure = {
+  id: string;
+  year: number;
+  month: number;
+  closed_at: string;
+  closed_by: string | null;
+  // dia em que o mês chegou a 100% de fato (pode ser anterior ao dia do fechamento)
+  concluded_at: string | null;
+  total_stages: number;
+  done_stages: number;
+  pct: number;
+};
+
+// Mês fechado = resultado guardado + etapas travadas contra desmarcar (a trava também existe no banco)
+export function useMagic2Closure(year: number, month: number) {
+  return useQuery({
+    queryKey: ["magic2", "closure", { year, month }],
+    queryFn: async () => {
+      const res = await (supabase.from("magic2_month_closures" as any) as any)
+        .select("id, year, month, closed_at, closed_by, concluded_at, total_stages, done_stages, pct")
+        .eq("year", year)
+        .eq("month", month)
+        .maybeSingle();
+      if (res.error) throw res.error;
+      return (res.data ?? null) as Magic2MonthClosure | null;
+    },
+  });
+}
+
+export function useCloseMagic2Month() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { year: number; month: number; userId: string; totalStages: number; doneStages: number; pct: number; concludedAt?: string | null }) => {
+      const res = await (supabase.from("magic2_month_closures" as any) as any).insert({
+        year: vars.year,
+        month: vars.month,
+        closed_by: vars.userId,
+        concluded_at: vars.concludedAt ?? new Date().toISOString(),
+        total_stages: vars.totalStages,
+        done_stages: vars.doneStages,
+        pct: vars.pct,
+      });
+      if (res.error) throw res.error;
+    },
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["magic2"] });
+    },
+  });
+}
+
+export function useReopenMagic2Month() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { year: number; month: number }) => {
+      const res = await (supabase.from("magic2_month_closures" as any) as any).delete().eq("year", vars.year).eq("month", vars.month);
+      if (res.error) throw res.error;
+    },
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["magic2"] });
+    },
+  });
+}

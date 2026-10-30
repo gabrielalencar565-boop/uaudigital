@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
-import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
+import { useMagic2Closure, useMagic2Month } from "@/features/magic2/hooks/use-magic2";
 
 export type Magic2DashboardData = {
   totalClients: number;
@@ -10,11 +10,15 @@ export type Magic2DashboardData = {
   pendingStages: number;
   overallPct: number;
   clients100: number;
+  // última etapa concluída, só quando o mês está em 100% (base do selo "no prazo / com atraso")
+  completedAt: string | null;
   byStage: Record<Magic2StageKey, { done: number; total: number; pct: number }>;
 };
 
 export function useMagic2Dashboard(year: number, month: number) {
   const q = useMagic2Month(year, month);
+  const closureQ = useMagic2Closure(year, month);
+  const closure = closureQ.data;
 
   const byCycleStage = useMemo(() => {
     const map = new Map<string, Map<Magic2StageKey, { id: string; completed: boolean }>>();
@@ -56,8 +60,18 @@ export function useMagic2Dashboard(year: number, month: number) {
       return acc;
     }, {} as Record<Magic2StageKey, { done: number; total: number; pct: number }>);
 
-    return { totalClients, totalStages, doneStages, pendingStages, overallPct, clients100, byStage };
-  }, [byCycleStage, q.data?.cycles, q.data?.stages]);
+    let completedAt: string | null = null;
+    if (totalStages > 0 && overallPct === 100) {
+      for (const s of q.data?.stages ?? []) {
+        if (s.completed && s.completed_at && (!completedAt || s.completed_at > completedAt)) completedAt = s.completed_at;
+      }
+    }
+
+    // ciclo fechado: vale o dia de conclusão guardado no fechamento
+    if (closure?.concluded_at) completedAt = closure.concluded_at;
+
+    return { totalClients, totalStages, doneStages, pendingStages, overallPct, clients100, completedAt, byStage };
+  }, [byCycleStage, closure?.concluded_at, q.data?.cycles, q.data?.stages]);
 
   return {
     query: q,

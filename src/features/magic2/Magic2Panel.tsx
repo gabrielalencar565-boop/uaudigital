@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Target } from "lucide-react";
-import { useToggleMagic2Stage, useCreateAndToggleMagic2Stage } from "@/features/magic2/hooks/use-magic2";
+import { useToggleMagic2Stage, useCreateAndToggleMagic2Stage, useMagic2Closure } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
 import { useSession } from "@/hooks/use-session";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
@@ -31,9 +31,14 @@ export function Magic2Panel() {
   const { query: q, dashboard, cycles } = useMagic2Dashboard(year, month);
   const toggle = useToggleMagic2Stage();
   const createAndToggle = useCreateAndToggleMagic2Stage();
+  const closureQ = useMagic2Closure(year, month);
 
   const onToggleCell = async (stageId: string, current: boolean) => {
     if (!user) return;
+    if (current && closureQ.data) {
+      toast.error("Ciclo fechado: reabra o mês para desmarcar etapas.");
+      return;
+    }
     try {
       await toggle.mutateAsync({ stageId, nextCompleted: !current, userId: user.id });
     } catch (e: any) {
@@ -56,9 +61,11 @@ export function Magic2Panel() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
         <div>
           <h3 className="text-lg font-semibold">Contagem regressiva</h3>
-          <div className="mt-1">
-            <CountdownTo27Badge due={due} />
-          </div>
+          {!dashboard.completedAt && (
+            <div className="mt-1">
+              <CountdownTo27Badge due={due} />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <MonthYearNav month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
@@ -97,7 +104,7 @@ export function Magic2Panel() {
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-4">
-            <Magic2Dashboard dashboard={dashboard} year={year} month={month} />
+            <Magic2Dashboard dashboard={dashboard} year={year} month={month} showCloseControl />
           </TabsContent>
         </Tabs>
       )}
