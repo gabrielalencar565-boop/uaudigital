@@ -124,17 +124,22 @@ const Index = () => {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) { setHasProfile(false); return; }
-        setHasProfile(!!data);
-      });
-    return () => { cancelled = true; };
+    let retry: number | undefined;
+    const load = () => {
+      supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          // Falha de rede não significa "sem perfil": tenta de novo em vez de mostrar o Primeiro acesso.
+          if (error) { retry = window.setTimeout(load, 4000); return; }
+          setHasProfile(!!data);
+        });
+    };
+    load();
+    return () => { cancelled = true; window.clearTimeout(retry); };
   }, [user]);
 
   const onboardingText = useMemo(() => {
