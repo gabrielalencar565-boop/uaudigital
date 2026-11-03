@@ -1,26 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useOnlineStatus } from "@/hooks/use-online-status";
+import { useConnectivity } from "@/hooks/use-online-status";
 
 // Aviso global de conexão: bloqueia a tela enquanto a internet estiver fora e, quando volta, confirma por alguns segundos.
 export function OfflineBanner() {
-  const browserOnline = useOnlineStatus();
-  const [probeOk, setProbeOk] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const { online, checking, recheck } = useConnectivity();
   const [stillOffline, setStillOffline] = useState(false);
   const wasOffline = useRef(false);
   const [restored, setRestored] = useState(false);
-
-  // navigator.onLine às vezes erra (VPN, rede sem saída): o "Tentar de novo" confirma de verdade.
-  const online = browserOnline || probeOk;
-
-  useEffect(() => {
-    if (!browserOnline) {
-      setProbeOk(false);
-      setStillOffline(false);
-    }
-  }, [browserOnline]);
 
   useEffect(() => {
     if (!online) {
@@ -28,6 +16,7 @@ export function OfflineBanner() {
       setRestored(false);
       return;
     }
+    setStillOffline(false);
     if (!wasOffline.current) return;
     wasOffline.current = false;
     setRestored(true);
@@ -36,16 +25,8 @@ export function OfflineBanner() {
   }, [online]);
 
   const retry = async () => {
-    setChecking(true);
     setStillOffline(false);
-    try {
-      await fetch(`${window.location.origin}/favicon.ico?t=${Date.now()}`, { cache: "no-store" });
-      setProbeOk(true);
-    } catch {
-      setStillOffline(true);
-    } finally {
-      setChecking(false);
-    }
+    if (!(await recheck())) setStillOffline(true);
   };
 
   if (online && !restored) return null;
