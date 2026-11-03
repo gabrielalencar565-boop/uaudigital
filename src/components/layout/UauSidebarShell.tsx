@@ -14,6 +14,7 @@ import { useOnlinePresence } from "@/hooks/use-online-presence";
 import { useTeamActivity } from "@/hooks/use-team-activity";
 import { useTaskViewersPresence } from "@/hooks/use-task-viewers";
 import { TopBar } from "@/components/layout/TopBar";
+import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { TopAnnouncementBanner } from "@/components/layout/TopAnnouncementBanner";
 import { SandboxBanner } from "./SandboxBanner";
 import { GlobalUploadTray } from "@/components/layout/GlobalUploadTray";
@@ -207,6 +208,7 @@ export function UauSidebarShell({
     <SidebarProvider defaultOpen>
       <div className="min-h-svh w-full bg-background text-foreground" style={{ willChange: "background" }}>
         <TopBar onEditProfile={() => setEditProfileOpen(true)} onOpenTask={(id) => setNotifTaskId(id)} />
+        <OfflineBanner />
 
         {/* Desktop sidebar — hidden on mobile */}
         {!isMobile && (
