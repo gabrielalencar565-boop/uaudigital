@@ -302,7 +302,7 @@ export function PmTaskDetailDialog({ task, open, onClose, clientsMap, membersMap
       <DialogContent hideClose className="z-[120] max-w-[90vw] w-[90vw] max-h-[90vh] h-[90vh] max-sm:max-w-full max-sm:w-full max-sm:max-h-full max-sm:h-full max-sm:rounded-none p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border-border/30 shadow-2xl">
 
         {/* Breadcrumb bar */}
-        <div className="flex items-center gap-1.5 border-b border-border/20 px-3 sm:px-5 py-2.5 bg-card/60 backdrop-blur-sm shrink-0">
+        <div className="flex items-center gap-1.5 border-b border-border/20 px-3 sm:px-5 py-2.5 bg-card shrink-0">
           <Button variant="ghost" size="icon" className={cn("h-7 w-7 shrink-0 rounded-lg hidden sm:inline-flex", sidebarOpen && "bg-primary/10 text-primary")} onClick={() => setSidebarOpen(!sidebarOpen)} title="Sidebar de subtarefas">
             <Layers className="h-4 w-4" />
           </Button>
@@ -842,6 +842,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   const currentPeriodic = task.periodic_stage_key ? periodicStages.find(p => p.key === task.periodic_stage_key) : null;
   const resolvedTaskPostType = inferPmPostType(task) ?? task.post_type;
 
+  // Revisão/Alteração de demanda extra ou freela (vídeo/arte único, sem subtarefas): não há subtarefa para listar, então some o bloco Vídeo/Design e ficam só os anexos
+  const standaloneReview = (task.post_type === "video" || task.post_type === "design") &&
+    (task.stage_current === "revisao" || task.stage_current === "alteracoes") &&
+    !task.parent_task_id && !childTasksLoading && childTasks.length === 0 &&
+    (!!task.is_extra_demand || /freelancer/i.test(clientsMap[task.client_id] ?? ""));
   const isPlanejamentoReview = task.stage_current === "revisao" && !task.parent_task_id && (
     task.post_type === "planejamento" || (
       task.post_type == null &&
@@ -987,11 +992,15 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           return rest;
         };
 
+        // O insert do Supabase não lança erro quando falha (devolve { error }); sem olhar isso o anexo simplesmente não chegava à etapa nova e ninguém sabia.
+        let copyFailures = 0;
+        const insertAttachment = async (row: any) => {
+          const { error } = await sb.from("pm_attachments").insert(row);
+          if (error) { copyFailures += 1; console.error("Erro ao copiar anexo para a próxima etapa:", error); }
+        };
         const { data: existingAtts } = await sb.from("pm_attachments").select("*").eq("task_id", task.id);
         if (existingAtts?.length) {
-          await Promise.all(existingAtts.map((att: any) =>
-            sb.from("pm_attachments").insert({ ...cloneAttachmentRow(att), task_id: targetTaskId })
-          ));
+          await Promise.all(existingAtts.map((att: any) => insertAttachment({ ...cloneAttachmentRow(att), task_id: targetTaskId })));
         }
         const oldChildIds = Object.keys(childIdMap);
         if (oldChildIds.length > 0) {
@@ -1000,10 +1009,14 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             await Promise.all(childAtts.map((att: any) => {
               const newTaskId = childIdMap[att.task_id];
               if (!newTaskId) return Promise.resolve();
-              return sb.from("pm_attachments").insert({ ...cloneAttachmentRow(att), task_id: newTaskId });
+              return insertAttachment({ ...cloneAttachmentRow(att), task_id: newTaskId });
             }));
           }
         }
+        if (copyFailures > 0) {
+          toast.warning(`${copyFailures} arquivo(s) não foram copiados para ${stageLabel(targetStage)}. Eles continuam na etapa anterior.`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["pm_attachments"] });
         // --- Comments ---
         const allOldCommentIds = [task.id, ...oldChildIds];
         const { data: existingComments } = await sb.from("pm_comments").select("*").in("task_id", allOldCommentIds);
@@ -2553,7 +2566,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                       key={s.key}
                       className={cn("flex items-center gap-3 w-full px-3 py-2 rounded text-sm hover:bg-accent transition", isSelected && "bg-accent")}
                       onClick={() => {
-                        updateTask.mutate({ id: task.id, stage_current: s.key as any, periodic_stage_key: null as any });
+                        // Vídeo/Design movido à mão para Revisão ou Alteração segue sendo daquele tipo (senão a tela vira a de Planejamento, com Vídeo e Design)
+                        const movedPostType = !task.post_type && (s.key === "revisao" || s.key === "alteracoes")
+                          ? (task.stage_current === "edicao_videos" ? "video" : task.stage_current === "design" ? "design" : null)
+                          : null;
+                        updateTask.mutate({ id: task.id, stage_current: s.key as any, periodic_stage_key: null as any, ...(movedPostType ? { post_type: movedPostType as any } : {}) });
                         // Propagate stage change to children
                         for (const child of childTasks) {
                           updateTask.mutate({ id: child.id, stage_current: s.key as any });
@@ -3010,12 +3027,13 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             const isSinglePostType = (task.post_type === "video" || task.post_type === "design") &&
               (task.stage_current === "alteracoes" || task.stage_current === "revisao");
             const filteredChildren = isSinglePostType
-              ? childTasks.filter(c => c.post_type === task.post_type)
+              ? childTasks.filter(c => c.post_type === task.post_type || !c.post_type)
               : childTasks;
             const usePlanningLayout = !task.parent_task_id && !task.periodic_stage_key && (
               ["planejamento", "pdf", "agendamento", "entrega", "revisao", "alteracoes"].includes(task.stage_current) ||
               isPlanejamentoReview
             );
+            if (standaloneReview) return null;
             if (usePlanningLayout) {
               const sectionTitle = isSinglePostType
                 ? (task.stage_current === "revisao"
@@ -3031,6 +3049,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                   onSelectSubtask={onSelectSubtask}
                   activeSubtaskId={activeSubtaskId}
                   sectionTitle={sectionTitle}
+                  onlyType={isSinglePostType ? (task.post_type as "video" | "design") : null}
                   reviewMode={
                     (task.stage_current === "revisao") ? "revisao" :
                     (task.stage_current === "alteracoes") ? "alteracao" :
@@ -3047,7 +3066,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         </div>
 
         {/* Attachments — hidden for planning parent tasks */}
-        {!(!task.periodic_stage_key && (task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")) && (
+        {!(!task.periodic_stage_key && (task.stage_current === "planejamento" || task.stage_current === "revisao") && !task.parent_task_id && !childTasks.some(c => c.stage_current === "design" || c.stage_current === "edicao_videos")
+          // Revisão/Alteração de um tipo só e sem subtarefas (ex.: freela): o vídeo/arte é da própria tarefa, então os anexos têm de aparecer
+          && !((task.post_type === "video" || task.post_type === "design") && childTasks.length === 0)) && (
           <div className={cn("border-t border-border/20 pt-4", isCompletedSnapshot && !correctionMode && "pointer-events-none opacity-60")}>
             <PmAttachmentsSection taskId={task.id} taskTitle={task.title} attachments={attachments} membersMap={membersMap} onSetCover={handleSetCover} currentCoverUrl={task.cover_url} cropFormat={cropFormat} />
           </div>

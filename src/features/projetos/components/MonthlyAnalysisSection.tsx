@@ -8,15 +8,20 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
   BarChart, Bar, LineChart, Line, Cell,
 } from "recharts";
-import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown, Trophy, AlertTriangle, TrendingDown, Target, Star, Lightbulb } from "lucide-react";
+import { TrendingUp, Clock, Zap, BarChart3, Info, CalendarCheck, ArrowUp, ArrowDown, Trophy, AlertTriangle, TrendingDown, Target, Star, Lightbulb, FileText, Copy, Download, Grid3x3 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   format, getDaysInMonth,
 } from "date-fns";
-import { useMagic2Month } from "@/features/magic2/hooks/use-magic2";
+import { useMagic2Month, type Magic2CycleRow, type Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
 import { useMagicNumberConfig } from "@/features/data/queries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { brandChartDefs, useBrandGradientIds } from "@/components/metrics/BrandChartDefs";
 import { brandGradientCss } from "@/lib/brand-gradient";
 import {
@@ -32,12 +37,228 @@ const INDICATOR_TOOLTIPS: Record<string, string> = {
   "Consistência": "Mede se a produção foi distribuída de forma uniforme ao longo do mês, evitando acúmulo nos últimos dias.",
 };
 
+const MONTH_FULL_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 const SCORE_RANGES = [
   { min: 90, max: 100, label: "Excelente", tone: "success" as const, desc: "Operação impecável, tudo no prazo e bem distribuído." },
   { min: 75, max: 89, label: "Saudável", tone: "primary" as const, desc: "Boa performance, com pequenos pontos de melhoria." },
   { min: 60, max: 74, label: "Atenção", tone: "warning" as const, desc: "Atrasos ou acúmulos que precisam de correção." },
   { min: 0, max: 59, label: "Crítico", tone: "danger" as const, desc: "Performance abaixo do aceitável, ação urgente necessária." },
 ];
+
+// ───────── cliente por etapa (usado na tela e no relatório) ─────────
+
+const STAGE_SHORT: Record<string, string> = {
+  planejamento: "Planej.", captacao: "Captação", design: "Design", edicao_videos: "Vídeo", pdf: "Cronog.", agendamento: "Agend.", alteracoes: "Alter.",
+};
+// Ordem em que as etapas costumam acontecer ao longo do mês.
+const STAGE_ORDER = ["planejamento", "captacao", "design", "edicao_videos", "pdf", "agendamento", "alteracoes"] as const;
+const EARLY_DAY = 20;
+
+type GridCell = { label: string; done: boolean; late: boolean; early: boolean; rel: number | null };
+type GridRow = { name: string; cells: GridCell[]; avg: number };
+
+/** Dia (do mês escolhido) em que cada cliente concluiu cada etapa; do mais adiantado ao mais atrasado. */
+function buildStageGrid(cycles: Magic2CycleRow[], stages: Magic2StageRow[], prefix: string): GridRow[] {
+  const monthStart = Date.UTC(+prefix.slice(0, 4), +prefix.slice(5, 7) - 1, 1);
+  const rows = cycles.map((c) => {
+    const cells = STAGE_ORDER.map((key): GridCell => {
+      const st = stages.find((x) => x.cycle_id === c.id && x.stage === key);
+      if (!st?.completed || !st.completed_at) return { label: "–", done: false, late: false, early: false, rel: null };
+      const d = brDate(st.completed_at);
+      const inMonth = d.startsWith(prefix);
+      const rel = Math.round((Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) - monthStart) / 86400000) + 1;
+      return { label: inMonth ? String(+d.slice(8, 10)) : `${+d.slice(8, 10)}/${+d.slice(5, 7)}`, done: true, late: d > c.due_date, early: inMonth && +d.slice(8, 10) <= EARLY_DAY, rel };
+    });
+    const production = cells.slice(0, 5).filter((x) => x.rel !== null).map((x) => x.rel as number);
+    const avg = production.length ? production.reduce((a, b) => a + b, 0) / production.length : Infinity;
+    return { name: c.magic2_clients?.name ?? "Sem nome", cells, avg };
+  });
+  return rows.sort((a, b) => a.avg - b.avg || a.name.localeCompare(b.name));
+}
+
+function stageGridSummary(rows: GridRow[]) {
+  const lateByStage = STAGE_ORDER.map((key, idx) => ({ key, n: rows.filter((r) => r.cells[idx].late).length }));
+  const topLate = [...lateByStage].sort((a, b) => b.n - a.n)[0];
+  const earliest = rows.filter((r) => Number.isFinite(r.avg)).slice(0, 3).map((r) => r.name);
+  const withLate = rows.filter((r) => r.cells.some((c) => c.late)).length;
+  const medianDay = (idx: number) => {
+    const v = rows.map((r) => r.cells[idx].rel).filter((x): x is number => x !== null).sort((a, b) => a - b);
+    return v.length ? v[Math.floor((v.length - 1) / 2)] : null;
+  };
+  return { lateByStage, topLate, earliest, withLate, medianDay };
+}
+
+// ───────── relatório do mês (texto pronto para colar em uma IA) ─────────
+
+type MagicReportInput = {
+  year: number;
+  month: number;
+  prevYear: number;
+  prevMonth: number;
+  magicDay: number;
+  magicLabel: string;
+  isCurrent: boolean;
+  today: string;
+  cycles: Magic2CycleRow[];
+  stages: Magic2StageRow[];
+  prevCycles: Magic2CycleRow[];
+  prevStages: Magic2StageRow[];
+  cycleMonth: number;
+  score: { total: number; label: string; prev: number | null };
+  annual: { n: number; mes: string; score: number; ido: number; proatividade: number; antesMagic: number; clientes: number }[];
+  withPrompt: boolean;
+};
+
+const brDate = (iso: string) => new Date(new Date(iso).getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+const ddmm = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`;
+const rowsToMd = (head: string[], rows: (string | number)[][]) => [`| ${head.join(" | ")} |`, `| ${head.map(() => "---").join(" | ")} |`, ...rows.map((r) => `| ${r.join(" | ")} |`)];
+
+function buildMagicReport(i: MagicReportInput): string {
+  const mm = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
+  const prefix = mm(i.year, i.month);
+  const lastDay = getDaysInMonth(new Date(i.year, i.month - 1, 1));
+  const monthEnd = `${prefix}-${String(lastDay).padStart(2, "0")}`;
+  const cutoff = i.isCurrent ? i.today : monthEnd; // mês passado = como estava no último dia
+  const done = i.stages.filter((s) => s.completed && s.completed_at);
+  const doneBy = (list: Magic2StageRow[], limit: string) => list.filter((s) => s.completed && s.completed_at && brDate(s.completed_at) <= limit).length;
+  const total = i.cycles.length * MAGIC2_STAGES.length;
+  const prevTotal = i.prevCycles.length * MAGIC2_STAGES.length;
+  const pctOf = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+  const atCutoff = doneBy(i.stages, cutoff);
+  const later = done.filter((s) => brDate(s.completed_at!) > monthEnd).length;
+  const clientName = (c: Magic2CycleRow) => c.magic2_clients?.name ?? "Sem nome";
+  const L: string[] = [];
+
+  if (i.withPrompt) {
+    L.push(
+      "# Instruções para a IA", "",
+      `Você é analista de operações de uma agência de marketing digital. Abaixo estão os dados reais do ${i.magicLabel} (progresso da operação) de ${MONTH_FULL_NAMES[i.month - 1].toLowerCase()} de ${i.year}. Use SOMENTE esses dados e não invente números. Responda em português, em linguagem simples e direta, com:`, "",
+      "1. Resumo executivo (até 5 linhas).",
+      "2. Como foi o ritmo do mês e se a operação chegou ao prazo.",
+      "3. Clientes e etapas que seguraram o resultado, com os números.",
+      "4. Comparação com o mês anterior e com o ano.",
+      "5. Pauta da reunião e ações recomendadas, com responsável sugerido e prazo.", "",
+      "---", ""
+    );
+  }
+
+  L.push(`# Relatório do ${i.magicLabel}: ${MONTH_FULL_NAMES[i.month - 1].toLowerCase()} de ${i.year}`, "", `Gerado em ${i.today.split("-").reverse().join("/")}.`, "");
+
+  L.push("## Como ler os dados", "");
+  L.push(
+    `- Cada cliente tem ${MAGIC2_STAGES.length} etapas no mês (${MAGIC2_STAGES.map((s) => s.label).join(", ")}). O progresso é o % de etapas concluídas sobre o total.`,
+    `- O prazo da operação é o dia ${i.magicDay} (${i.magicLabel}). Quanto antes as etapas forem concluídas, melhor.`,
+    i.isCurrent ? "- Este é o mês em andamento: os números mostram a situação até hoje." : "- Este é um mês encerrado: o progresso mostra como estava no último dia do mês. Etapas concluídas depois disso aparecem à parte.",
+    "- Uau Score: nota mensal do sistema (0 a 100) que combina prazo, eficiência e consistência.",
+    ""
+  );
+
+  L.push("## Resumo do mês", "");
+  const prevCut = i.isCurrent ? `${mm(i.prevYear, i.prevMonth)}-${String(Math.min(+i.today.slice(8, 10), getDaysInMonth(new Date(i.prevYear, i.prevMonth - 1, 1)))).padStart(2, "0")}` : `${mm(i.prevYear, i.prevMonth)}-${String(getDaysInMonth(new Date(i.prevYear, i.prevMonth - 1, 1))).padStart(2, "0")}`;
+  const prevAt = doneBy(i.prevStages, prevCut);
+  const fullClients = i.cycles.filter((c) => {
+    const st = i.stages.filter((s) => s.cycle_id === c.id);
+    return st.length > 0 && st.every((s) => s.completed && s.completed_at && brDate(s.completed_at) <= cutoff);
+  });
+  L.push(
+    ...rowsToMd(["Indicador", `${MONTH_FULL_NAMES[i.month - 1]}`, `${MONTH_FULL_NAMES[i.prevMonth - 1]} (anterior)`], [
+      ["Clientes ativos", i.cycles.length, i.prevCycles.length],
+      ["Etapas no mês", total, prevTotal],
+      [i.isCurrent ? "Etapas concluídas até hoje" : "Etapas concluídas até o fim do mês", atCutoff, prevAt],
+      ["Progresso", `${pctOf(atCutoff, total)}%`, `${pctOf(prevAt, prevTotal)}%`],
+      ["Uau Score", i.score.total ? `${i.score.total} (${i.score.label})` : "–", i.score.prev ?? "n/d"],
+    ]),
+    ""
+  );
+  L.push(`Clientes com todas as etapas concluídas: ${fullClients.length} de ${i.cycles.length}.`);
+  if (!i.isCurrent && later > 0) L.push(`Etapas concluídas só depois do fim do mês: ${later}.`);
+  L.push("");
+
+  // ritmo: acumulado em pontos do mês, contra o mês anterior
+  const todayDay = +i.today.slice(8, 10);
+  const checkpoints = [...new Set([5, 10, 15, 20, i.magicDay, lastDay, ...(i.isCurrent ? [todayDay] : [])])].filter((d) => d <= lastDay).sort((a, b) => a - b);
+  const prevLast = getDaysInMonth(new Date(i.prevYear, i.prevMonth - 1, 1));
+  L.push("## Ritmo ao longo do mês (progresso acumulado)", "");
+  L.push(
+    ...rowsToMd(["Até o dia", `${MONTH_FULL_NAMES[i.month - 1]}`, `${MONTH_FULL_NAMES[i.prevMonth - 1]}`],
+      checkpoints
+        .filter((d) => i.isCurrent ? `${prefix}-${String(d).padStart(2, "0")}` <= i.today : true)
+        .map((d) => [
+          d === lastDay ? `${d} (fim do mês)` : d === i.magicDay ? `${d} (${i.magicLabel})` : i.isCurrent && d === todayDay ? `${d} (hoje)` : d,
+          `${pctOf(doneBy(i.stages, `${prefix}-${String(d).padStart(2, "0")}`), total)}%`,
+          `${pctOf(doneBy(i.prevStages, `${mm(i.prevYear, i.prevMonth)}-${String(Math.min(d, prevLast)).padStart(2, "0")}`), prevTotal)}%`,
+        ])
+    ),
+    ""
+  );
+
+  const bucket = (from: number, to: number) => done.filter((s) => { const d = brDate(s.completed_at!); return d.startsWith(prefix) && +d.slice(8, 10) >= from && +d.slice(8, 10) <= to; }).length;
+  L.push("## Quando as etapas foram concluídas", "");
+  L.push(
+    ...rowsToMd(["Período", "Etapas"], [
+      ["Dias 1 a 10", bucket(1, 10)],
+      ["Dias 11 a 20", bucket(11, 20)],
+      [`Dias 21 a ${i.magicDay}`, bucket(21, i.magicDay)],
+      [`Depois do dia ${i.magicDay} (no mês)`, bucket(i.magicDay + 1, lastDay)],
+      ["Depois do fim do mês", later],
+    ]),
+    ""
+  );
+
+  const grid = buildStageGrid(i.cycles, i.stages, prefix);
+  const gsum = stageGridSummary(grid);
+  L.push("## Por etapa", "");
+  L.push(
+    ...rowsToMd(["Etapa", "Concluídas", "Total", "%", "Dia mais comum de conclusão", "Concluídas depois do prazo"], MAGIC2_STAGES.map((st) => {
+      const rows = i.stages.filter((s) => s.stage === st.key);
+      const n = rows.filter((s) => s.completed && s.completed_at && brDate(s.completed_at) <= cutoff).length;
+      const idx = STAGE_ORDER.indexOf(st.key);
+      const med = gsum.medianDay(idx);
+      return [st.label, n, i.cycles.length, `${pctOf(n, i.cycles.length)}%`, med === null ? "–" : med > lastDay ? `mês seguinte (dia ${med - lastDay})` : `dia ${med}`, gsum.lateByStage[idx].n];
+    })),
+    ""
+  );
+
+  L.push("## Cliente por etapa", "");
+  L.push(`Dia do mês em que cada cliente concluiu cada etapa, do mais adiantado ao mais atrasado. * = concluída depois do prazo do cliente. – = ainda não concluída. Datas como 5/11 são do mês seguinte.`, "");
+  L.push(
+    ...rowsToMd(["Cliente", ...STAGE_ORDER.map((k) => MAGIC2_STAGES.find((m) => m.key === k)!.label)], grid.map((r) => [r.name, ...r.cells.map((c) => (c.late ? `${c.label}*` : c.label))])),
+    ""
+  );
+  if (gsum.earliest.length > 0) L.push(`Clientes que mais adiantaram as etapas de produção: ${gsum.earliest.join(", ")}.`, "");
+  if (gsum.topLate.n > 0) {
+    const stLabel = MAGIC2_STAGES.find((m) => m.key === gsum.topLate.key)!.label;
+    L.push(`Etapa que mais passou do prazo: ${stLabel} (${gsum.topLate.n} clientes). ${gsum.withLate} clientes tiveram ao menos uma etapa fora do prazo.`, "");
+  }
+
+  L.push("## Por cliente", "");
+  const clientRows = i.cycles.map((c) => {
+    const st = i.stages.filter((s) => s.cycle_id === c.id);
+    const okSt = st.filter((s) => s.completed && s.completed_at && brDate(s.completed_at) <= cutoff);
+    const last = okSt.length ? okSt.map((s) => brDate(s.completed_at!)).sort().pop()! : null;
+    const missing = MAGIC2_STAGES.filter((m) => !okSt.some((s) => s.stage === m.key)).map((m) => m.label);
+    const finished = okSt.length === MAGIC2_STAGES.length;
+    const status = finished ? (last && last <= c.due_date ? "No prazo" : "Atrasado") : i.isCurrent ? "Em andamento" : "Não concluído";
+    return { name: clientName(c), n: okSt.length, last, missing, status, due: c.due_date };
+  }).sort((a, b) => a.n - b.n || a.name.localeCompare(b.name));
+  L.push(
+    ...rowsToMd(["Cliente", "Etapas", "%", "Prazo", "Última conclusão", "Situação", "Faltam"], clientRows.map((c) => [
+      c.name, `${c.n}/${MAGIC2_STAGES.length}`, `${pctOf(c.n, MAGIC2_STAGES.length)}%`, ddmm(c.due), c.last ? ddmm(c.last) : "–", c.status, c.missing.length ? c.missing.join(", ") : "–",
+    ])),
+    ""
+  );
+
+  // Só meses fechados e o mês escolhido: um mês recém-começado distorce a leitura do ano.
+  const shown = i.annual.filter((m) => m.clientes > 0 && (m.n < i.cycleMonth || m.n === i.month));
+  if (shown.length > 0) {
+    L.push("## Visão do ano", "");
+    L.push(...rowsToMd(["Mês", "Uau Score", "IDO", "Proatividade", `Etapas feitas até o dia ${i.magicDay}`, "Clientes"], shown.map((m) => [m.mes, m.score || "–", m.ido || "–", m.proatividade ? `${m.proatividade}%` : "–", `${m.antesMagic}%`, m.clientes])), "");
+    L.push("IDO = Índice de Disciplina Operacional: Proatividade (40%) + Prazo (30%) + Consistência (30%).", "");
+  }
+
+  return L.join("\n").trim() + "\n";
+}
 
 export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const now = new Date();
@@ -47,13 +268,27 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
   // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
   const cycleMY = getCycleMonthYear(now, magicDay);
-  const year = cycleMY.year;
-  const month = cycleMY.month;
-  // How many real days of the cycle's month have elapsed (0 while we've rolled over but that month hasn't started yet).
-  const currentDay = (now.getFullYear() === year && now.getMonth() + 1 === month) ? now.getDate() : 0;
+  const cycleYear = cycleMY.year;
+  const cycleMonth = cycleMY.month;
+
+  // The month shown in the monthly chart: the current cycle by default, or any earlier month picked by the user.
+  const [pickedMonth, setPickedMonth] = useState<number | null>(null);
+  const year = cycleYear;
+  const month = pickedMonth ?? cycleMonth;
+  const isCurrentCycle = month === cycleMonth;
+  // How many real days of the shown month have elapsed: the current cycle follows today's date,
+  // a past month counts as complete (0 while we've rolled over but that month hasn't started yet).
+  const currentDay = isCurrentCycle
+    ? ((now.getFullYear() === year && now.getMonth() + 1 === month) ? now.getDate() : 0)
+    : getDaysInMonth(new Date(year, month - 1, 1));
+  // The annual charts always run up to the current cycle, whatever month is picked.
+  const annualCutoff = cycleMonth;
 
   const [chartMode, setChartMode] = useState<"mensal" | "anual">("mensal");
   const [annualDialogOpen, setAnnualDialogOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [stageGridOpen, setStageGridOpen] = useState(false);
+  const [reportWithPrompt, setReportWithPrompt] = useState(true);
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -103,7 +338,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── Annual progress data (% completed before Magic Number per month) ──
   const annualProgressData = useMemo(() => {
     if (!yearData) return [];
-    const currentMonth = month;
+    const currentMonth = annualCutoff;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -161,7 +396,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── Proactivity Index per month ──
   const proactivityData = useMemo(() => {
     if (!yearData) return [];
-    const currentMonth = month;
+    const currentMonth = annualCutoff;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -215,7 +450,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   // ── IDO (Índice de Disciplina Operacional) per month ──
   const idoData = useMemo(() => {
     if (!yearData) return [];
-    const currentMonth = month;
+    const currentMonth = annualCutoff;
 
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -299,8 +534,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
-    return computeAnnualScores(yearData, year, month, magicDay);
-  }, [yearData, year, month, magicDay]);
+    return computeAnnualScores(yearData, year, annualCutoff, magicDay);
+  }, [yearData, year, annualCutoff, magicDay]);
 
   const annualStats = useMemo(() => {
     const active = annualScoreData.filter(m => m.hasData && m.score > 0);
@@ -409,6 +644,21 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
     return Math.round((prevPrazo + prevEficiencia + prevConsistencia) / 3);
   }, [prevStages, prevTotalStages, prevYear, prevMonth]);
 
+  // Numbers behind the "Progresso" line. A past month is judged as it stood on its last day:
+  // stages finished later (in the next month) don't count, so the text agrees with the chart.
+  const monthEndStr = format(new Date(year, month - 1, Math.max(currentDay, 1)), "yyyy-MM-dd");
+  const viewDone = isCurrentCycle
+    ? doneStages
+    : stages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= monthEndStr).length;
+  const prevCutDay = isCurrentCycle ? currentDay : Math.min(currentDay, getDaysInMonth(new Date(prevYear, prevMonth - 1, 1)));
+  const prevCutStr = format(new Date(prevYear, prevMonth - 1, Math.max(prevCutDay, 1)), "yyyy-MM-dd");
+  const prevSameDayDoneView = isCurrentCycle
+    ? prevStages.filter(s => {
+        if (!s.completed || !s.completed_at) return false;
+        return new Date(s.completed_at).getDate() <= currentDay;
+      }).length
+    : prevStages.filter(s => s.completed && s.completed_at && s.completed_at.slice(0, 10) <= prevCutStr).length;
+
   const uauDelta = uauScore - prevUauScore;
 
   const classification = getClassification(uauScore);
@@ -423,6 +673,51 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const prevMonthLabel = MONTH_NAMES[prevMonth - 1];
   const currentMonthLabel = MONTH_NAMES[month - 1];
+
+  const stageGrid = useMemo(() => buildStageGrid(cycles, stages, `${year}-${String(month).padStart(2, "0")}`), [cycles, stages, year, month]);
+  const stageGridInfo = useMemo(() => stageGridSummary(stageGrid), [stageGrid]);
+  const todayStr = new Date(now.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+  const reportText = useMemo(() => {
+    if (!reportOpen) return "";
+    return buildMagicReport({
+      year, month, prevYear, prevMonth, magicDay, magicLabel, isCurrent: isCurrentCycle, today: todayStr, cycleMonth,
+      cycles, stages, prevCycles, prevStages,
+      score: {
+        total: annualScoreData[month - 1]?.score ?? 0,
+        label: getClassification(annualScoreData[month - 1]?.score ?? 0).label,
+        prev: prevYear === year ? (annualScoreData[prevMonth - 1]?.score ?? null) : null,
+      },
+      annual: Array.from({ length: 12 }, (_, idx) => ({
+        n: idx + 1,
+        mes: MONTH_FULL_NAMES[idx],
+        score: annualScoreData[idx]?.hasData ? annualScoreData[idx].score : 0,
+        ido: idoData[idx]?.hasData ? idoData[idx].ido : 0,
+        proatividade: proactivityData[idx]?.hasData ? proactivityData[idx].proatividade : 0,
+        antesMagic: annualProgressData[idx]?.hasData ? annualProgressData[idx].percentual : 0,
+        clientes: annualProgressData[idx]?.hasData ? annualProgressData[idx].clientes : 0,
+      })),
+      withPrompt: reportWithPrompt,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportOpen, reportWithPrompt, year, month, cycleMonth, cycles, stages, prevCycles, prevStages, annualScoreData, idoData, proactivityData, annualProgressData]);
+
+  const copyReport = async () => {
+    try {
+      await navigator.clipboard.writeText(reportText);
+      toast.success("Relatório copiado. É só colar na sua IA.");
+    } catch {
+      toast.error("Não foi possível copiar. Use o botão Baixar ou selecione o texto.");
+    }
+  };
+
+  const downloadReport = () => {
+    const url = URL.createObjectURL(new Blob([reportText], { type: "text/markdown;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio-magic-number-${year}-${String(month).padStart(2, "0")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const CustomChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload?.length) {
@@ -458,6 +753,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                     <p className="mt-1 text-xs text-muted-foreground">Evolução das etapas ao longo do período</p>
                   </div>
                 </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   <button
                     onClick={() => setChartMode("mensal")}
@@ -481,6 +777,26 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                   >
                     Anual
                   </button>
+                </div>
+                {chartMode === "mensal" && (
+                  <Select value={String(month)} onValueChange={(v) => setPickedMonth(+v === cycleMonth ? null : +v)}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="Escolher o mês">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: cycleMonth }, (_, i) => cycleMonth - i).map((m) => (
+                        <SelectItem key={m} value={String(m)} className="text-xs">
+                          {MONTH_FULL_NAMES[m - 1]}{m === cycleMonth ? " (atual)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {chartMode === "mensal" && (
+                  <Button type="button" variant="outline" size="sm" className="h-8 w-[150px] text-xs" onClick={() => setReportOpen(true)}>
+                    <FileText className="mr-1.5 h-3.5 w-3.5" /> Gerar relatório
+                  </Button>
+                )}
                 </div>
               </div>
 
@@ -540,34 +856,33 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1.5">
                         <span className="inline-block w-4 h-0.5 rounded-full" style={{ background: brandGradientCss(90) }} />
-                        {currentMonthLabel} (atual)
+                        {currentMonthLabel}{isCurrentCycle ? " (atual)" : ""}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span className="inline-block w-4 h-0.5 rounded-full border-t border-dashed" style={{ borderColor: "hsl(var(--muted-foreground))" }} />
                         {prevMonthLabel} (anterior)
                       </span>
+                      <Button type="button" variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={() => setStageGridOpen(true)}>
+                        <Grid3x3 className="mr-1.5 h-3.5 w-3.5" /> Cliente por etapa
+                      </Button>
                     </div>
 
                     {(() => {
-                      const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                      const currentPct = totalStages > 0 ? Math.round((viewDone / totalStages) * 100) : 0;
                       const prevDoneStages = prevStages.filter(s => s.completed).length;
                       const prevPct = prevTotalStages > 0 ? Math.round((prevDoneStages / prevTotalStages) * 100) : 0;
 
-                      const prevSameDayDone = prevStages.filter(s => {
-                        if (!s.completed || !s.completed_at) return false;
-                        const d = new Date(s.completed_at).getDate();
-                        return d <= currentDay;
-                      }).length;
+                      const prevSameDayDone = prevSameDayDoneView;
                       const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
                       const delta = currentPct - prevSameDayPct;
 
                       return (
                         <div className="flex items-center gap-4 text-xs flex-wrap">
                           <span className="text-muted-foreground">
-                            Progresso atual: <strong className="text-foreground">{currentPct}%</strong>
+                            {isCurrentCycle ? "Progresso atual" : "Fechou o mês com"}: <strong className="text-foreground">{currentPct}%</strong>
                           </span>
                           <span className="text-muted-foreground">
-                            {prevMonthLabel} dia {currentDay}: <strong className="text-foreground">{prevSameDayPct}%</strong>
+                            {prevMonthLabel} dia {prevCutDay}: <strong className="text-foreground">{prevSameDayPct}%</strong>
                           </span>
                           <span className={cn(
                             "font-bold tabular-nums",
@@ -575,7 +890,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                           )}>
                             {delta > 0 ? "+" : ""}{delta}pp {delta > 0 ? "↑" : delta < 0 ? "↓" : "="}
                           </span>
-                          <span className="ml-auto text-muted-foreground">{doneStages}/{totalStages} etapas · {cycles.length} clientes</span>
+                          <span className="ml-auto text-muted-foreground">{viewDone}/{totalStages} etapas · {cycles.length} clientes</span>
                         </div>
                       );
                     })()}
@@ -583,12 +898,9 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
                    {/* Insight line */}
                    {(() => {
-                     const currentPct = totalStages > 0 ? Math.round((doneStages / totalStages) * 100) : 0;
+                     const currentPct = totalStages > 0 ? Math.round((viewDone / totalStages) * 100) : 0;
                      const prevDoneStages = prevStages.filter(s => s.completed).length;
-                     const prevSameDayDone = prevStages.filter(s => {
-                       if (!s.completed || !s.completed_at) return false;
-                       return new Date(s.completed_at).getDate() <= currentDay;
-                     }).length;
+                     const prevSameDayDone = prevSameDayDoneView;
                      const prevSameDayPct = prevTotalStages > 0 ? Math.round((prevSameDayDone / prevTotalStages) * 100) : 0;
                      const delta = currentPct - prevSameDayPct;
 
@@ -598,8 +910,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
                            <Lightbulb className="h-3.5 w-3.5 text-sidebar shrink-0" />
                            <span className="text-muted-foreground">
                              {delta > 0
-                               ? <>Operação está <strong className="text-success">{delta}pp à frente</strong> do mesmo dia no mês anterior</>
-                               : <>Operação está <strong className="text-destructive">{Math.abs(delta)}pp atrás</strong> do mesmo dia no mês anterior</>
+                               ? <>Operação {isCurrentCycle ? "está" : "ficou"} <strong className="text-success">{delta}pp à frente</strong> {isCurrentCycle ? "do mesmo dia no mês anterior" : `de ${prevMonthLabel}`}</>
+                               : <>Operação {isCurrentCycle ? "está" : "ficou"} <strong className="text-destructive">{Math.abs(delta)}pp atrás</strong> {isCurrentCycle ? "do mesmo dia no mês anterior" : `de ${prevMonthLabel}`}</>
                              }
                            </span>
                          </div>
@@ -773,6 +1085,78 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
               )}
             </CardContent>
           </Card>
+        <Dialog open={stageGridOpen} onOpenChange={setStageGridOpen}>
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Cliente por etapa: {MONTH_FULL_NAMES[month - 1].toLowerCase()}</DialogTitle>
+              <DialogDescription>Dia em que cada etapa foi concluída, do cliente mais adiantado ao mais atrasado.</DialogDescription>
+            </DialogHeader>
+            {stageGrid.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhum cliente ativo neste mês.</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500/30" />Até o dia {EARLY_DAY}</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-muted" />Depois do dia {EARLY_DAY}, no prazo</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-red-500/30" />Depois do prazo</span>
+                  <span className="flex items-center gap-1.5"><span className="font-medium">–</span>Ainda não concluída</span>
+                </div>
+                <div className="grid grid-cols-[minmax(84px,120px)_repeat(7,minmax(0,1fr))] gap-1 text-xs">
+                  <span />
+                  {STAGE_ORDER.map((k) => (
+                    <span key={k} className="text-center text-[11px] text-muted-foreground" title={MAGIC2_STAGES.find((m) => m.key === k)?.label}>{STAGE_SHORT[k]}</span>
+                  ))}
+                  {stageGrid.map((r) => (
+                    <div key={r.name} className="contents">
+                      <span className="truncate self-center" title={r.name}>{r.name}</span>
+                      {r.cells.map((c, idx) => (
+                        <span
+                          key={idx}
+                          className={cn(
+                            "rounded-md py-1 text-center tabular-nums",
+                            !c.done ? "text-muted-foreground/50" : c.late ? "bg-red-500/15 text-red-600 dark:text-red-400" : c.early ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted/60 text-muted-foreground"
+                          )}
+                        >
+                          {c.label}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {stageGridInfo.earliest.length > 0 && <p>Mais adiantados nas etapas de produção: <strong className="text-foreground">{stageGridInfo.earliest.join(", ")}</strong>.</p>}
+                  {stageGridInfo.topLate.n > 0 && (
+                    <p>
+                      Etapa que mais passou do prazo: <strong className="text-foreground">{MAGIC2_STAGES.find((m) => m.key === stageGridInfo.topLate.key)?.label}</strong> ({stageGridInfo.topLate.n} clientes). {stageGridInfo.withLate} clientes tiveram ao menos uma etapa fora do prazo.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Relatório de {MONTH_FULL_NAMES[month - 1].toLowerCase()}</DialogTitle>
+              <DialogDescription>Texto pronto com os dados do {magicLabel} do mês escolhido. Copie e cole na sua IA para ela montar a análise e a pauta.</DialogDescription>
+            </DialogHeader>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={reportWithPrompt} onCheckedChange={(v) => setReportWithPrompt(v === true)} />
+              Incluir instruções para a IA
+            </label>
+            <textarea
+              readOnly
+              value={reportText}
+              onFocus={(e) => e.currentTarget.select()}
+              className="h-[48vh] w-full resize-none rounded-lg border bg-muted/30 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="outline" onClick={downloadReport}><Download className="mr-1.5 h-4 w-4" /> Baixar (.md)</Button>
+              <Button type="button" onClick={() => void copyReport()}><Copy className="mr-1.5 h-4 w-4" /> Copiar para a IA</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <AnnualScoreAnalysis open={annualDialogOpen} onOpenChange={setAnnualDialogOpen} year={year} />
       </div>
     </TooltipProvider>
