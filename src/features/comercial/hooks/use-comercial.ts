@@ -184,6 +184,25 @@ export function useCreateLead() {
   });
 }
 
+/** Importação em massa: cria todos os leads numa só inserção (e a primeira ação de cada um, também numa só), igual ao "Novo lead". */
+export function useImportLeads() {
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ leads, firstAction }: { leads: NewLeadInput[]; firstAction: { type: string; title: string; due_date: string } | null }) => {
+      const { data, error } = await sb.from("comercial_leads").insert(leads).select("id, owner_id");
+      if (error) throw error;
+      const created = (data ?? []) as { id: string; owner_id: string | null }[];
+      if (firstAction && created.length > 0) {
+        const { error: e2 } = await sb.from("comercial_activities").insert(created.map((l) => ({ lead_id: l.id, owner_id: l.owner_id, ...firstAction })));
+        if (e2) throw e2;
+      }
+      return created.length;
+    },
+    onSuccess: () => inv("leads", "activities", "contacted"),
+    onError: fail,
+  });
+}
+
 export function useUpdateLead() {
   const inv = useInvalidate();
   return useMutation({

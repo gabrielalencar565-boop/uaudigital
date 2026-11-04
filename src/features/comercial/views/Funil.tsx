@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { Settings2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useComercial } from "../ComercialContext";
 import { brl, isStale, leadStatus, nextActivity, staleDays, type Lead, type Stage } from "../lib/rules";
 import { DueBadge, Empty, OwnerAvatar, PageHead } from "../components/ui-bits";
 import { filterLeads, LeadFilterBar, useLeadFilters } from "../components/LeadFilters";
+import { ImportarContatosDialog } from "../components/ImportarContatosDialog";
 
 function LeadCard({ lead, stage, dragging, onDragStart, onDragEnd }: { lead: Lead; stage: Stage; dragging: boolean; onDragStart: () => void; onDragEnd: () => void }) {
   const { acts, today, memberOf, openLead } = useComercial();
@@ -28,6 +29,9 @@ function LeadCard({ lead, stage, dragging, onDragStart, onDragEnd }: { lead: Lea
         <OwnerAvatar member={memberOf(lead.owner_id)} />
       </span>
       {lead.company && <span className="truncate text-xs text-muted-foreground">{lead.company}</span>}
+      {(lead.segment || lead.instagram) && (
+        <span className="truncate text-[11px] text-muted-foreground">{[lead.segment, lead.instagram].filter(Boolean).join(" · ")}</span>
+      )}
       <span className="flex items-center justify-between gap-2 text-xs">
         <span className="font-medium tabular-nums">{lead.value ? `${brl(lead.value)}/mês` : <span className="text-muted-foreground">sem valor</span>}</span>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{lead.source}</span>
@@ -49,10 +53,13 @@ export function Funil() {
   const { f, set } = useLeadFilters();
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const items = useMemo(() => filterLeads(leads, f, stages, acts, today), [leads, f, stages, acts, today]);
   const count = (k: "late" | "today" | "none") => items.filter((l) => leadStatus(stages.find((s) => s.id === l.stage_id), l.id, acts, today) === k).length;
   const sorted = [...stages].sort((a, b) => a.position - b.position);
+  // A importação em massa entra na primeira coluna do funil ("Entrar em contato")
+  const firstStage = sorted.find((s) => s.type === "open");
 
   const drop = (stageId: string) => {
     const lead = leads.find((l) => l.id === dragId);
@@ -103,6 +110,11 @@ export function Funil() {
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums">{L.length}</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground">{brl(total)}/mês{s.type === "open" ? ` · ${s.probability}%` : ""}</div>
+                {s.id === firstStage?.id && (
+                  <Button variant="outline" size="sm" className="mt-2 h-7 w-full gap-1.5 text-xs" onClick={() => setImportOpen(true)}>
+                    <Upload className="h-3.5 w-3.5" /> Importar contatos
+                  </Button>
+                )}
               </div>
               <div className="flex min-h-[80px] flex-col gap-2">
                 {L.length === 0 ? <Empty>Arraste um card pra cá</Empty> : L.map((l) => (
@@ -113,6 +125,7 @@ export function Funil() {
           );
         })}
       </div>
+      {firstStage && <ImportarContatosDialog open={importOpen} onClose={() => setImportOpen(false)} stage={firstStage} />}
     </div>
   );
 }
