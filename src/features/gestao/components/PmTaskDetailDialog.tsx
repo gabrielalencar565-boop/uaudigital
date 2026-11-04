@@ -822,7 +822,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   // Correction mode for completed snapshots
   const { user: sessionUser } = useSession();
   const canCorrect = usePermission("action_manage_tasks");
-  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !task.is_extra_demand;
+  // Vídeo/Design de cliente Freelancer não passa por Revisão: concluir deixa a tarefa concluída na própria etapa, igual à demanda extra
+  const skipsReview = !task.is_extra_demand && !task.parent_task_id && !task.periodic_stage_key &&
+    (task.stage_current === "design" || task.stage_current === "edicao_videos") && /freelancer/i.test(clientsMap[task.client_id] ?? "");
+  const extraLike = !!task.is_extra_demand || skipsReview;
+  const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !extraLike;
   const [correctionMode, setCorrectionMode] = useState(false);
 
   // Late-task justification dialog
@@ -862,16 +866,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   // Extra demands go straight to entrega after revisão
   const rawNextStages = getNextStages(flowConfig, task.stage_current);
   // What an extra demand does when concluded here is set in Configurações → Agência → Fluxo de etapas (lib/extra-rules).
-  const extraOut = task.is_extra_demand ? extraOutcome(extraRules, task.stage_current) : null;
+  const extraOut = task.is_extra_demand ? extraOutcome(extraRules, task.stage_current) : skipsReview ? "complete" : null;
   const extraFlows = extraOut === "flow";
-  const nextStages = task.is_extra_demand && !extraFlows
+  const nextStages = extraLike && !extraFlows
     ? []
     : task.stage_current === "planejamento"
     ? ["revisao"]
     : rawNextStages;
   const isDone = task.parent_task_id
     ? task.status_global === "concluido"
-    : task.is_extra_demand && !extraFlows
+    : extraLike && !extraFlows
     ? task.status_global === "concluido"
     : task.stage_current === "entrega";
 
@@ -1657,7 +1661,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
 
     // ═══ EXTRA DEMAND ═══
-    if (task.is_extra_demand) {
+    if (extraLike) {
       // Special case: planejamento extra demand with video/design children →
       // distribute into Vídeo + Design (same split logic as revisão→split),
       // skipping the revisão step.
@@ -2886,7 +2890,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
                 // Demanda extra concluída na própria etapa (Captação, Design...) também só volta a "pendente": a etapa continua a mesma.
                 // Sem isso ela caía no ramo abaixo, pensado para quem foi para Entregue, e era jogada para Agendamento.
-                if (isCompletedSnapshot || (task.is_extra_demand && task.stage_current !== "entrega")) {
+                if (isCompletedSnapshot || (extraLike && task.stage_current !== "entrega")) {
                   // Optimistic: instantly mark as backlog in cache
                   const markBacklog = (old: PmTask[] | undefined) =>
                     old?.map(t => allIds.includes(t.id) ? { ...t, status_global: "backlog" as any, ...(task.stage_current === "agendamento" ? { stage_current: "agendamento" as any } : {}) } : t);
