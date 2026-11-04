@@ -36,6 +36,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Toolti
 import { HealthScoreTab } from "./HealthScoreTab";
 import { MonthlyAnalysisSection } from "./MonthlyAnalysisSection";
 import { ChurnRiskModule } from "./ChurnRiskModule";
+import { ReuniaoOperacao } from "./ReuniaoOperacao";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 import { stageLabel } from "@/features/gestao/pm-constants";
 
@@ -1070,6 +1071,13 @@ export function VisaoGeralTab() {
           <MonthlyAnalysisSection className="min-h-[320px] h-[420px] resize-y overflow-auto" />
         </div>
       </FadeUp>
+
+      {/* Reunião da operação: dados por pessoa, só para admin */}
+      {isAdmin && (
+        <FadeUp delay={0.6}>
+          <ReuniaoOperacao />
+        </FadeUp>
+      )}
 
       {/* Health Score access */}
       <FadeUp delay={0.65}>

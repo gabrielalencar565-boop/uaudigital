@@ -41,10 +41,12 @@ interface Props {
   sectionTitle?: string;
   /** When set, shows review controls inline per subtask */
   reviewMode?: "revisao" | "alteracao" | null;
+  /** Tarefa de um tipo só (REV/VDO, REV/DSG, ALT/...): mostra só o bloco desse tipo, sem o outro vazio. */
+  onlyType?: "video" | "design" | null;
   readOnly?: boolean;
 }
 
-export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento", reviewMode, readOnly }: Props) {
+export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members, onSelectSubtask, activeSubtaskId, sectionTitle = "Planejamento", reviewMode, onlyType, readOnly }: Props) {
   const [showTrash, setShowTrash] = useState(false);
   const updateTask = useUpdatePmTask();
   const globalTagsQ = usePmTags();
@@ -83,8 +85,9 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
   const { user } = useSession();
   const canEditNote = reviewMode === "alteracao" && !readOnly && !!user?.id && (parentTask as any).alteration_requested_by === user.id;
 
-  const videoTasks = childTasks.filter(c => c.post_type === "video");
-  const designTasks = childTasks.filter(c => c.post_type === "design");
+  // Tarefa de um tipo só: toda subtarefa dela é desse tipo, mesmo as antigas sem tipo gravado (senão somem da tela)
+  const videoTasks = childTasks.filter(c => c.post_type === "video" || (onlyType === "video" && !c.post_type));
+  const designTasks = childTasks.filter(c => c.post_type === "design" || (onlyType === "design" && !c.post_type));
 
   // Always show both sections (Vídeo + Design) so o usuário sempre possa adicionar subtarefas mesmo quando vazio
   const alwaysShowBothSections = true;
@@ -236,7 +239,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         </AlertDialogContent>
       </AlertDialog>
 
-      {(videoTasks.length > 0 || alwaysShowBothSections) && (
+      {onlyType !== "design" && (videoTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="video"
           icon={<Clapperboard className="h-4 w-4" />}
@@ -261,7 +264,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
         />
       )}
 
-      {(designTasks.length > 0 || alwaysShowBothSections) && (
+      {onlyType !== "video" && (designTasks.length > 0 || alwaysShowBothSections) && (
         <PlanningSection
           type="design"
           icon={<Palette className="h-4 w-4" />}
