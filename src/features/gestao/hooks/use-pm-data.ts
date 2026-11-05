@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { PmTask, PmComment, PmAttachment, PmProject } from "../pm-types";
 import { PM_TEMPLATE_SUBTASKS } from "../pm-constants";
+import { newStampsFor } from "../lib/subtask-order";
 import { syncTaskList, fetchAllChildTasks, isLiveChild, isLiveRoot, byCreatedAsc, byCreatedDesc } from "./pm-task-sync";
 
 const sb = supabase as any;
@@ -112,6 +114,40 @@ export function usePmChildTasks(parentId: string | null) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+/** Reordena as subtarefas de uma tarefa (lista já na nova ordem): redistribui os mesmos horários de criação entre elas, que é a ordem de exibição. */
+export function useReorderPmSubtasks(parentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordered: PmTask[]) => {
+      const stamps = newStampsFor(ordered);
+      const changed = ordered
+        .map((t, i) => ({ id: t.id, ms: stamps[i], same: stamps[i] === Date.parse(t.created_at) }))
+        .filter((x) => !x.same);
+      const results = await Promise.all(changed.map((x) => sb.from("pm_tasks").update({ created_at: new Date(x.ms).toISOString() }).eq("id", x.id)));
+      const failed = results.find((r: any) => r?.error);
+      if (failed) throw (failed as any).error;
+    },
+    onMutate: async (ordered: PmTask[]) => {
+      const key = ["pm_child_tasks", parentId];
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<PmTask[]>(key);
+      const stamps = newStampsFor(ordered);
+      const stampById = new Map(ordered.map((t, i) => [t.id, new Date(stamps[i]).toISOString()]));
+      qc.setQueryData<PmTask[]>(key, (old) =>
+        (old ?? []).map((t) => (stampById.has(t.id) ? { ...t, created_at: stampById.get(t.id)! } : t)).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)),
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["pm_child_tasks", parentId], ctx.previous);
+      toast.error("Não foi possível mudar a ordem das subtarefas");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["pm_child_tasks", parentId] });
     },
   });
 }
