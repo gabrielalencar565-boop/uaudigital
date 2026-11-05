@@ -28,7 +28,7 @@ export function useSetStageCompletion() {
 
 export function useSetMonthlyStageCompletion() {
   const qc = useQueryClient();
-  const magicDay = useMagicNumberConfig().day;
+  const dayFor = useMagicNumberConfig().dayFor;
   return useMutation({
     onMutate: async (input) => {
       // Otimista: atualiza a célula específica (cliente + mês + etapa) imediatamente.
@@ -82,7 +82,7 @@ export function useSetMonthlyStageCompletion() {
 
       let cycleId = existingCycle?.id as string | undefined;
       if (!cycleId) {
-        const due_date = `${input.year}-${String(input.month).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`;
+        const due_date = `${input.year}-${String(input.month).padStart(2, "0")}-${String(dayFor(input.year, input.month)).padStart(2, "0")}`;
         const { data: newCycle, error: insErr } = await supabase
           .from("client_cycles")
           .insert({ client_id: input.clientId, year: input.year, month: input.month, due_date })

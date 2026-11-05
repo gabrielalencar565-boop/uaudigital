@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAllClients, useCreateClient, useDeleteClient, useTeamMembers, useMagicNumberConfig, type ClientRow } from "@/features/data/queries";
+import { makeDiaDFor, type DiaDOverride } from "@/features/data/dia-d";
 import { useSquads } from "@/features/projetos/hooks/use-squads";
 import { SquadCard } from "@/features/clientes/components/ClienteConfiguracoes";
 import { ContractMonthsSelector } from "@/features/admin/components/ContractMonthsSelector";
@@ -165,11 +166,14 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
     .rpc("magic2_ensure_client_link", { _agenda_client_id: agendaClientId });
   if (linkErr) throw linkErr;
   if (!magic2ClientId) return;
-  // magic2_cycles.due_date is RLS-constrained to make_date(year, month, current_magic_number_day()) — must match exactly.
+  // magic2_cycles.due_date is RLS-constrained to make_date(year, month, current_dia_d(year, month)) — the month's Dia D (default or exception), must match exactly.
   const { data: agencyId } = await (supabase as any).rpc("current_agency_id");
   const settingsQuery: any = supabase.from("app_settings").select("magic_number_day");
   const { data: settings } = await (agencyId ? settingsQuery.eq("agency_id", agencyId) : settingsQuery.eq("id", 1)).maybeSingle();
   const magicDay = (settings as any)?.magic_number_day ?? 27;
+  // meses com Dia D diferente do padrão (exceções por ciclo)
+  const { data: overrideRows } = await (supabase as any).from("dia_d_overrides").select("year, month, day, reason");
+  const dayFor = makeDiaDFor(magicDay, (overrideRows ?? []) as DiaDOverride[]);
   const [y, m] = startISO.split("-").map(Number);
   const rows: any[] = [];
   for (let i = 0; i < months; i++) {
@@ -180,7 +184,7 @@ async function syncContractMonths(agendaClientId: string, startISO: string | nul
       client_id: magic2ClientId,
       year: yy,
       month: mm,
-      due_date: `${yy}-${String(mm).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`,
+      due_date: `${yy}-${String(mm).padStart(2, "0")}-${String(dayFor(yy, mm)).padStart(2, "0")}`,
       is_active: true,
     });
   }
@@ -227,7 +231,7 @@ export function AdminClientesPanel({
 } = {}) {
   const clientsQ = useAllClients();
   const createClient = useCreateClient();
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
 
   const deleteClient = useDeleteClient();
   const squadsQ = useSquads();
@@ -367,7 +371,7 @@ export function AdminClientesPanel({
   const handleCreate = async (values: ClientFormValues) => {
     try {
       const now = new Date();
-      const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`;
+      const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(dayFor(now.getFullYear(), now.getMonth() + 1)).padStart(2, "0")}`;
       const created: any = await createClient.mutateAsync({
         name: values.name,
         magic_due_date: dueDate,

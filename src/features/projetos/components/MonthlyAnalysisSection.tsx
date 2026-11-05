@@ -265,9 +265,9 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const areaIds = useBrandGradientIds();
   const barIds = useBrandGradientIds();
   const lineIds = useBrandGradientIds();
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
   // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
-  const cycleMY = getCycleMonthYear(now, magicDay);
+  const cycleMY = getCycleMonthYear(now, dayFor);
   const cycleYear = cycleMY.year;
   const cycleMonth = cycleMY.month;
 
@@ -275,6 +275,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
   const [pickedMonth, setPickedMonth] = useState<number | null>(null);
   const year = cycleYear;
   const month = pickedMonth ?? cycleMonth;
+  // Dia D do mês mostrado (pode ser uma exceção, ex.: dezembro fechando antes)
+  const magicDay = dayFor(year, month);
   const isCurrentCycle = month === cycleMonth;
   // How many real days of the shown month have elapsed: the current cycle follows today's date,
   // a past month counts as complete (0 while we've rolled over but that month hasn't started yet).
@@ -292,6 +294,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
+  const prevMagicDay = dayFor(prevYear, prevMonth);
 
   const { data: magic2Data } = useMagic2Month(year, month);
   const { data: prevMagic2Data } = useMagic2Month(prevYear, prevMonth);
@@ -333,7 +336,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
       return { dia, percentual: pct, anterior: prevPct };
     });
-  }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth]);
+  }, [stages, prevStages, now, totalStages, prevTotalStages, currentDay, year, month, prevYear, prevMonth, dayFor]);
 
   // ── Annual progress data (% completed before Magic Number per month) ──
   const annualProgressData = useMemo(() => {
@@ -350,7 +353,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       const totalStagesMonth = totalClients * MAGIC2_STAGES.length;
       const completedStages = monthStages.filter((s: any) => s.completed).length;
       const beforeMagic = monthStages.filter((s: any) =>
-        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= magicDay
+        s.completed && s.completed_at && getBrazilDay(s.completed_at) <= dayFor(year, m)
       ).length;
       const pct = totalStagesMonth > 0 ? Math.round((beforeMagic / totalStagesMonth) * 100) : 0;
 
@@ -360,7 +363,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         .map((s: any) => getBrazilDay(s.completed_at!));
       const lastDay = completedDates.length > 0 ? Math.max(...completedDates) : null;
       const allDone = completedStages === totalStagesMonth && totalStagesMonth > 0;
-      const magicDiff = allDone && lastDay !== null ? magicDay - lastDay : null;
+      const magicDiff = allDone && lastDay !== null ? dayFor(year, m) - lastDay : null;
 
       return {
         mes: MONTH_SHORT[i],
@@ -373,7 +376,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         hasData: m <= currentMonth && totalClients > 0,
       };
     });
-  }, [yearData, year]);
+  }, [yearData, year, dayFor]);
 
   const bestProactiveMonth = useMemo(() => {
     const active = annualProgressData.filter(m => m.hasData && m.percentual > 0);
@@ -419,7 +422,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
-        else if (day <= magicDay) weightedSum += 0.3;
+        else if (day <= dayFor(year, m)) weightedSum += 0.3;
       }
 
       const before20 = completedStages.filter((s: any) => {
@@ -439,7 +442,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         hasData: true,
       };
     });
-  }, [yearData, year]);
+  }, [yearData, year, dayFor]);
 
   const bestProactivityMonth = useMemo(() => {
     const active = proactivityData.filter(m => m.hasData && m.proatividade > 0);
@@ -472,7 +475,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         const day = s.completed_at ? getBrazilDay(s.completed_at) : 28;
         if (day <= 10) weightedSum += 1.0;
         else if (day <= 20) weightedSum += 0.6;
-        else if (day <= magicDay) weightedSum += 0.3;
+        else if (day <= dayFor(year, m)) weightedSum += 0.3;
       }
       const proatividade = Math.round((weightedSum / completedStages.length) * 100);
 
@@ -484,8 +487,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       const allDone = completedStages.length === totalStagesMonth;
       let prazoScore: number;
       if (allDone) {
-        if (lastDay <= magicDay - 3) prazoScore = 100;
-        else if (lastDay <= magicDay) prazoScore = 75;
+        if (lastDay <= dayFor(year, m) - 3) prazoScore = 100;
+        else if (lastDay <= dayFor(year, m)) prazoScore = 75;
         else prazoScore = 40;
       } else {
         prazoScore = 30;
@@ -521,7 +524,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         hasData: true,
       };
     });
-  }, [yearData, year]);
+  }, [yearData, year, dayFor]);
 
   const idoStats = useMemo(() => {
     const active = idoData.filter(m => m.hasData && m.ido > 0);
@@ -534,8 +537,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
   // ── Annual score data (Uau Score per month) ──
   const annualScoreData = useMemo(() => {
-    return computeAnnualScores(yearData, year, annualCutoff, magicDay);
-  }, [yearData, year, annualCutoff, magicDay]);
+    return computeAnnualScores(yearData, year, annualCutoff, dayFor);
+  }, [yearData, year, annualCutoff, dayFor]);
 
   const annualStats = useMemo(() => {
     const active = annualScoreData.filter(m => m.hasData && m.score > 0);
@@ -597,7 +600,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
     const score = Math.round((prazoScore + eficienciaScore + consistenciaScore) / 3);
     return { prazo: prazoScore, eficiencia: eficienciaScore, consistencia: consistenciaScore, uauScore: score };
-  }, [stages, currentDay, doneStages, totalStages]);
+  }, [stages, currentDay, doneStages, totalStages, dayFor]);
 
   // ── Previous month Uau Score ──
   const prevUauScore = useMemo(() => {
@@ -611,8 +614,8 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
 
     let prevPrazo: number;
     if (prevDone === prevTotalStages && prevTotalStages > 0) {
-      if (prevLastDay <= magicDay - 2) prevPrazo = 100;
-      else if (prevLastDay <= magicDay) prevPrazo = 85;
+      if (prevLastDay <= prevMagicDay - 2) prevPrazo = 100;
+      else if (prevLastDay <= prevMagicDay) prevPrazo = 85;
       else if (prevLastDay <= 30) prevPrazo = 60;
       else prevPrazo = 40;
     } else {
@@ -636,13 +639,13 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
         prevConsistencia = prevDone <= 3 ? 70 : 30;
       }
       const prevTotalDaysInMonth = getDaysInMonth(new Date(prevYear, prevMonth - 1, 1));
-      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, magicDay);
+      const spreadRatio = counts.length / Math.min(prevTotalDaysInMonth, prevMagicDay);
       prevConsistencia = Math.round(prevConsistencia * 0.7 + spreadRatio * 100 * 0.3);
       prevConsistencia = Math.max(0, Math.min(100, prevConsistencia));
     }
 
     return Math.round((prevPrazo + prevEficiencia + prevConsistencia) / 3);
-  }, [prevStages, prevTotalStages, prevYear, prevMonth]);
+  }, [prevStages, prevTotalStages, prevYear, prevMonth, dayFor]);
 
   // Numbers behind the "Progresso" line. A past month is judged as it stood on its last day:
   // stages finished later (in the next month) don't count, so the text agrees with the chart.
@@ -699,7 +702,7 @@ export function MonthlyAnalysisSection({ className }: { className?: string }) {
       withPrompt: reportWithPrompt,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportOpen, reportWithPrompt, year, month, cycleMonth, cycles, stages, prevCycles, prevStages, annualScoreData, idoData, proactivityData, annualProgressData]);
+  }, [reportOpen, reportWithPrompt, year, month, cycleMonth, cycles, stages, prevCycles, prevStages, annualScoreData, idoData, proactivityData, annualProgressData, dayFor]);
 
   const copyReport = async () => {
     try {

@@ -1,5 +1,6 @@
 import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
 import { getDaysInMonth } from "date-fns";
+import { resolveDiaD, type DiaDInput } from "@/features/data/dia-d";
 
 /** Extract the day-of-month in Brazil timezone (UTC-3) from an ISO timestamp */
 export function getBrazilDay(isoStr: string): number {
@@ -32,7 +33,9 @@ export function barColor(score: number) {
 
 export const MONTH_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function computeMonthScore(monthStages: any[], totalClients: number, monthNum: number, year: number, magicDay: number = 27) {
+// magicDayInput: o dia padrão (número) ou o Dia D de cada mês (dayFor), para meses com exceção.
+export function computeMonthScore(monthStages: any[], totalClients: number, monthNum: number, year: number, magicDayInput: DiaDInput = 27) {
+  const magicDay = resolveDiaD(magicDayInput, year, monthNum);
   const totalStages = totalClients * MAGIC2_STAGES.length;
   const doneStages = monthStages.filter(s => s.completed).length;
   const daysInMonth = getDaysInMonth(new Date(year, monthNum - 1, 1));
@@ -95,7 +98,7 @@ export type MonthScoreData = {
   tone?: "success" | "primary" | "warning" | "danger";
 };
 
-export function computeAnnualScores(yearData: any, year: number, currentMonth: number, magicDay: number = 27): MonthScoreData[] {
+export function computeAnnualScores(yearData: any, year: number, currentMonth: number, magicDay: DiaDInput = 27): MonthScoreData[] {
   if (!yearData) return [];
   return Array.from({ length: 12 }, (_, i) => {
     const m = i + 1;

@@ -114,7 +114,9 @@ function StageRingWidget({ label, pct, valueLabel, className, fullscreen }: { la
 export function Magic2Dashboard({ dashboard, year, month, fullscreen, showCloseControl }: { dashboard: Dashboard; year: number; month: number; fullscreen?: boolean; showCloseControl?: boolean }) {
   const isMobile = useIsMobile();
   const now = useNow();
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
+  // Dia D do ciclo mostrado (pode ser uma exceção, ex.: dezembro fechando antes)
+  const magicDay = dayFor(year, month);
   const dueDate = new Date(year, month - 1, magicDay);
   const deadlineLabel = `${String(magicDay).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
   const clients100Pct = dashboard.totalClients

@@ -40,19 +40,19 @@ function timeAgo(ts: string) {
 // one row per client, plus how many publications are still waiting for an answer. Click a row to open it in the Cronograma.
 export function ClientCronogramaWidget() {
   const { user } = useSession();
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
   const { stageAssignees } = useDefaultFlowWithDates();
-  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), magicDay));
+  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), dayFor));
   const [scope, setScope] = useState<"mine" | "all">("mine");
   const [expanded, setExpanded] = useState(false);
 
-  const start = cycleStart(cursor, magicDay);
-  const end = cycleEnd(cursor, magicDay);
+  const start = cycleStart(cursor, dayFor);
+  const end = cycleEnd(cursor, dayFor);
   const cycleKey = format(start, "yyyy-MM-dd");
   const endKey = format(end, "yyyy-MM-dd");
   const monthRaw = format(end, "MMMM", { locale: ptBR });
   const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1);
-  const isCurrent = format(anchorForDate(new Date(), magicDay), "yyyy-MM") === format(cursor, "yyyy-MM");
+  const isCurrent = format(anchorForDate(new Date(), dayFor), "yyyy-MM") === format(cursor, "yyyy-MM");
 
   const pubsQ = useQuery({
     queryKey: ["client_cronograma_widget", cycleKey],
@@ -162,7 +162,7 @@ export function ClientCronogramaWidget() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
           <MonthYearSelect value={cursor} onChange={(d) => { setCursor(d); setExpanded(false); }} />
           {!isCurrent && (
-            <button type="button" onClick={() => { setCursor(anchorForDate(new Date(), magicDay)); setExpanded(false); }} className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
+            <button type="button" onClick={() => { setCursor(anchorForDate(new Date(), dayFor)); setExpanded(false); }} className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
               Mês atual
             </button>
           )}

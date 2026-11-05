@@ -116,13 +116,15 @@ export function VisaoGeralTab() {
   const [editIcon, setEditIcon] = useState("shield");
 
   const teamQ = useTeamMembers();
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
 
   const now = new Date();
   const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
   // Magic Number cycle: after the configured D-day it rolls over to next month, same rule as Magic2Panel.
-  const cycleMY = getCycleMonthYear(now, magicDay);
+  const cycleMY = getCycleMonthYear(now, dayFor);
+  // Dia D do ciclo atual (pode ser uma exceção, ex.: dezembro fechando antes)
+  const magicDay = dayFor(cycleMY.year, cycleMY.month);
   const magicDeadline = new Date(cycleMY.year, cycleMY.month - 1, magicDay);
   const magicDaysLeft = Math.max(0, differenceInDays(magicDeadline, now));
 

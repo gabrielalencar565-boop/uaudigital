@@ -26,12 +26,12 @@ export function AnnualScoreAnalysis({ open, onOpenChange, year }: AnnualScoreAna
   const { data: yearData } = useMagic2Year(year);
   const barIds = useBrandGradientIds();
   const lineIds = useBrandGradientIds();
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
   const now = new Date();
-  const cycleMY = getCycleMonthYear(now, magicDay);
+  const cycleMY = getCycleMonthYear(now, dayFor);
   const currentMonth = cycleMY.year === year ? cycleMY.month : 12;
 
-  const monthlyScores = useMemo(() => computeAnnualScores(yearData, year, currentMonth, magicDay), [yearData, year, currentMonth, magicDay]);
+  const monthlyScores = useMemo(() => computeAnnualScores(yearData, year, currentMonth, dayFor), [yearData, year, currentMonth, dayFor]);
   const activeMonths = monthlyScores.filter(m => m.hasData && m.score > 0);
 
   const stats = useMemo(() => {
