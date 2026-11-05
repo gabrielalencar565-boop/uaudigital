@@ -12,11 +12,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { cn } from "@/lib/utils";
-import { PM_ACTIVE_STAGES, getStageCircleColor, tagColor, tagDisplay } from "../pm-constants";
-import { useUpdatePmTask, useCreatePmTask } from "../hooks/use-pm-data";
+import { tagColor, tagDisplay } from "../pm-constants";
+import { useUpdatePmTask, useCreatePmTask, useReorderPmSubtasks } from "../hooks/use-pm-data";
+import { moveItem } from "../lib/subtask-order";
 import { usePmTags } from "../hooks/use-pm-tags";
 import { PmAssigneeSelector } from "./PmAssigneeSelector";
-import { getFixedAssignee, getFixedWatchers, useDefaultFlowWithDates } from "./PmStageFlowConfig";
 import type { PmTask } from "../pm-types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -261,6 +261,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           saveReviewToDb={saveReviewToDb}
           isReviewEditable={isReviewEditable}
           canEditNote={canEditNote}
+          canReorder={!readOnly}
         />
       )}
 
@@ -286,6 +287,7 @@ export function PmPlanningSubtasks({ parentTask, childTasks, membersMap, members
           saveReviewToDb={saveReviewToDb}
           isReviewEditable={isReviewEditable}
           canEditNote={canEditNote}
+          canReorder={!readOnly}
         />
       )}
     </div>
@@ -297,7 +299,7 @@ function PlanningSection({
   parentTask, tasks, doneCount,
   membersMap, members, onSelectSubtask, activeSubtaskId,
   selectedIds, toggleSelect, bulkConfirmOpen,
-  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable, canEditNote,
+  reviewMode, reviews, setReviews, saveReviewToDb, isReviewEditable, canEditNote, canReorder,
 }: {
   type: "video" | "design";
   icon: React.ReactNode;
@@ -320,10 +322,12 @@ function PlanningSection({
   saveReviewToDb: (data: RevisionNotes) => void;
   isReviewEditable: boolean;
   canEditNote: boolean;
+  /** arrastar para mudar a ordem das subtarefas */
+  canReorder: boolean;
 }) {
   const updateTask = useUpdatePmTask();
+  const reorder = useReorderPmSubtasks(parentTask.id);
   const createTask = useCreatePmTask();
-  const { stageAssignees } = useDefaultFlowWithDates();
   const globalTagsQ = usePmTags();
   const sectionGlobalTags = globalTagsQ.data ?? [];
   const [isOpen, setIsOpen] = useState(true);
@@ -331,6 +335,17 @@ function PlanningSection({
   const [newTitle, setNewTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
+
+  // Arrastar a subtarefa (segurar e arrastar, em qualquer ponto da linha) para mudar a ordem: só dentro deste bloco (Vídeo ou Design). A barra roxa mostra onde ela vai cair.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<{ id: string; after: boolean } | null>(null);
+  const reorderEnabled = canReorder && tasks.length > 1;
+  const endDrag = () => { setDragId(null); setDropAt(null); };
+  const dropNow = () => {
+    const next = dragId && dropAt ? moveItem(tasks, dragId, dropAt.id, dropAt.after) : null;
+    endDrag();
+    if (next) reorder.mutate(next);
+  };
 
   const total = tasks.length;
   const hasSelection = selectedIds.size > 0;
@@ -416,17 +431,6 @@ function PlanningSection({
     ...(sub.watchers ?? []).filter(w => w !== sub.assignee_id),
   ];
 
-  const changeStage = (subId: string, newStage: string) => {
-    const fixedAssignee = getFixedAssignee(stageAssignees, newStage, parentTask.client_id);
-    const fixedWatchers = getFixedWatchers(stageAssignees, newStage, parentTask.client_id);
-    const updates: any = { id: subId, stage_current: newStage as any };
-    if (fixedAssignee !== undefined) {
-      updates.assignee_id = fixedAssignee;
-      updates.watchers = fixedWatchers;
-    }
-    updateTask.mutate(updates);
-  };
-
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="rounded-xl border border-border/40 bg-card/30 p-3">
       <div className="flex items-center gap-2">
@@ -474,14 +478,28 @@ function PlanningSection({
             const isActive = activeSubtaskId === sub.id;
             const isSelected = selectedIds.has(sub.id);
             const subAssignees = allAssigneeIds(sub);
-            const circleColor = getStageCircleColor(sub.stage_current);
             const review = reviews[sub.id];
             const hasReview = !!reviewMode;
             const hasAlteracao = review?.status === "alteracao";
             const isNoteExpanded = expandedNoteId === sub.id || (reviewMode === "alteracao" && !!review?.note && !explicitlyClosedIds.has(sub.id));
 
             return (
-              <div key={sub.id}>
+              <div
+                key={sub.id}
+                className={cn(
+                  dragId === sub.id && "opacity-40",
+                  dropAt?.id === sub.id && dragId !== sub.id && (dropAt.after ? "border-b-2 border-b-primary" : "border-t-2 border-t-primary"),
+                )}
+                onDragOver={reorderEnabled && dragId ? (e) => {
+                  if (sub.id === dragId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientY > r.top + r.height / 2;
+                  setDropAt((cur) => (cur && cur.id === sub.id && cur.after === after ? cur : { id: sub.id, after }));
+                } : undefined}
+                onDrop={reorderEnabled && dragId ? (e) => { e.preventDefault(); dropNow(); } : undefined}
+              >
               <div
                 className={cn(
                   "group flex items-center gap-2 px-2 py-2 transition border-b border-border/10 cursor-pointer rounded-lg my-0.5",
@@ -493,6 +511,14 @@ function PlanningSection({
                   !hasReview && hasAlteracao && "border-l-2 border-l-amber-500 bg-amber-500/5",
                   !(hasReview && review?.status) && !isActive && !(!hasReview && hasAlteracao) && "hover:bg-card/40",
                 )}
+                draggable={reorderEnabled && !deletingId && !bulkConfirmOpen}
+                onDragStart={reorderEnabled ? (e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", sub.id);
+                  setDragId(sub.id);
+                } : undefined}
+                onDragEnd={reorderEnabled ? endDrag : undefined}
                 onClick={(e) => {
                   if (deletingId || bulkConfirmOpen) {
                     e.preventDefault();
@@ -557,41 +583,6 @@ function PlanningSection({
                     />
                   </div>
                 )}
-
-                {/* Stage circle */}
-                <div className="w-8 flex justify-center" onClick={(e) => e.stopPropagation()}>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={cn(
-                        "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all hover:scale-110",
-                        circleColor.border,
-                        isDone && `${circleColor.bg} border-emerald-500`
-                      )}>
-                        {isDone && <Check className="h-3 w-3 text-white" />}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-1" align="start">
-                      {PM_ACTIVE_STAGES.map(s => {
-                        const sColor = getStageCircleColor(s.key);
-                        const isEntrega = s.key === "entrega";
-                        const isStageSelected = sub.stage_current === s.key;
-                        return (
-                          <button
-                            key={s.key}
-                            className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition", isStageSelected && "bg-accent")}
-                            onClick={() => changeStage(sub.id, s.key)}
-                          >
-                            <span className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", sColor.border, isEntrega && `${sColor.bg}`)}>
-                              {isEntrega && <Check className="h-2.5 w-2.5 text-white" />}
-                            </span>
-                            {s.label}
-                            {isStageSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
-                          </button>
-                        );
-                      })}
-                    </PopoverContent>
-                  </Popover>
-                </div>
 
                 {/* Tags + Title */}
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
