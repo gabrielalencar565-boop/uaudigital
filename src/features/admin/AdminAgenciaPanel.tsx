@@ -17,6 +17,7 @@ import { brandGlowPalette, hexToHsl, twoColorGlowPalette } from "@/lib/color";
 import { DEFAULT_LINK_PREVIEW_DESCRIPTION, DEFAULT_LINK_PREVIEW_TITLE, LINK_PREVIEW_VARIABLES, renderLinkPreviewTemplate } from "@/lib/approval-link-preview";
 import { AdminAparenciaPanel } from "./AdminAparenciaPanel";
 import { DriveIntegrationCard } from "./DriveIntegrationCard";
+import { DiaDYearGrid } from "./components/DiaDYearGrid";
 
 const DEFAULT_BRAND_COLOR = "#6932c9";
 const PRESETS = ["#6932c9", "#3b82f6", "#f97316", "#ef4444", "#a855f7", "#10b981", "#ec4899", "#f59e0b"];
@@ -520,6 +521,7 @@ function DiaDSection() {
         </p>
       </div>
       <Button className="rounded-full" disabled={!dirty || update.isPending} onClick={save}>Salvar</Button>
+      <DiaDYearGrid />
     </div>
   );
 }

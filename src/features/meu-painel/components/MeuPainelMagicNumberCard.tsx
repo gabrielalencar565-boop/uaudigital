@@ -6,8 +6,8 @@ import { useMagicNumberConfig } from "@/features/data/queries";
 // Visão geral do Magic Number (empresa toda, não é por usuário) encaixada
 // no banner do Meu Painel — sempre mostra o ciclo atual (vira pro próximo mês após o dia D).
 export function MeuPainelMagicNumberCard() {
-  const { day: magicDay } = useMagicNumberConfig();
-  const cycleMY = getCycleMonthYear(new Date(), magicDay);
+  const { dayFor } = useMagicNumberConfig();
+  const cycleMY = getCycleMonthYear(new Date(), dayFor);
   const { dashboard } = useMagic2Dashboard(cycleMY.year, cycleMY.month);
 
   return (

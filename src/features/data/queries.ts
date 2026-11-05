@@ -6,6 +6,7 @@ import { MAGIC_STAGES, STAGES, type StageKey } from "@/lib/uau";
 import { optimizeAvatarUrl } from "@/lib/avatar-url";
 import { preloadAvatars } from "@/lib/avatar-preloader";
 import { useSession } from "@/hooks/use-session";
+import { useDiaDFor } from "@/features/data/dia-d";
 
 function dueDate27(year: number, month: number, day: number = 27) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -324,8 +325,13 @@ export function useContentMonthOffset(): number {
 
 export function useMagicNumberConfig() {
   const q = useAppSettings();
+  const base = q.data?.magic_number_day ?? 27;
+  // `day` é o dia padrão; `dayFor(ano, mês)` dá o Dia D do mês, já com as exceções cadastradas (ex.: dezembro fechando dia 18).
+  const { dayFor, overrides } = useDiaDFor(base);
   return {
-    day: q.data?.magic_number_day ?? 27,
+    day: base,
+    dayFor,
+    overrides,
     label: q.data?.magic_number_label ?? "Magic Number",
     isLoading: q.isLoading,
   };

@@ -17,6 +17,7 @@ import { UserAvatar } from "@/components/avatar/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useTasks, useTeamMembers, useMagicNumberConfig } from "@/features/data/queries";
+import { anchorForDate, cycleEnd, cycleStart } from "@/features/data/dia-d";
 import { useTaskAssigneesByMonth } from "@/features/data/task-assignees-queries";
 import { useUpdatePmTask } from "../hooks/use-pm-data";
 import { getStageCircleColor, stageLabel, isHexColor, TAG_COLORS } from "../pm-constants";
@@ -47,20 +48,10 @@ function savePrefs(p: { selectedDays: number[]; minimal: boolean }) {
   localStorage.setItem(PREFS_KEY, JSON.stringify(p));
 }
 
-// A "ciclo" runs from the day after the configured D-day of one month through the D-day of the next.
-// `anchor` is the 1st-of-month Date representing the cycle's END month.
-function cycleEnd(anchor: Date, day: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
-}
-function cycleStart(anchor: Date, day: number) {
-  const end = cycleEnd(anchor, day);
-  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
-}
+// A "ciclo" runs from the day after the D-day of one month through the D-day of the next (each month can have its own Dia D).
+// `anchor` is the 1st-of-month Date representing the cycle's END month. The date helpers live in data/dia-d.ts.
 function cycleNumber(anchor: Date) {
   return anchor.getMonth() + 1;
-}
-function anchorForDate(d: Date, day: number) {
-  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
 }
 function anchorKey(anchor: Date) {
   return format(anchor, "yyyy-MM");
@@ -257,8 +248,8 @@ function BarIconButton({ label, active, badge, onClick, children }: {
 }
 
 export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, currentUserId, onTaskClick, onAddClick }: Props) {
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
-  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
+  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), dayFor));
   const [activeTask, setActiveTask] = useState<PmTask | null>(null);
   const updateTask = useUpdatePmTask();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -299,8 +290,8 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
     return list;
   }, [allTeamMembers, myTasksOnly, currentUserId, filterCollaborators, filterRoles]);
 
-  const cycleStartDate = cycleStart(cursor, magicDay);
-  const cycleEndDateVal = cycleEnd(cursor, magicDay);
+  const cycleStartDate = cycleStart(cursor, dayFor);
+  const cycleEndDateVal = cycleEnd(cursor, dayFor);
   const startKey = format(cycleStartDate, "yyyy-MM-dd");
   const endKey = format(cycleEndDateVal, "yyyy-MM-dd");
 
@@ -450,14 +441,14 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
   }, [myTaskWeekValues]);
 
   const cycleOptions = useMemo(() => {
-    const base = anchorForDate(new Date(), magicDay);
+    const base = anchorForDate(new Date(), dayFor);
     const out: { key: string; anchor: Date }[] = [];
     for (let i = -18; i <= 12; i++) {
       const anchor = new Date(base.getFullYear(), base.getMonth() + i, 1);
       out.push({ key: anchorKey(anchor), anchor });
     }
     return out;
-  }, [magicDay]);
+  }, [dayFor]);
 
   const activeFilterCount = filterCollaborators.size + filterClients.size + filterRoles.size;
 
@@ -526,7 +517,7 @@ export function PmTeamWeekView({ tasks, clientsMap, membersMap, clients, current
                   )}
                 >
                   <span>Ciclo {cycleNumber(opt.anchor)} de {opt.anchor.getFullYear()}</span>
-                  <span className="text-xs text-muted-foreground">{format(cycleStart(opt.anchor, magicDay), "dd/MM")} – {format(cycleEnd(opt.anchor, magicDay), "dd/MM")}</span>
+                  <span className="text-xs text-muted-foreground">{format(cycleStart(opt.anchor, dayFor), "dd/MM")} – {format(cycleEnd(opt.anchor, dayFor), "dd/MM")}</span>
                 </button>
               ))}
             </PopoverContent>

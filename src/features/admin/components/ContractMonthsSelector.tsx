@@ -40,7 +40,7 @@ const MONTHS = [
 
 export function ContractMonthsSelector({ clientId, clientName }: ContractMonthsSelectorProps) {
   const qc = useQueryClient();
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
   const [year, setYear] = useState(() => new Date().getFullYear());
 
   // Buscar ciclos do magic2 para este cliente (via magic2_client_links)
@@ -88,7 +88,7 @@ export function ContractMonthsSelector({ clientId, clientName }: ContractMonthsS
         if (ensureError) throw ensureError;
         
         // Agora cria o ciclo
-        const dueDate = `${year}-${String(input.month).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`;
+        const dueDate = `${year}-${String(input.month).padStart(2, "0")}-${String(dayFor(year, input.month)).padStart(2, "0")}`;
         const { error: insertError } = await supabase
           .from("magic2_cycles")
           .insert({
@@ -116,7 +116,7 @@ export function ContractMonthsSelector({ clientId, clientName }: ContractMonthsS
         if (error) throw error;
       } else {
         // Cria novo ciclo
-        const dueDate = `${year}-${String(input.month).padStart(2, "0")}-${String(magicDay).padStart(2, "0")}`;
+        const dueDate = `${year}-${String(input.month).padStart(2, "0")}-${String(dayFor(year, input.month)).padStart(2, "0")}`;
         const { error } = await supabase
           .from("magic2_cycles")
           .insert({

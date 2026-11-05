@@ -24,9 +24,11 @@ type Magic2YearStageRow = {
 };
 
 export function useMagic2Year(year: number) {
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
+  // a chave muda quando o Dia D de algum mês do ano muda, para o resultado ser recalculado
+  const dayKey = Array.from({ length: 12 }, (_, i) => dayFor(year, i + 1)).join(",");
   return useQuery({
-    queryKey: ["magic2", "year", { year, magicDay }],
+    queryKey: ["magic2", "year", { year, dayKey }],
     queryFn: async () => {
       const cyclesRes = await supabase
         .from("magic2_cycles")
@@ -76,7 +78,7 @@ export function useMagic2Year(year: number) {
           const completed = maxDate > 0 ? new Date(maxDate) : null;
           const completedDay = completed ? getBrazilDay(completed.toISOString()) : null;
 
-          if (completedDay !== null && completedDay <= magicDay) doneOnTime += 1;
+          if (completedDay !== null && completedDay <= dayFor(year, m)) doneOnTime += 1;
           else doneLate += 1;
         }
 

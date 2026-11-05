@@ -62,7 +62,7 @@ export function useMagic2Month(year: number, month: number) {
 
 export function useCreateMagic2Client() {
   const qc = useQueryClient();
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
   return useMutation({
     mutationFn: async ({
       name,
@@ -82,7 +82,7 @@ export function useCreateMagic2Client() {
         client_id: clientId,
         year,
         month: m,
-        due_date: dateOnly(year, m, magicDay),
+        due_date: dateOnly(year, m, dayFor(year, m)),
         is_active: true,
       }));
 

@@ -78,7 +78,7 @@ export function DayViewPanel() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedPmTaskId, setSelectedPmTaskId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { day: magicDay, label: magicLabel } = useMagicNumberConfig();
+  const { dayFor, label: magicLabel } = useMagicNumberConfig();
 
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -850,7 +850,7 @@ export function DayViewPanel() {
     setActive((v) => v === "magic" ? "agenda" : v === "agenda" ? "podio" : "magic");
   };
   // Calcular dias restantes até o prazo final (dia D do mês selecionado)
-  const deadlineDate = new Date(selectedYear, selectedMonth - 1, magicDay);
+  const deadlineDate = new Date(selectedYear, selectedMonth - 1, dayFor(selectedYear, selectedMonth));
   const daysUntilDeadline = differenceInCalendarDays(deadlineDate, today);
 
   // Helper: render tasks grouped by person in columns (used for pendentes / concluídas / atrasadas)

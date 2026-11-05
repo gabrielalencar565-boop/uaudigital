@@ -75,16 +75,9 @@ export function toGridThumbUrl(url: string): string {
 // O ciclo do Cronograma segue o Dia D da agência: com Dia D = 27, o ciclo de outubro vai de 28/09 a 27/10, e do dia 28 em diante é o calendário seguinte.
 // Cada calendário pode ter o período ajustado (ex.: novembro começando em 21/10, levando a última semana de outubro junto): nesse caso valem as datas
 // do próprio calendário (cycle_start/cycle_end), e estas funções dão só o ciclo padrão.
-export function anchorForDate(d: Date, day: number) {
-  return d.getDate() >= day + 1 ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
-}
-export function cycleEnd(anchor: Date, day: number) {
-  return new Date(anchor.getFullYear(), anchor.getMonth(), day);
-}
-export function cycleStart(anchor: Date, day: number) {
-  const end = cycleEnd(anchor, day);
-  return new Date(end.getFullYear(), end.getMonth() - 1, day + 1);
-}
+// As funções do ciclo vivem em data/dia-d.ts (aceitam o dia padrão ou o Dia D de cada mês, com as exceções).
+import { anchorForDate, cycleEnd, cycleStart } from "@/features/data/dia-d";
+export { anchorForDate, cycleEnd, cycleStart };
 const UNSCHEDULED_ID = "unscheduled";
 
 type RiskPart = { text: string; severity: "error" | "warn" };
@@ -303,7 +296,7 @@ function DropZone({ id, children, className }: { id: string; children: React.Rea
 }
 
 export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHandled, fixedClientId, alertUnscheduled = false, alertRequest = 0 }: Props) {
-  const { day: magicDay } = useMagicNumberConfig();
+  const { dayFor } = useMagicNumberConfig();
   const [clientId, setClientId] = useState<string | null>(fixedClientId ?? null);
   useEffect(() => {
     if (fixedClientId) setClientId(fixedClientId);
@@ -329,7 +322,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       window.removeEventListener("resize", update);
     };
   }, [fixedClientId]);
-  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), 27));
+  const [cursor, setCursor] = useState(() => anchorForDate(new Date(), dayFor));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Seleção em massa: marca várias publicações e remove todas de uma vez do calendário
@@ -350,7 +343,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     if (!focusRequest) return;
     const cycleStartDate = parseISO(focusRequest.cycleStart);
     setClientId(focusRequest.clientId);
-    setCursor(anchorForDate(addDays(cycleStartDate, 15), magicDay));
+    setCursor(anchorForDate(addDays(cycleStartDate, 15), dayFor));
     setSelectedId(focusRequest.publicationId ?? null);
     onFocusHandled?.();
   }, [focusRequest, onFocusHandled]);
@@ -403,9 +396,9 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   }, [sortedClients, stageAssignees, teamMemberById]);
   const calendarsQ = useCalendarsForClient(clientId);
   // Ciclo padrão do mês mostrado (Dia D) e, quando o calendário existe, o período dele (que pode ter sido ajustado: ex. novembro começando em 21/10).
-  const stdStart = cycleStart(cursor, magicDay);
+  const stdStart = cycleStart(cursor, dayFor);
   const stdStartKey = format(stdStart, "yyyy-MM-dd");
-  const stdEndKey = format(cycleEnd(cursor, magicDay), "yyyy-MM-dd");
+  const stdEndKey = format(cycleEnd(cursor, dayFor), "yyyy-MM-dd");
   // o calendário é o que contém o meio do ciclo padrão: acha o calendário mesmo com as pontas ajustadas
   const cycleMidKey = format(addDays(stdStart, 15), "yyyy-MM-dd");
   const calendar = useMemo(() => (calendarsQ.data ?? []).find((c) => c.cycle_start <= cycleMidKey && c.cycle_end >= cycleMidKey) ?? null, [calendarsQ.data, cycleMidKey]);
@@ -957,7 +950,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   type="button"
                   onClick={() => {
                     setClientId(r.clientId);
-                    if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate), magicDay));
+                    if (r.firstProblemPublishDate) setCursor(anchorForDate(parseISO(r.firstProblemPublishDate), dayFor));
                     if (r.firstProblemPublicationId) setSelectedId(r.firstProblemPublicationId);
                   }}
                   className="group flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left"
@@ -1122,7 +1115,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             const id = currentClientRisk.firstProblemPublicationId;
             if (!id) return;
             if (currentClientRisk.firstProblemPublishDate) {
-              setCursor(anchorForDate(parseISO(currentClientRisk.firstProblemPublishDate), magicDay));
+              setCursor(anchorForDate(parseISO(currentClientRisk.firstProblemPublishDate), dayFor));
             }
             setSelectedId(id);
           }}
