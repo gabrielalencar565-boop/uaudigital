@@ -11,7 +11,7 @@ import { cycleEnd, cycleMonthYear, cycleStart, useSetDiaDOverride } from "@/feat
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTHS_LONG = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-/** Dia D mês a mês: o dia padrão vale para todos, e cada mês pode ter o seu (ex.: dezembro fechando dia 18). */
+/** Dia de fechamento (Dia D, com o nome configurado) mês a mês: o dia padrão vale para todos, e cada mês pode ter o seu (ex.: dezembro fechando dia 18). */
 export function DiaDYearGrid() {
   const { day: base, dayFor, overrides, label } = useMagicNumberConfig();
   const setOverride = useSetDiaDOverride();
@@ -53,7 +53,7 @@ export function DiaDYearGrid() {
       { year, month: sel, day, reason: reason.trim() },
       {
         onSuccess: (r) => {
-          toast.success(day === null ? `${MONTHS_LONG[sel - 1]} voltou ao dia ${base}` : `Dia D de ${MONTHS_LONG[sel - 1]} ajustado para ${day}`);
+          toast.success(day === null ? `${MONTHS_LONG[sel - 1]} voltou ao dia ${base}` : `${label} de ${MONTHS_LONG[sel - 1]} ajustado para o dia ${day}`);
           if (r.failed > 0) toast.warning(`${r.failed} calendário${r.failed > 1 ? "s" : ""} não ${r.failed > 1 ? "puderam" : "pôde"} ser ${r.failed > 1 ? "ajustados" : "ajustado"} sozinho${r.failed > 1 ? "s" : ""}. Ajuste o período dele${r.failed > 1 ? "s" : ""} no Cronograma.`);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
@@ -104,7 +104,7 @@ export function DiaDYearGrid() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[5.5rem] text-sm font-semibold capitalize">{MONTHS_LONG[sel - 1]}/{String(year).slice(2)}</div>
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="dia-d-mes">Dia D</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="dia-d-mes">Dia do mês</label>
             <Input id="dia-d-mes" type="number" min={1} max={28} value={dayText} disabled={isClosed || setOverride.isPending} onChange={(e) => setDayText(e.target.value)} className="h-9 w-20" />
           </div>
           <div className="min-w-[10rem] flex-1 space-y-1">
@@ -118,7 +118,7 @@ export function DiaDYearGrid() {
         </div>
         {!draftValid && dayText !== "" && <p className="text-xs text-destructive">O dia deve ser um número entre 1 e 28.</p>}
         {isClosed ? (
-          <p className="text-xs text-muted-foreground">Esse mês já fechou, então o Dia D dele não pode mais ser mudado.</p>
+          <p className="text-xs text-muted-foreground">Esse mês já fechou, então o dia de fechamento dele não pode mais ser mudado.</p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Ciclo de {MONTHS_LONG[sel - 1]}: {format(preview.mine.from, "dd/MM")} a {format(preview.mine.to, "dd/MM")}

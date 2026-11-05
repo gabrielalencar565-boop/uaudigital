@@ -5,9 +5,9 @@ import { CapturasPanel, usePendingCaptureCount } from "@/features/agenda/compone
 import { tabPath } from "@/lib/app-routes";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Clock, Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft } from "lucide-react";
+import { Clock, Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft, Flag } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { addDays, addMonths, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addMonths, differenceInCalendarDays, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -541,7 +541,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   filterStage: string;
 }) {
   const isMobile = useIsMobile();
-  const { label: magicLabel } = useMagicNumberConfig();
+  const { label: magicLabel, dayFor } = useMagicNumberConfig();
   const deleteTask = useDeletePmTask();
   const deleteLegacyTask = useDeleteTask();
   const updateTask = useUpdatePmTask();
@@ -564,6 +564,11 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const { data: periodicStages = [] } = usePeriodicStages();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
+  // Dia D (nome configurável) do dia: só o dia em que o mês fecha, que pode ser uma exceção (ex.: dezembro fechando dia 18)
+  const diaDInfo = (d: Date) => {
+    if (d.getDate() !== dayFor(d.getFullYear(), d.getMonth() + 1)) return null;
+    return { past: differenceInCalendarDays(d, new Date()) < 0 };
+  };
 
   const isOverdue = (t: PmTask) =>
     (t.due_date ?? "") < todayKey && t.status_global !== "concluido" && t.stage_current !== "entrega";
@@ -1224,6 +1229,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
             const dayTasks = tasksByDay.get(key) ?? [];
             const daySpecialCount = daySpecialDates(key).length;
             const isToday = key === todayKey;
+            const diaD = diaDInfo(d);
 
             return (
               <div
@@ -1232,7 +1238,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                   className={cn(
                     "rounded-xl border p-3 space-y-2",
                     isToday ? "border-primary/40 bg-primary/5" : "border-border/30 bg-card/20",
-                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2"
+                    !isToday && dayHasOverdue(key) && "border-destructive/50 border-2",
+                    diaD && "border-primary border-[1.5px]"
                   )}>
                 <div className="flex items-center gap-2">
                   <div className={cn(
@@ -1256,6 +1263,12 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
+                {diaD && (
+                  <div className={cn("flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground", diaD.past && "opacity-70")}>
+                    <Flag className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{magicLabel}</span>
+                  </div>
+                )}
                 {renderSpecialDates(key, true)}
                 <div className="space-y-1.5">
                   {dayTasks.map(renderTaskCard)}
@@ -1280,6 +1293,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               const isToday = key === todayKey;
               const doneCountMonth = dayTasks.filter((t) => t.status_global === "concluido").length;
               const allDoneMonth = dayTasks.length > 0 && doneCountMonth === dayTasks.length && !hasActiveFilter;
+              const diaD = inMonth ? diaDInfo(d) : null;
 
               return (
                 <div
@@ -1304,8 +1318,30 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                     allDoneMonth ? "min-h-[64px]" : "min-h-28",
                     inMonth ? "opacity-100" : "opacity-30 border-transparent",
                     isToday && "border-primary/50 ring-2 ring-primary/15 bg-primary/5",
-                    !isToday && inMonth && dayHasOverdue(key) && "border-destructive/50 border-2"
+                    !isToday && inMonth && dayHasOverdue(key) && "border-destructive/50 border-2",
+                    diaD && "border-primary border-[1.5px]"
                   )}>
+                  {diaD ? (
+                    // Dia D: topo preenchido em roxo, com o nome configurado e a contagem
+                    <div className={cn("-mx-2.5 -mt-2.5 mb-2 rounded-t-[14px] bg-primary px-2.5 py-2 text-primary-foreground", diaD.past && "opacity-70")}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold leading-none">{format(d, "d")}</span>
+                        {!allDoneMonth && (
+                          <button
+                            type="button"
+                            className="h-5 w-5 rounded-md flex items-center justify-center text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/15 transition opacity-0 group-hover/cell:opacity-100"
+                            onClick={() => { setQuickCreateDate(key); setQuickCreateOpen(true); }}
+                            title="Nova tarefa">
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold leading-tight">
+                        <Flag className="h-3 w-3 shrink-0" />
+                        <span className="truncate" title={magicLabel}>{magicLabel}</span>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="flex items-center justify-between mb-2">
                     <div className={cn(
                       "grid h-7 w-7 place-items-center rounded-lg text-xs font-bold",
@@ -1323,6 +1359,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                       </button>
                     )}
                   </div>
+                  )}
                   {allDoneMonth ? (
                     <div className="space-y-1.5">
                       <button
