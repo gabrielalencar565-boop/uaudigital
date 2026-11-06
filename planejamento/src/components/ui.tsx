@@ -3,15 +3,15 @@
 import type { ReactNode } from "react";
 
 export const inputClass =
-  "block w-full rounded-2xl border-2 border-borda bg-card px-4 text-[17px] text-white placeholder:text-muted/70 outline-none transition-colors focus:border-amarelo focus-visible:outline-none aria-[invalid=true]:border-amarelo";
+  "block w-full rounded-2xl border-[1.5px] border-line bg-bg2 px-4 text-[17px] text-fg placeholder:text-dim outline-none transition-colors focus:border-lilac focus-visible:outline-none aria-[invalid=true]:border-orange";
 
 export const inputClassRoxo =
-  "block h-14 w-full rounded-2xl border-2 border-transparent bg-ink px-4 text-[17px] text-white placeholder:text-muted/70 outline-none transition-colors focus:border-amarelo focus-visible:outline-none aria-[invalid=true]:border-amarelo";
+  "block h-14 w-full rounded-2xl border-[1.5px] border-line bg-bg2 px-4 text-[17px] text-fg placeholder:text-dim outline-none transition-colors focus:border-lilac focus-visible:outline-none aria-[invalid=true]:border-orange";
 
 export function Erro({ id, msg }: { id: string; msg?: string }) {
   if (!msg) return null;
   return (
-    <p id={id} className="mt-2 text-[15px] font-bold text-amarelo">
+    <p id={id} className="mt-2 text-[15px] font-semibold text-orange">
       {msg}
     </p>
   );
@@ -38,8 +38,8 @@ export function Campo({ id, label, opcional, dica, erro, value, onChange, placeh
   const describedBy = [dica ? `${id}-dica` : "", erro ? `${id}-erro` : ""].filter(Boolean).join(" ") || undefined;
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block font-bold">
-        {label} {opcional ? <span className="font-medium text-muted">(opcional)</span> : null}
+      <label htmlFor={id} className="mb-2 block font-semibold">
+        {label} {opcional ? <span className="font-normal text-dim">(opcional)</span> : null}
       </label>
       {dica ? (
         <p id={`${id}-dica`} className="-mt-1 mb-2 text-sm text-muted">
@@ -96,17 +96,18 @@ export function Opcao({
       role={multipla ? "checkbox" : "radio"}
       aria-checked={selecionado}
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-[18px] border-2 text-left font-medium transition-colors duration-150 ${
+      className={`flex w-full items-center gap-3 rounded-[18px] border-[1.5px] text-left font-medium transition-colors duration-150 ${
         compacto ? "min-h-12 px-4 py-2.5 text-[15px]" : "min-h-14 px-4 py-3.5 text-base"
-      } ${selecionado ? "border-roxo bg-roxo text-white" : "border-borda bg-card text-white hover:border-[#3a3546]"}`}
+      } ${selecionado ? "grad-border text-fg shadow-[0_8px_24px_rgba(123,47,224,0.25)]" : "border-line bg-bg2 text-fg hover:border-[#3d3846]"}`}
     >
       <span
         aria-hidden="true"
         className={`flex size-5 shrink-0 items-center justify-center border-2 ${multipla ? "rounded-md" : "rounded-full"} ${
-          selecionado ? "border-white bg-white text-roxo" : "border-[#4a4556]"
+          selecionado ? "border-transparent text-white" : "border-[#4a4556]"
         }`}
+        style={selecionado ? { background: "var(--grad)" } : undefined}
       >
-        {selecionado ? <span className={`block size-2.5 bg-roxo ${multipla ? "rounded-sm" : "rounded-full"}`} /> : null}
+        {selecionado ? <span className={`block size-2 bg-white ${multipla ? "rounded-sm" : "rounded-full"}`} /> : null}
       </span>
       <span className="min-w-0 flex-1">{children}</span>
     </button>
@@ -116,7 +117,7 @@ export function Opcao({
 export function Grupo({ legenda, erro, id, children, dica }: { legenda: string; erro?: string; id: string; children: ReactNode; dica?: string }) {
   return (
     <fieldset aria-describedby={erro ? `${id}-erro` : undefined}>
-      <legend className="mb-2 font-bold">{legenda}</legend>
+      <legend className="mb-2 font-semibold">{legenda}</legend>
       {dica ? <p className="-mt-1 mb-3 text-sm text-muted">{dica}</p> : null}
       {children}
       <Erro id={`${id}-erro`} msg={erro} />

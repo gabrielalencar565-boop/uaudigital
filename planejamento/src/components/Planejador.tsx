@@ -50,9 +50,8 @@ const ETAPAS = [
   { chave: "perfil", Comp: StepPerfil },
 ] as const;
 
-function corDaTela(t: Tela) {
-  if (t.tipo === "intro" || (t.tipo === "etapa" && t.i === 4)) return { cor: "#7A35D6", classe: "bg-roxo" };
-  return { cor: "#08080A", classe: "bg-ink" };
+function corDaTela() {
+  return { cor: "#0F0E11", classe: "bg-bg" };
 }
 
 function chaveDaTela(t: Tela) {
@@ -105,7 +104,7 @@ export default function Planejador() {
 
   // Cor do fundo do documento acompanha a tela.
   useEffect(() => {
-    const { cor } = corDaTela(tela);
+    const { cor } = corDaTela();
     document.documentElement.style.background = cor;
     document.body.style.background = cor;
   }, [tela]);
@@ -296,7 +295,7 @@ export default function Planejador() {
 
   const largo = tela.tipo === "resultado";
   return (
-    <main className={`min-h-dvh text-white ${corDaTela(tela).classe}`}>
+    <main className={`min-h-dvh overflow-x-clip text-fg ${corDaTela().classe}`}>
       <div
         ref={containerRef}
         key={chaveDaTela(tela)}

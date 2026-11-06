@@ -2,7 +2,7 @@
 export const COPY = {
   intro: {
     selo: "PLANEJAMENTO DO MÊS",
-    titulo: "O mês do seu cliente planejado em 5 minutos.",
+    titulo: "O mês do seu cliente **planejado em 5 minutos.**",
     subtitulo:
       "Responda algumas perguntas sobre o seu cliente e receba um planejamento pronto, com o objetivo do mês e cada post com um motivo pra existir.",
     bullets: [
@@ -21,7 +21,7 @@ export const COPY = {
     perfil: { titulo: "O perfil hoje", emoji: "📱", pergunta: "Como o perfil funciona na prática?" },
   },
   contato: {
-    titulo: "Seu planejamento está quase pronto.",
+    titulo: "Seu planejamento está **quase pronto.**",
     texto:
       "Deixa seu contato pra liberar o planejamento. A gente também vai te avisar quando sair conteúdo especial sobre planejamento.",
     consentimento:

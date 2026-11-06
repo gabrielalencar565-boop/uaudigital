@@ -18,7 +18,7 @@ export default function PlanoPublico({ id, inicial }: { id: string; inicial: Pla
   }, [id, inicial]);
 
   return (
-    <main className="min-h-dvh bg-ink text-white">
+    <main className="min-h-dvh bg-bg text-white">
       <div className="mx-auto w-full max-w-[960px] px-5">
         {salvo ? (
           <PlanResult salvo={salvo} />
@@ -26,7 +26,7 @@ export default function PlanoPublico({ id, inicial }: { id: string; inicial: Pla
           <div className="flex min-h-dvh flex-col items-center justify-center gap-5 text-center">
             <h1 className="title text-3xl">Não achamos esse planejamento 🤔</h1>
             <p className="max-w-sm text-muted">O link pode estar incompleto ou o planejamento foi gerado em outro aparelho.</p>
-            <Link href="/" className="btn-primary max-w-xs">
+            <Link href="/" className="btn-main max-w-xs">
               Planejar o mês de um cliente
             </Link>
           </div>

@@ -151,12 +151,14 @@ A geração com IA pode levar até 45 s. A rota já pede 60 s de execução (`ma
 
 ## Telas
 
-- **Fluxo:** inicial (roxo) → 4 etapas (preto) → contato (roxo) → geração → planejamento.
+- **Visual:** o mesmo da landing da UAU (fundo escuro, faixa clara no objetivo do mês, degradê roxo → magenta → laranja, botões em pílula e a logo real).
+- **Fluxo:** inicial → 4 etapas → contato → geração → planejamento.
 - **Resultado:**
   - cards de objetivo, público e tom de voz
   - legenda das 6 fases e calendário de 4 semanas
   - stories da semana e frases para apresentar ao cliente
   - botões: PDF, copiar, gerar de novo e planejar outro cliente
+- **Prompt pronto em cada post:** o botão "Copiar prompt do roteiro" gera um texto para colar no ChatGPT ou no Claude e receber o roteiro do post (Reels cena a cena, carrossel slide a slide ou arte estática, sempre com legenda). O prompt usa só o que está no planejamento (marca, público, dor, objeção, tom, fase, gancho, ideia, CTA) e as regras de publicidade do nicho. Edite em `src/lib/promptRoteiro.ts`.
 - **`/p/[id]`:** reabre um planejamento salvo, sem os dados do lead.
 - **`/admin`:** leads (nicho, objetivo, nº de gerações), gerações de hoje e exportação CSV.
-- **PDF:** A4 branco com detalhes roxo e amarelo e a fonte Bricolage embutida. O rodapé discreto é a única menção à UAU.
+- **PDF:** A4 branco com detalhes nas cores da UAU (roxo, magenta e laranja) e a fonte Bricolage embutida. O rodapé discreto é a única menção à UAU.

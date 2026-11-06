@@ -24,8 +24,8 @@ export default function StepPerfil({ r, set, erros }: Props) {
                 aria-checked={on}
                 aria-label={`${n} posts por semana`}
                 onClick={() => set("postsPorSemana", n)}
-                className={`h-14 rounded-2xl border-2 text-xl font-extrabold transition-colors ${
-                  on ? "border-roxo bg-roxo text-white" : "border-borda bg-card text-white hover:border-[#3a3546]"
+                className={`h-14 rounded-2xl border-[1.5px] text-xl font-extrabold transition-colors ${
+                  on ? "grad-border text-fg" : "border-line bg-bg2 text-fg hover:border-[#3d3846]"
                 }`}
               >
                 {n}

@@ -43,10 +43,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             type="password"
             autoComplete="current-password"
             required
-            className="h-12 rounded-2xl border-2 border-borda bg-card px-4 text-white outline-none focus:border-amarelo"
+            className="h-12 rounded-2xl border-2 border-line bg-bg2 px-4 text-white outline-none focus:border-lilac"
           />
-          {erro ? <p className="font-bold text-amarelo">Senha incorreta.</p> : null}
-          <button className="btn-primary">Entrar</button>
+          {erro ? <p className="font-bold text-orange">Senha incorreta.</p> : null}
+          <button className="btn-main">Entrar</button>
         </form>
       </Shell>
     );
@@ -74,17 +74,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <p className="mr-auto text-sm text-muted">Cada geração com IA tem custo na API da Anthropic. Acompanhe pelas gerações de hoje.</p>
-        <a href={withBase("/admin/export")} className="rounded-2xl bg-amarelo px-5 py-3 font-extrabold text-ink">
+        <a href={withBase("/admin/export")} className="rounded-full px-5 py-3 font-semibold text-white [background:var(--grad)]">
           Exportar CSV
         </a>
         <form method="post" action={withBase("/admin/logout")}>
-          <button className="rounded-2xl border border-borda px-5 py-3 font-bold text-muted hover:text-white">Sair</button>
+          <button className="rounded-2xl border border-line px-5 py-3 font-bold text-muted hover:text-white">Sair</button>
         </form>
       </div>
-      {falha ? <p className="mb-4 rounded-2xl border-2 border-amarelo p-4">{falha}</p> : null}
-      <div className="overflow-x-auto rounded-2xl border border-borda">
+      {falha ? <p className="mb-4 rounded-2xl border-2 border-orange p-4">{falha}</p> : null}
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full min-w-[960px] text-left text-sm">
-          <thead className="bg-card text-xs tracking-wider text-muted uppercase">
+          <thead className="bg-bg2 text-xs tracking-wider text-muted uppercase">
             <tr>
               {["Nome", "WhatsApp", "Instagram", "Nicho", "Objetivo", "Gerações", "Data"].map((h) => (
                 <th key={h} className="px-4 py-3 font-bold">
@@ -95,7 +95,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           </thead>
           <tbody>
             {leads.map((l) => (
-              <tr key={l.id} className="border-t border-borda">
+              <tr key={l.id} className="border-t border-line">
                 <td className="px-4 py-3 font-bold">{l.nome}</td>
                 <td className="px-4 py-3">
                   <a className="underline underline-offset-2" href={`https://wa.me/${l.whatsapp}`} target="_blank" rel="noreferrer">
@@ -133,7 +133,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
 function Numero({ titulo, valor, destaque }: { titulo: string; valor: number; destaque?: boolean }) {
   return (
-    <div className={`rounded-2xl p-4 ${destaque ? "bg-amarelo text-ink" : "border border-borda bg-card"}`}>
+    <div className={`rounded-2xl p-4 ${destaque ? "text-white [background:var(--grad)]" : "border border-line bg-bg2"}`}>
       <p className={`text-xs font-bold tracking-wider uppercase ${destaque ? "" : "text-muted"}`}>{titulo}</p>
       <p className="mt-1 text-3xl font-extrabold tabular-nums">{valor}</p>
     </div>
@@ -142,7 +142,7 @@ function Numero({ titulo, valor, destaque }: { titulo: string; valor: number; de
 
 function Shell({ children, largo = false }: { children: React.ReactNode; largo?: boolean }) {
   return (
-    <main className="min-h-dvh bg-ink px-5 py-10 text-white">
+    <main className="min-h-dvh bg-bg px-5 py-10 text-white">
       <div className={`mx-auto ${largo ? "max-w-6xl" : "max-w-md"}`}>
         <h1 className="title mb-8 text-3xl">Planejamento do Mês · Leads</h1>
         {children}

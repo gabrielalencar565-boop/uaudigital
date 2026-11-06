@@ -27,7 +27,7 @@ export default function StepCliente({ r, set, erros }: Props) {
       />
 
       <fieldset aria-describedby={erros.nicho ? "nicho-erro" : undefined}>
-        <legend className="mb-2 font-bold">Nicho</legend>
+        <legend className="mb-2 font-semibold">Nicho</legend>
         <label htmlFor="nicho-busca" className="sr-only">
           Buscar nicho
         </label>
@@ -50,8 +50,8 @@ export default function StepCliente({ r, set, erros }: Props) {
                 role="radio"
                 aria-checked={on}
                 onClick={() => set("nicho", n.id)}
-                className={`min-h-11 rounded-full border-2 px-4 text-[15px] font-medium transition-colors ${
-                  on ? "border-roxo bg-roxo text-white" : "border-borda bg-card text-white hover:border-[#3a3546]"
+                className={`min-h-11 rounded-full border-[1.5px] px-4 text-[15px] font-medium transition-colors ${
+                  on ? "grad-border text-fg" : "border-line bg-bg2 text-fg hover:border-[#3d3846]"
                 }`}
               >
                 {n.nome}

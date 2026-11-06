@@ -5,7 +5,7 @@ import { FORMATOS } from "@/data/formulario";
 import { COPY } from "@/data/textos";
 import type { Plano, PlanoMeta } from "@/lib/plano";
 
-/** PDF para o social media apresentar ao cliente: A4, fundo branco, detalhes em roxo e amarelo. */
+/** PDF para o social media apresentar ao cliente: A4, fundo branco, detalhes nas cores da UAU (roxo, magenta e laranja). */
 
 const fonte = (peso: number) => path.join(process.cwd(), "src/assets", `Bricolage-${peso}.ttf`);
 Font.register({
@@ -19,8 +19,10 @@ Font.register({
 // Não quebra palavras com hífen no meio.
 Font.registerHyphenationCallback((palavra) => [palavra]);
 
-const ROXO = "#7A35D6";
-const AMARELO = "#FFD23F";
+const ROXO = "#7B2FE0";
+const MAGENTA = "#C9307A";
+const LARANJA = "#F2A04A";
+const LILAS_CLARO = "#F3EDFD";
 const TINTA = "#141217";
 const CINZA = "#5A5563";
 const LINHA = "#E6E3EC";
@@ -34,11 +36,11 @@ const semEmoji = (s: string) =>
 
 const s = StyleSheet.create({
   pagina: { fontFamily: "Bricolage", fontSize: 10, color: TINTA, paddingTop: 40, paddingBottom: 56, paddingHorizontal: 40, backgroundColor: "#FFFFFF" },
-  faixa: { position: "absolute", top: 0, left: 0, right: 0, height: 8, backgroundColor: ROXO },
+  faixa: { position: "absolute", top: 0, left: 0, right: 0, height: 8, flexDirection: "row" },
   rotulo: { fontSize: 9, fontWeight: 700, color: ROXO, letterSpacing: 1.2, textTransform: "uppercase" },
   capaTitulo: { fontSize: 34, fontWeight: 800, letterSpacing: -0.8, lineHeight: 1.05, marginTop: 10 },
   nicho: { fontSize: 12, color: CINZA, marginTop: 6 },
-  caixaObjetivo: { backgroundColor: AMARELO, borderRadius: 12, padding: 18, marginTop: 26 },
+  caixaObjetivo: { backgroundColor: LILAS_CLARO, borderRadius: 12, padding: 18, marginTop: 26, borderLeftWidth: 4, borderLeftColor: ROXO },
   objetivoTexto: { fontSize: 15, fontWeight: 800, lineHeight: 1.25, marginTop: 6 },
   metas: { flexDirection: "row", gap: 10, marginTop: 12 },
   meta: { flex: 1, backgroundColor: "#FFFFFF", borderRadius: 8, padding: 10 },
@@ -90,13 +92,17 @@ export default function PdfDocument({ plano, meta }: { plano: Plano; meta: Plano
   return (
     <Document title={`Planejamento de conteúdo · ${meta.mes} · ${meta.cliente}`} author={meta.cliente} creator="Planejamento do Mês em 5 Minutos">
       <Page size="A4" style={s.pagina}>
-        <View style={s.faixa} fixed />
+        <View style={s.faixa} fixed>
+          <View style={{ flex: 1, backgroundColor: ROXO }} />
+          <View style={{ flex: 1, backgroundColor: MAGENTA }} />
+          <View style={{ flex: 1, backgroundColor: LARANJA }} />
+        </View>
         <Text style={s.rotulo}>Planejamento de conteúdo · {mes}</Text>
         <Text style={s.capaTitulo}>{semEmoji(meta.cliente)}</Text>
         <Text style={s.nicho}>{semEmoji(meta.nicho)}</Text>
 
         <View style={s.caixaObjetivo}>
-          <Text style={[s.rotulo, { color: TINTA }]}>Objetivo do mês</Text>
+          <Text style={s.rotulo}>Objetivo do mês</Text>
           <Text style={s.objetivoTexto}>{semEmoji(plano.objetivo_mes)}</Text>
           <View style={s.metas}>
             {plano.metas.map((m) => (
@@ -151,7 +157,11 @@ export default function PdfDocument({ plano, meta }: { plano: Plano; meta: Plano
       </Page>
 
       <Page size="A4" style={s.pagina}>
-        <View style={s.faixa} fixed />
+        <View style={s.faixa} fixed>
+          <View style={{ flex: 1, backgroundColor: ROXO }} />
+          <View style={{ flex: 1, backgroundColor: MAGENTA }} />
+          <View style={{ flex: 1, backgroundColor: LARANJA }} />
+        </View>
         {plano.semanas.map((semana, i) => (
           <View key={semana.numero} break={i > 0 && plano.semanas[0].posts.length >= 4} style={{ marginBottom: 18 }}>
             {semana.posts.map((p, j) => {
