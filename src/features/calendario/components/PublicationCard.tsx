@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { Video, Film, Images, Aperture, LayoutGrid, Smartphone, GripVertical, File, ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { CONTENT_TYPE_LABELS, type CalendarPublication } from "../calendar-types";
+import { lateDays, lateLabel, manualPostState } from "../lib/manual-post";
 
 export const CONTENT_TYPE_ICON: Record<CalendarPublication["content_type"], typeof Film> = {
   carrossel: LayoutGrid,
@@ -29,6 +31,17 @@ const CONTENT_TYPE_COLOR_KEY: Record<CalendarPublication["content_type"], string
   post: "green",
   foto: "teal",
 };
+
+/** Nome do tipo na etiqueta: postagem manual (tag "Reels Teste") aparece como "Reels Teste". */
+export function publicationTypeLabel(p: Pick<CalendarPublication, "content_type" | "manual_post">): string {
+  return p.manual_post ? "Reels Teste" : CONTENT_TYPE_LABELS[p.content_type];
+}
+
+/** Cor da etiqueta do tipo: "Reels Teste" usa o rosa da própria tag. */
+export function publicationTypeColor(p: Pick<CalendarPublication, "content_type" | "manual_post">) {
+  if (p.manual_post) return { bg: TAG_COLORS.find((c) => c.key === "pink")!.dot, text: "text-white" };
+  return getContentTypeColor(p.content_type);
+}
 
 export function getContentTypeColor(contentType: CalendarPublication["content_type"]) {
   const key = CONTENT_TYPE_COLOR_KEY[contentType];
@@ -57,11 +70,14 @@ interface Props {
 
 export function PublicationCard({ publication, images, onClick, dragHandleProps, isDragging, isCapa }: Props) {
   const Icon = isCapa ? Bookmark : CONTENT_TYPE_ICON[publication.content_type];
-  const label = isCapa ? "Capa" : CONTENT_TYPE_LABELS[publication.content_type];
+  const label = isCapa ? "Capa" : publicationTypeLabel(publication);
   const statusPill = STATUS_PILL[publication.status];
+  // Reels Teste: postagem manual — mostra se ainda falta postar, se está atrasada ou se já foi marcada como postada
+  const today = format(new Date(), "yyyy-MM-dd");
+  const manual = manualPostState(publication, today);
   const contentTypeColor = isCapa
     ? { bg: TAG_COLORS.find((c) => c.key === "indigo")!.dot, text: "text-white" }
-    : getContentTypeColor(publication.content_type);
+    : publicationTypeColor(publication);
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const imgList = images ?? [];
@@ -137,9 +153,22 @@ export function PublicationCard({ publication, images, onClick, dragHandleProps,
       </div>
 
       <div className="flex min-w-0 items-center justify-between gap-1 p-1.5">
-        <span className={cn("min-w-0 truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-snug", statusPill.className)}>
-          {statusPill.label}
-        </span>
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          <span className={cn("min-w-0 truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-snug", statusPill.className)}>
+            {statusPill.label}
+          </span>
+          {manual === "late" && publication.publish_date && (
+            <span className="truncate rounded-full bg-destructive/15 px-1.5 py-0.5 text-[9px] font-semibold leading-snug text-destructive">
+              {lateLabel(lateDays(publication.publish_date, today)).toUpperCase()}
+            </span>
+          )}
+          {manual === "waiting" && (
+            <span className="truncate rounded-full bg-pink-500/15 px-1.5 py-0.5 text-[9px] font-semibold leading-snug text-pink-600 dark:text-pink-400">POSTAR À MÃO</span>
+          )}
+          {manual === "posted" && (
+            <span className="truncate rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-semibold leading-snug text-success">POSTADO</span>
+          )}
+        </div>
         <span
           ref={dragHandleProps?.setActivatorNodeRef}
           {...(dragHandleProps?.listeners ?? {})}

@@ -29,8 +29,9 @@ import {
   useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate,
   type ClientInstagramRisk, useRemoveCalendarPublications, useRemovedPublicationsForClient, useRestorePublications } from "../hooks/use-calendar-data";
 import { PublicacoesRemovidasDialog } from "./PublicacoesRemovidasDialog";
+import { manualPostState } from "../lib/manual-post";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
-import { PublicationCard, CONTENT_TYPE_ICON, getContentTypeColor } from "./PublicationCard";
+import { PublicationCard, CONTENT_TYPE_ICON, publicationTypeColor, publicationTypeLabel } from "./PublicationCard";
 import { PublicationPreviewPanel } from "./PublicationPreviewPanel";
 import { QuickAddPublicationDialog } from "./QuickAddPublicationDialog";
 import { CalendarPeriodButton } from "./CalendarPeriodButton";
@@ -174,10 +175,10 @@ function ListPublicationCard({ publication: p, idx, images, onClick, isCapa, has
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const Icon = isCapa ? Bookmark : CONTENT_TYPE_ICON[p.content_type];
-  const label = isCapa ? "Capa" : CONTENT_TYPE_LABELS[p.content_type];
+  const label = isCapa ? "Capa" : publicationTypeLabel(p);
   const typeColor = isCapa
     ? { bg: TAG_COLORS.find((c) => c.key === "indigo")!.dot, text: "text-white" }
-    : getContentTypeColor(p.content_type);
+    : publicationTypeColor(p);
   const hasMultiple = images.length > 1;
 
   useEffect(() => {
@@ -502,10 +503,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     const to = format(addDays(new Date(), 7), "yyyy-MM-dd");
     return new Set(
       publications
-        .filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && !!p.publish_date && p.publish_date >= from && p.publish_date <= to)
+        .filter((p) => !p.manual_post && !p.instagram_scheduled && p.instagram_status !== "published" && !!p.publish_date && p.publish_date >= from && p.publish_date <= to)
         .map((p) => p.id),
     );
   }, [alertUnscheduled, publications]);
+  // Reels Teste (postagem manual) que passou do dia sem ser marcado como postado nem agendado
+  const lateManualPosts = useMemo(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return publications.filter((p) => manualPostState(p, today) === "late");
+  }, [publications]);
   const [alertPulse, setAlertPulse] = useState(false);
   const alertModeFor = (p: CalendarPublication): AlertMode => (alertIds.has(p.id) ? (alertPulse ? "pulse" : "on") : false);
   useEffect(() => {
@@ -577,24 +583,24 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // notReadyPublications acima, que olha o ciclo inteiro pra "Concluir PDF"). Segue o fluxo:
   // só é possível agendar depois que o PDF daquela publicação já foi concluído.
   const notReadyToSchedule = useMemo(
-    () => publishablePublications.filter((p) => !isCapaTask(p.task_id) && missingFieldsFor(p).length > 0),
+    () => publishablePublications.filter((p) => !p.manual_post && !isCapaTask(p.task_id) && missingFieldsFor(p).length > 0),
     [publishablePublications, capaTaskIdsQ.data],
   );
   const schedulablePublications = useMemo(
-    () => publishablePublications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    () => publishablePublications.filter((p) => !p.manual_post && !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
     [publishablePublications, taskCompletionQ.data],
   );
   // Fallback quando não há nada aprovado ainda pra agendar da forma normal: o time pode
   // forçar o agendamento de publicações completas (legenda+data+horário, PDF concluído) mesmo
   // sem aprovação do cliente — oferecido via diálogo de confirmação, não como caminho padrão.
   const forceSchedulablePublications = useMemo(
-    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    () => publications.filter((p) => !p.manual_post && !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
     [publications, taskCompletionQ.data],
   );
   // Completas e sem agendamento, mas o PDF ainda não foi concluído — bloqueadas até o time
   // marcar "Concluir PDF", pra dar um feedback claro em vez de simplesmente não aparecerem.
   const blockedByPdfNotConcluded = useMemo(
-    () => publications.filter((p) => !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && !isPdfConcluded(p)),
+    () => publications.filter((p) => !p.manual_post && !p.instagram_scheduled && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && !isPdfConcluded(p)),
     [publications, taskCompletionQ.data],
   );
   const [incompleteScheduleDialogOpen, setIncompleteScheduleDialogOpen] = useState(false);
@@ -606,7 +612,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // (completo, PDF concluído e ainda não publicado) já está com instagram_scheduled=true —
   // mesmo padrão do toggle "Concluir PDF"/"PDF concluído".
   const schedulableUniverse = useMemo(
-    () => publications.filter((p) => p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
+    () => publications.filter((p) => !p.manual_post && p.instagram_status !== "published" && missingFieldsFor(p).length === 0 && isPdfConcluded(p)),
     [publications, taskCompletionQ.data],
   );
   const cycleScheduled = schedulableUniverse.length > 0 && schedulableUniverse.every((p) => p.instagram_scheduled);
@@ -1107,6 +1113,30 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       {/* Selected client's calendar, full view */}
       {clientId && (
       <div className="space-y-4">
+      {lateManualPosts.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            const first = [...lateManualPosts].sort((a, b) => (a.publish_date ?? "").localeCompare(b.publish_date ?? ""))[0];
+            if (first.publish_date) setCursor(anchorForDate(parseISO(first.publish_date), dayFor));
+            setSelectedId(first.id);
+          }}
+          className="group flex w-full items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3 text-left transition-colors hover:bg-muted/30"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">
+              {lateManualPosts.length === 1 ? "1 Reels Teste atrasado" : `${lateManualPosts.length} Reels Teste atrasados`}
+            </p>
+            <p className="text-xs text-muted-foreground">A data já passou e ainda não foi marcado como postado. Poste à mão e marque na publicação.</p>
+          </div>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+            Abrir <ArrowUpRight className="h-3.5 w-3.5" />
+          </span>
+        </button>
+      )}
       {currentClientRisk && (
         <button
           type="button"
@@ -1646,7 +1676,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                           <span className="h-8 w-8 shrink-0 rounded-md bg-muted" />
                         )}
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[11px] font-medium">{CONTENT_TYPE_LABELS[p.content_type]}</span>
+                          <span className="block truncate text-[11px] font-medium">{publicationTypeLabel(p)}</span>
                           <span className="block truncate text-[10px] text-muted-foreground">{reason}</span>
                         </span>
                       </button>

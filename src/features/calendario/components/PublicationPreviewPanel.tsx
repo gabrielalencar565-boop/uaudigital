@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { lateDays, lateLabel, manualPostState } from "../lib/manual-post";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -29,6 +30,9 @@ import { PmImageViewer } from "@/features/gestao/components/PmImageViewer";
 import { stageLabel } from "@/features/gestao/pm-constants";
 
 import { deleteSameFileRows } from "@/features/gestao/lib/attachment-sync";
+
+// Valor da opção "Reels Teste" no seletor de tipo (não é um tipo do banco: vale content_type reel + manual_post)
+const REELS_TESTE = "reels_teste";
 
 const sb = supabase as any;
 
@@ -731,16 +735,26 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
             <div className="space-y-4 overflow-y-auto px-4 py-4">
               <div className="space-y-1.5">
                 <Label>Tipo de conteúdo</Label>
-                <Select value={publication.content_type} onValueChange={(v: PublicationContentType) => save({ content_type: v })}>
+                {/* "Reels Teste" é um Reels de postagem manual (content_type reel + manual_post), por isso é uma opção à parte */}
+                <Select
+                  value={publication.manual_post ? REELS_TESTE : publication.content_type}
+                  onValueChange={(v: string) => {
+                    if (v === REELS_TESTE) save({ content_type: "reel", manual_post: true });
+                    else save({ content_type: v as PublicationContentType, manual_post: false });
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {/* "video" is a legacy content_type kept only so old rows still render
                         (see calendar-types.ts) — every video format is Reels now, so it's
                         not offered as a choice here. */}
-                    {/* "outro" had no behavior at all (no format, no automatic publishing), so it is no longer offered;
-                        it only stays listed on rows that already have it, so their current value still renders. */}
+                    {/* "outro" ("A definir") não é mais oferecido: o sistema define o tipo pela etiqueta e pela mídia;
+                        ele só continua listado em quem ainda o tem, para o valor atual aparecer. */}
                     {Object.entries(CONTENT_TYPE_LABELS).filter(([key]) => key !== "video" && (key !== "outro" || publication.content_type === "outro")).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                      <Fragment key={key}>
+                        <SelectItem value={key}>{label}</SelectItem>
+                        {key === "reel" && <SelectItem value={REELS_TESTE}>Reels Teste</SelectItem>}
+                      </Fragment>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1286,6 +1300,25 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </button>
                     )}
 
+                    {publication.manual_post && !isPublished && !publication.instagram_scheduled && (() => {
+                      const todayIso = format(new Date(), "yyyy-MM-dd");
+                      const isLate = manualPostState(publication, todayIso) === "late";
+                      return (
+                        <div className="space-y-2 rounded-lg border border-pink-500/30 bg-pink-500/5 px-3 py-2.5">
+                          <p className="text-xs font-semibold">Reels Teste: postagem manual</p>
+                          <p className="text-xs text-muted-foreground">
+                            Não entra no agendamento em lote nem no aviso de "sem agendar". Poste no Instagram e marque aqui; a etapa Agendamento da tarefa é concluída junto. Se preferir, também dá para agendar este por aqui, abaixo.
+                          </p>
+                          {isLate && publication.publish_date && (
+                            <p className="text-xs font-semibold text-destructive">{lateLabel(lateDays(publication.publish_date, todayIso))}: a data já passou e ainda não foi marcado como postado.</p>
+                          )}
+                          <Button size="sm" className="w-full gap-1.5" onClick={() => setConfirmManualOpen(true)}>
+                            <Check className="h-3.5 w-3.5" /> Marcar como postado
+                          </Button>
+                        </div>
+                      );
+                    })()}
+
                     {isPublished ? (
                       <Button
                         variant="outline"
@@ -1384,7 +1417,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </Button>
                     )}
 
-                    {!isPublished && !publication.instagram_scheduled && (
+                    {!isPublished && !publication.instagram_scheduled && !publication.manual_post && (
                       <p className="pt-0.5 text-center text-xs text-muted-foreground">
                         Já foi postado fora do sistema?{" "}
                         <button type="button" className="underline hover:text-foreground" onClick={() => setConfirmManualOpen(true)}>
@@ -1472,10 +1505,11 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
       <AlertDialog open={confirmManualOpen} onOpenChange={setConfirmManualOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Esse post já foi publicado?</AlertDialogTitle>
+            <AlertDialogTitle>{publication.manual_post ? "Esse Reels já foi postado?" : "Esse post já foi publicado?"}</AlertDialogTitle>
             <AlertDialogDescription>
               Use só se ele já foi ao ar no Instagram, fora do sistema. Ele passa a contar como publicado e não será publicado por aqui.
-              Se marcar sem querer, dá para desfazer.
+              {publication.manual_post ? " A etapa Agendamento da tarefa é concluída junto." : ""}
+              {" "}Se marcar sem querer, dá para desfazer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1495,7 +1529,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                   instagram_deleted_at: null,
                   instagram_published_at: publishedAt.toISOString(),
                 });
-                toast.success("Marcado como publicado manualmente.");
+                toast.success(publication.manual_post ? "Marcado como postado." : "Marcado como publicado manualmente.");
               }}
             >
               Sim, já foi publicado
@@ -1508,7 +1542,10 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Desfazer "publicado manualmente"?</AlertDialogTitle>
-            <AlertDialogDescription>O post volta a contar como não publicado e você pode agendá-lo de novo.</AlertDialogDescription>
+            <AlertDialogDescription>
+              O post volta a contar como não publicado e você pode agendá-lo de novo.
+              {publication.manual_post ? " A etapa Agendamento da tarefa volta a ficar aberta." : ""}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
