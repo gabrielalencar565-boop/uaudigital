@@ -64,6 +64,7 @@ O site fica no ar como um projeto Vercel separado do Fluxo, apontando para esta 
 - `vercel.json` desta pasta deixa os endereços sem `.html` (`/sobre`, `/clientes`…), guarda imagens e vídeos em cache e liga cabeçalhos de segurança.
 - `robots.txt` e `sitemap.xml` já apontam para o domínio.
 - **`/raioxsocialmedia`**: o Raio-X do Social Media (pasta `raio-x/` do repositório) roda num projeto próprio na Vercel (`raioxsocialmedia`) e aparece em `www.uaucomunicacaodigital.com.br/raioxsocialmedia` pelo `rewrites` do `vercel.json` desta pasta. Se o endereço do projeto mudar, atualize as duas linhas de `rewrites`.
+- **`/planejamento`**: o Planejamento do Mês em 5 Minutos (pasta `planejamento/`) roda no projeto `planejamentodomes` da Vercel, pelo mesmo esquema de `rewrites`.
 
 ## Formulário de contato
 No momento os botões levam direto ao WhatsApp (`modo:'whatsapp'` no `CONTATO`). Para voltar a abrir o formulário, troque para `modo:'formulario'`.

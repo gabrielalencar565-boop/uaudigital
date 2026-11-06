@@ -46,7 +46,7 @@ export const MODELOS: Record<Exclude<FaseId, "resistencia">, ModeloPostRegulado[
     {
       gancho: "Como funciona {servico}, passo a passo",
       ideia:
-        "Explique as etapas de {servico} de forma simples: o que acontece antes, durante e depois. Um passo por slide, com linguagem que {publico} entende. Termine com o que a pessoa precisa fazer pra começar.",
+        "Explique as etapas de {servico} de forma simples: o que acontece antes, durante e depois. Um passo por slide, com linguagem simples, do jeito que o público fala. Termine com o que a pessoa precisa fazer pra começar.",
       cta: "Salva pra consultar depois",
     },
     {

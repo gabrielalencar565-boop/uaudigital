@@ -154,14 +154,10 @@ export default function PdfDocument({ plano, meta }: { plano: Plano; meta: Plano
         <View style={s.faixa} fixed />
         {plano.semanas.map((semana, i) => (
           <View key={semana.numero} break={i > 0 && plano.semanas[0].posts.length >= 4} style={{ marginBottom: 18 }}>
-            <View wrap={false} minPresenceAhead={110}>
-              <Text style={s.semanaTitulo}>Semana {semana.numero}</Text>
-              <Text style={s.semanaFoco}>{semEmoji(semana.foco)}</Text>
-            </View>
             {semana.posts.map((p, j) => {
               const f = FORMATOS.find((x) => x.id === p.formato);
-              return (
-                <View key={j} style={s.post} wrap={false}>
+              const linha = (
+                <View style={s.post}>
                   <View style={s.postLado}>
                     <Text style={s.postDia}>{p.dia}</Text>
                     <Pilula fase={p.fase} />
@@ -175,6 +171,18 @@ export default function PdfDocument({ plano, meta }: { plano: Plano; meta: Plano
                       {semEmoji(p.cta)}
                     </Text>
                   </View>
+                </View>
+              );
+              // O título da semana vai junto com o primeiro post (nunca fica sozinho no pé da página).
+              return (
+                <View key={j} wrap={false}>
+                  {j === 0 ? (
+                    <View>
+                      <Text style={s.semanaTitulo}>Semana {semana.numero}</Text>
+                      <Text style={s.semanaFoco}>{semEmoji(semana.foco)}</Text>
+                    </View>
+                  ) : null}
+                  {linha}
                 </View>
               );
             })}

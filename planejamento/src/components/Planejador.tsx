@@ -173,6 +173,8 @@ export default function Planejador() {
     setErroResultado(undefined);
     if (origem === "resultado") setRegerando(true);
     ir({ tipo: "gerando" });
+    // A tela de geração fica pelo menos 4 s, mesmo quando o plano sai na hora.
+    const minimo = new Promise((r) => setTimeout(r, 4000));
     try {
       const res = await fetch(withBase("/api/gerar"), {
         method: "POST",
@@ -183,6 +185,7 @@ export default function Planejador() {
         | ({ ok: true; leadId: string } & PlanoSalvo)
         | { ok: false; erro?: string; leadId?: string }
         | null;
+      await minimo;
       if (data?.leadId) setLeadId(data.leadId);
       if (!res.ok || !data || !data.ok) {
         mostrarErro((data && !data.ok && data.erro) || COPY.erroGenerico);
