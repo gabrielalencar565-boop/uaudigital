@@ -511,13 +511,13 @@ function DiaDSection() {
           className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           aria-label="Antecedência do conteúdo"
         >
-          <option value="0">Mesmo mês: o trabalho conta no mês do prazo</option>
-          <option value="1">1 mês adiantado: o trabalho de outubro conta em novembro</option>
-          <option value="2">2 meses adiantados: o trabalho de outubro conta em dezembro</option>
+          <option value="0">Mesmo mês: o conteúdo é do mês do prazo</option>
+          <option value="1">1 mês adiantado: o trabalho de outubro é conteúdo de novembro</option>
+          <option value="2">2 meses adiantados: o trabalho de outubro é conteúdo de dezembro</option>
           <option value="3">3 meses adiantados</option>
         </select>
         <p className="text-xs text-muted-foreground">
-          Vale para as tarefas novas (planejamento, design, vídeo…): elas já nascem com o "mês do conteúdo" certo, que o Magic Number e a pontuação usam. Dá para ajustar uma tarefa específica (por exemplo, conteúdo de dezembro) dentro dela. Demandas extras e tarefas periódicas contam no mês do prazo.
+          Vale para as tarefas novas (planejamento, design, vídeo…): elas já nascem com o "mês do conteúdo" certo, que serve só para nome e organização. O {label.trim() || "Magic Number"} e a pontuação contam sempre no mês do prazo; para uma exceção, marque "Contar no {label.trim() || "Magic Number"} em outro mês" dentro da tarefa. Demandas extras e tarefas periódicas não têm mês do conteúdo.
         </p>
       </div>
       <Button className="rounded-full" disabled={!dirty || update.isPending} onClick={save}>Salvar</Button>

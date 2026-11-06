@@ -4,7 +4,7 @@ import { PDF_KIND_GRADIENT, PDF_UNIDO_BG, pdfKindAbbr, pdfUnidoAbbr } from "../l
 import {
   Calendar, UserCircle, Flag, X, ChevronRight, ArrowLeft, Trash2, Combine,
   Layers, Tag, MessageSquare, Plus, Check, CheckCircle2, RotateCcw, Paperclip, ListTodo, FileText, Pencil, Lock,
-  Image as ImageIcon, Loader2, Clock, MoreHorizontal, ExternalLink,
+  Image as ImageIcon, Loader2, Clock, MoreHorizontal, ExternalLink, ChevronDown,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
@@ -36,7 +36,7 @@ import { fetchTaskPlan, saveTaskPlan } from "../hooks/use-cascades";
 import { pushPlan, stepKeyFor, type CascadePlan } from "../lib/cascade";
 import { extraOutcome } from "../lib/extra-rules";
 import { nextDueBase, nextDueKey } from "../lib/due-dates";
-import { monthLabel } from "../lib/content-month";
+import { effectiveMonthKey, monthLabel } from "../lib/content-month";
 import { ContentMonthPicker } from "./ContentMonthPicker";
 import { useDefaultFlowWithDates, getNextStages, getFixedAssignee, getFixedWatchers, resolveAssigneeStageKey, computeAlteracaoDueDate, findActualPreviousAssignee } from "./PmStageFlowConfig";
 import { PmSubtaskList } from "./PmSubtaskList";
@@ -765,6 +765,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   cropFormat?: InstagramFormat | null;
 }) {
   const updateTask = useUpdatePmTask();
+  const { label: magicLabel } = useMagicNumberConfig();
   const createTask = useCreatePmTask();
   const syncStage = usePmSyncStageCompletion();
   const queryClient = useQueryClient();
@@ -780,6 +781,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  // "Contar em outro mês" no Magic Number: só aparece quando alguém marca (ou a tarefa já tem esse ajuste)
+  const [countElsewhere, setCountElsewhere] = useState(false);
+  useEffect(() => { setCountElsewhere(!!task.reference_month); }, [task.id, task.reference_month]);
   const [newTagName, setNewTagName] = useState("");
   const createTag = useCreatePmTag();
   const [stageChoiceOpen, setStageChoiceOpen] = useState(false);
@@ -2492,15 +2496,84 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             <DatePickerInline value={task.due_date ?? ""} onChange={(v) => updateTask.mutate({ id: task.id, due_date: v || null })} />
           </PropertyRow>
 
-          <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Mês do conteúdo">
-            <ContentMonthPicker
-              referenceMonth={task.reference_month}
-              dueDate={task.due_date}
-              onChange={(v) => updateTask.mutate({ id: task.id, reference_month: v } as any, {
-                onSuccess: () => toast.success(v ? `Conteúdo de ${monthLabel(v)}` : "Mês do conteúdo igual ao prazo"),
-              })}
-            />
+          {/* Compacto: só o selo do mês do Magic Number; ao clicar abre o resto (exceção e mês do conteúdo) */}
+          {/* Demanda extra não tem mês de conteúdo nem de Magic Number, a não ser que seja de planejamento */}
+          {(!task.is_extra_demand || task.post_type === "planejamento" || task.stage_current === "planejamento") && (
+          <PropertyRow icon={<Flag className="h-3.5 w-3.5" />} label={magicLabel}>
+            {(() => {
+              const key = effectiveMonthKey(task);
+              const full = monthLabel(key);
+              const shown = key && key.slice(0, 4) === String(new Date().getFullYear()) ? full.split(" de ")[0] : full;
+              const contentKey = task.content_month;
+              const contentShown = contentKey ? (contentKey.slice(0, 4) === String(new Date().getFullYear()) ? monthLabel(contentKey).split(" de ")[0] : monthLabel(contentKey)) : "";
+              return (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      title="Clique para ver ou mudar os meses"
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                    >
+                      {shown || "sem prazo"}
+                      {task.reference_month && <span className="opacity-80">· à mão</span>}
+                      <ChevronDown className="h-3 w-3 opacity-80" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="z-[150] w-72 space-y-3 p-3">
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-sm font-medium text-primary-foreground">
+                        <Flag className="h-3.5 w-3.5" />
+                        {magicLabel}: {shown || "sem prazo"}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {task.reference_month ? "Mês escolhido à mão." : task.due_date ? `Conta no mês do prazo (${task.due_date.slice(8, 10)}/${task.due_date.slice(5, 7)}).` : "Conta no mês do prazo."}
+                      </p>
+                      {countElsewhere ? (
+                        <div className="flex flex-col items-start gap-1.5 pt-1">
+                          <ContentMonthPicker
+                            kind="count"
+                            referenceMonth={task.reference_month}
+                            dueDate={task.due_date}
+                            onChange={(v) => updateTask.mutate({ id: task.id, reference_month: v } as any, {
+                              onSuccess: () => toast.success(v ? `${magicLabel} e pontuação em ${monthLabel(v)}` : `${magicLabel} no mês do prazo`),
+                            })}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (task.reference_month) updateTask.mutate({ id: task.id, reference_month: null } as any, { onSuccess: () => toast.success(`${magicLabel} no mês do prazo`) });
+                              setCountElsewhere(false);
+                            }}
+                            className="whitespace-nowrap text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                          >
+                            Voltar ao mês do prazo
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setCountElsewhere(true)} className="whitespace-nowrap text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                          Contar em outro mês
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1 border-t border-border/50 pt-3">
+                      <span className="text-xs text-muted-foreground">Mês do conteúdo{contentShown ? ` (${contentShown})` : ""}</span>
+                      <div>
+                        <ContentMonthPicker
+                          kind="content"
+                          referenceMonth={task.content_month}
+                          dueDate={task.due_date}
+                          onChange={(v) => updateTask.mutate({ id: task.id, content_month: v } as any, {
+                            onSuccess: () => toast.success(v ? `Conteúdo de ${monthLabel(v)}` : "Mês do conteúdo automático"),
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            })()}
           </PropertyRow>
+          )}
 
           <PropertyRow icon={<Clock className="h-3.5 w-3.5" />} label="Horário">
             <div className="flex items-center gap-2 min-h-[28px]">

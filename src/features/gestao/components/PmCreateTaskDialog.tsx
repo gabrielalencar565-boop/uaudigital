@@ -1,5 +1,6 @@
 import { automaticMonthDate, pickToReferenceMonth } from "../lib/content-month";
-import { useContentMonthOffset } from "@/features/data/queries";
+import { MagicMonthPill } from "./MagicMonthPill";
+import { useContentMonthOffset, useMagicNumberConfig } from "@/features/data/queries";
 import { useState, useMemo, useEffect } from "react";
 import { FolderOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -44,10 +45,17 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
   const contentOffset = useContentMonthOffset();
   const autoMonth = () => String(automaticMonthDate(null, contentOffset).getMonth() + 1).padStart(2, "0");
   const [monthRef, setMonthRef] = useState(autoMonth);
+  // Magic Number conta no mês do prazo; só quem marca "outro mês" escolhe um diferente
+  const { label: magicLabel } = useMagicNumberConfig();
+  const thisMonth = () => String(automaticMonthDate(null, 0).getMonth() + 1).padStart(2, "0");
+  const [countElsewhere, setCountElsewhere] = useState(false);
+  const [countRef, setCountRef] = useState(thisMonth);
   const [clientId, setClientId] = useState("");
   const [stage, setStage] = useState(defaultStatus || "");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [isExtra, setIsExtra] = useState(false);
+  // Demanda extra não tem mês de conteúdo nem de Magic Number, a não ser que seja de planejamento
+  const extraNoMonth = isExtra && stage !== "planejamento";
   const [customTitle, setCustomTitle] = useState("");
 
   // Reset on open
@@ -59,6 +67,8 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
       setIsExtra(false);
       setCustomTitle("");
       setMonthRef(autoMonth());
+      setCountElsewhere(false);
+      setCountRef(thisMonth());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultStatus, defaultAssigneeId, contentOffset]);
@@ -128,8 +138,9 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
         is_extra_demand: isExtra,
         status_global: "backlog",
         periodic_stage_key: isPeriodic ? stage : null,
-        // "Mês referente" também define o mês do Magic Number e da pontuação, não só o nome da tarefa
-        reference_month: isExtra || isPeriodic ? null : pickToReferenceMonth(monthRef, automaticMonthDate(null, contentOffset)),
+        // "Mês do conteúdo" é só nome e organização; o Magic Number conta no mês do prazo, salvo se marcarem "outro mês"
+        content_month: extraNoMonth || isPeriodic ? null : pickToReferenceMonth(monthRef, automaticMonthDate(null, contentOffset)),
+        reference_month: extraNoMonth || isPeriodic || !countElsewhere ? null : pickToReferenceMonth(countRef, automaticMonthDate(null, 0)),
       });
 
       onClose();
@@ -201,20 +212,45 @@ export function PmCreateTaskDialog({ open, onClose, clients, members, membersMap
             </Select>
           </div>
 
-          {/* Mês referente */}
-          {!isExtra && (
-            <div>
-              <Label className="text-xs text-muted-foreground">Mês referente</Label>
-              <Select value={monthRef} onValueChange={setMonthRef}>
-                <SelectTrigger className="h-9 text-sm mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthOptions.map(o => (
-                    <SelectItem key={o.val} value={o.val} className="text-sm">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Magic Number primeiro (é o que conta); o que se escolhe é o mês do conteúdo */}
+          {!extraNoMonth && (
+            <div className="space-y-2">
+              <MagicMonthPill label={magicLabel} month={MONTH_LABELS[(parseInt(countElsewhere ? countRef : thisMonth(), 10) || 1) - 1]} custom={countElsewhere} />
+              {countElsewhere ? (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Conta no {magicLabel} em</Label>
+                  <Select value={countRef} onValueChange={setCountRef}>
+                    <SelectTrigger className="h-9 text-sm mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map(o => (
+                        <SelectItem key={o.val} value={o.val} className="text-sm">{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button type="button" onClick={() => setCountElsewhere(false)} className="mt-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                    Voltar ao mês do prazo
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setCountElsewhere(true)} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                  Contar em outro mês
+                </button>
+              )}
+              <div>
+                <Label className="text-xs text-muted-foreground">Mês do conteúdo</Label>
+                <Select value={monthRef} onValueChange={setMonthRef}>
+                  <SelectTrigger className="h-9 text-sm mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(o => (
+                      <SelectItem key={o.val} value={o.val} className="text-sm">{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 

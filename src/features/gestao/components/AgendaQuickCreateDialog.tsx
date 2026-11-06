@@ -1,5 +1,6 @@
 import { automaticMonthDate, pickToReferenceMonth } from "../lib/content-month";
-import { useContentMonthOffset } from "@/features/data/queries";
+import { MagicMonthPill } from "./MagicMonthPill";
+import { useContentMonthOffset, useMagicNumberConfig } from "@/features/data/queries";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -60,18 +61,26 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
   const [periodicTime, setPeriodicTime] = useState("");
 
   const isPeriodic = isPeriodicStageKey(stage);
+  // Demanda extra não tem mês de conteúdo nem de Magic Number, a não ser que seja de planejamento
+  const extraNoMonth = isExtra && stage !== "planejamento";
   const cascadeChoice = useCascadeChoice(stage, !isExtra && !isPeriodic);
 
   // Reference month defaults from the due date (month only, no year)
   const contentOffset = useContentMonthOffset();
   const defaultMonthRef = String(automaticMonthDate(dueDate || null, contentOffset).getMonth() + 1).padStart(2, "0");
   const [monthRef, setMonthRef] = useState(defaultMonthRef);
+  // Magic Number conta no mês do prazo; só quem marca "outro mês" escolhe um diferente
+  const { label: magicLabel } = useMagicNumberConfig();
+  const [countElsewhere, setCountElsewhere] = useState(false);
+  const [countRef, setCountRef] = useState(() => String(automaticMonthDate(dueDate || null, 0).getMonth() + 1).padStart(2, "0"));
 
   useEffect(() => {
     if (!open) return;
     const dd = defaultDate ?? format(new Date(), "yyyy-MM-dd");
     setDueDate(dd);
     setMonthRef(String(automaticMonthDate(dd, contentOffset).getMonth() + 1).padStart(2, "0"));
+    setCountElsewhere(false);
+    setCountRef(String(automaticMonthDate(dd, 0).getMonth() + 1).padStart(2, "0"));
     setIsExtra(false);
     setCustomTitle("");
     setIsFreelancer(false);
@@ -181,8 +190,9 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
       watchers: watchers.length > 0 ? watchers : undefined,
       is_extra_demand: isPeriodic ? true : isExtra,
       status_global: "backlog",
-      // "Mês referente" também define o mês do Magic Number e da pontuação, não só o nome da tarefa
-      reference_month: isPeriodic || isExtra ? null : pickToReferenceMonth(monthRef, automaticMonthDate(dueDate, contentOffset)),
+      // "Mês do conteúdo" é só nome e organização; o Magic Number conta no mês do prazo, salvo se marcarem "outro mês"
+      content_month: isPeriodic || extraNoMonth ? null : pickToReferenceMonth(monthRef, automaticMonthDate(dueDate, contentOffset)),
+      reference_month: isPeriodic || extraNoMonth || !countElsewhere ? null : pickToReferenceMonth(countRef, automaticMonthDate(dueDate, 0)),
     } as any, {
       onSuccess: (created: any) => {
         // Cascata: save the planned dates of every step of this piece of work next to its first task.
@@ -313,17 +323,44 @@ export function AgendaQuickCreateDialog({ open, onClose, clients, members, defau
             </>
           )}
 
-          {!isExtra && !isPeriodic && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Mês referente</Label>
-              <Select value={monthRef} onValueChange={setMonthRef}>
-                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {monthOptions.map(o => (
-                    <SelectItem key={o.val} value={o.val}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {!extraNoMonth && !isPeriodic && (
+            <div className="space-y-2">
+              <MagicMonthPill label={magicLabel} month={MONTH_LABELS[(parseInt(countElsewhere ? countRef : String(automaticMonthDate(dueDate || null, 0).getMonth() + 1), 10) || 1) - 1]} custom={countElsewhere} />
+              {countElsewhere ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Conta no {magicLabel} em</Label>
+                  <Select value={countRef} onValueChange={setCountRef}>
+                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map(o => (
+                        <SelectItem key={o.val} value={o.val}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button type="button" onClick={() => setCountElsewhere(false)} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                    Voltar ao mês do prazo
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setCountRef(String(automaticMonthDate(dueDate || null, 0).getMonth() + 1).padStart(2, "0")); setCountElsewhere(true); }}
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Contar em outro mês
+                </button>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Mês do conteúdo</Label>
+                <Select value={monthRef} onValueChange={setMonthRef}>
+                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(o => (
+                      <SelectItem key={o.val} value={o.val}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
 

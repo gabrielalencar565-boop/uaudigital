@@ -64,6 +64,8 @@ export interface CalendarPublication {
   // Team explicitly confirmed this is cleared for the auto-publish cron to pick up — set via
   // the per-publication "Agendar" action or the cycle-wide "Agendar publicações" bulk action.
   instagram_scheduled: boolean;
+  // Etiqueta "Reels Teste": vai para o Cronograma, mas é postada à mão (fora do agendamento em lote e do aviso de "sem agendar").
+  manual_post: boolean;
   instagram_media_id: string | null;
   instagram_creation_id: string | null;
   instagram_permalink: string | null;
@@ -96,7 +98,8 @@ export const CONTENT_TYPE_LABELS: Record<PublicationContentType, string> = {
   reel: "Reels",
   video: "Vídeo",
   story: "Stories",
-  outro: "Outro",
+  // tipo ainda não definido (sem etiqueta e sem mídia): o sistema preenche sozinho assim que houver vídeo, fotos ou etiqueta
+  outro: "A definir",
   post: "Post",
   foto: "Foto",
 };
