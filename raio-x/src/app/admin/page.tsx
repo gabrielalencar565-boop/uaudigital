@@ -20,7 +20,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     return (
       <Shell>
         <p className="text-muted">
-          Configure a variável <code className="text-white">ADMIN_PASSWORD</code> para liberar o admin.
+          Configure a variável <code className="text-fg">ADMIN_PASSWORD</code> para liberar o admin.
         </p>
       </Shell>
     );
@@ -63,7 +63,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     <Shell wide>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <p className="mr-auto text-muted">
-          <strong className="text-white">{leads.length}</strong> leads
+          <strong className="text-fg">{leads.length}</strong> leads ·{" "}
+          <strong className="text-fg">{leads.filter((l) => l.status === "concluido").length}</strong> concluíram o raio-x
         </p>
         <a href="/admin/export" className="rounded-full px-5 py-3 font-semibold text-white [background:var(--grad)]">
           Exportar CSV
@@ -77,7 +78,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="bg-bg2 text-xs tracking-wider text-muted uppercase">
             <tr>
-              {["Nome", "WhatsApp", "Instagram", "Nota", "Nível", "Gargalo", "Data"].map((h) => (
+              {["Nome", "WhatsApp", "Instagram", "Status", "Nota", "Nível", "Gargalo", "Data"].map((h) => (
                 <th key={h} className="px-4 py-3 font-bold">
                   {h}
                 </th>
@@ -102,15 +103,22 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     <span className="text-muted">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 font-extrabold tabular-nums">{l.nota_geral}</td>
-                <td className="px-4 py-3">{l.nivel}</td>
-                <td className="px-4 py-3">{l.gargalo}</td>
+                <td className="px-4 py-3">
+                  {l.status === "concluido" ? (
+                    <span className="rounded-full bg-purple/20 px-2.5 py-1 text-xs font-semibold text-lilac">Concluiu</span>
+                  ) : (
+                    <span className="rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-dim">Só iniciou</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 font-extrabold tabular-nums">{l.nota_geral ?? "—"}</td>
+                <td className="px-4 py-3">{l.nivel ?? "—"}</td>
+                <td className="px-4 py-3">{l.gargalo ?? "—"}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-muted">{fmtDate(l.created_at)}</td>
               </tr>
             ))}
             {leads.length === 0 && !error ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">
                   Nenhum lead ainda.
                 </td>
               </tr>

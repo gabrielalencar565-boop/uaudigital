@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { AREAS, COPY, STRONGEST_TEXT } from "@/data/raiox";
-import { bandFor, type RaioXResult } from "@/lib/scoring";
+import { bandFor, rankedAreas, type Answers, type RaioXResult } from "@/lib/scoring";
 import { firstName } from "@/lib/validation";
-import AreaBars from "./AreaBars";
+import { BandLegend } from "./AreaBars";
+import AreaDiagnosis from "./AreaDiagnosis";
 import Logo from "./Logo";
 import RadarChart from "./RadarChart";
 import Rich from "./Rich";
@@ -28,14 +29,17 @@ function useCountUp(target: number, duration = 1200) {
   return value;
 }
 
-type Props = { result: RaioXResult; name: string; onRestart: () => void };
+type Props = { result: RaioXResult; answers: Answers; name: string; onRestart: () => void };
 
-export default function Result({ result, name, onRestart }: Props) {
+export default function Result({ result, answers, name, onRestart }: Props) {
   const shown = useCountUp(result.overall);
   const first = firstName(name);
   const bottleneck = AREAS.find((a) => a.id === result.bottleneck)!;
   const strongest = AREAS.find((a) => a.id === result.strongest)!;
   const { level } = result;
+  const plan = rankedAreas(result.areas)
+    .slice(0, 3)
+    .map((id) => AREAS.find((a) => a.id === id)!);
 
   return (
     <div className="relative isolate flex flex-col gap-6 pt-5 pb-12">
@@ -48,7 +52,7 @@ export default function Result({ result, name, onRestart }: Props) {
       </header>
 
       <section className="flex flex-col items-center pt-6 text-center">
-        <p className="eyebrow">Seu raio-x{first ? `, ${first}` : ""}</p>
+        <p className="eyebrow">Diagnóstico{first ? ` de ${first}` : " completo"}</p>
         <h1 data-autofocus tabIndex={-1} className="mt-3">
           <span className="sr-only">Sua nota geral é {result.overall} de 100.</span>
           <span aria-hidden="true" className="flex items-baseline justify-center tabular-nums">
@@ -68,16 +72,9 @@ export default function Result({ result, name, onRestart }: Props) {
 
       <section className="rounded-3xl border border-line bg-bg2 p-6">
         <h2 className="title text-2xl">
-          Suas <b>6 áreas</b>
+          Visão <b>geral</b>
         </h2>
         <RadarChart scores={result.areas} />
-      </section>
-
-      <section className="rounded-3xl border border-line bg-bg2 p-6">
-        <h2 className="title mb-5 text-2xl">
-          Nota <b>por área</b>
-        </h2>
-        <AreaBars scores={result.areas} />
       </section>
 
       <section className="on-light rounded-3xl bg-light p-6 text-ink">
@@ -94,6 +91,48 @@ export default function Result({ result, name, onRestart }: Props) {
           <p className="mt-2 leading-relaxed">{bottleneck.bottleneck.firstStep}</p>
         </div>
       </section>
+
+      <section className="px-1 pt-4">
+        <p className="eyebrow">Seu plano de ação</p>
+        <h2 className="title mt-3 text-[2rem]">
+          Por onde <b>começar</b>
+        </h2>
+        <p className="mt-2 leading-relaxed text-muted">Os 3 passos que mais mudam a forma como o seu cliente te enxerga, na ordem.</p>
+        <ol className="mt-5 flex flex-col gap-3">
+          {plan.map((a, i) => (
+            <li key={a.id} className="flex gap-4 rounded-3xl border border-line bg-bg2 p-5">
+              <span
+                aria-hidden="true"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white"
+                style={{ background: "var(--grad)" }}
+              >
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {a.name} <span className="font-normal text-dim">· nota {result.areas[a.id]}</span>
+                </p>
+                <p className="mt-1 leading-relaxed text-muted">{a.bottleneck.firstStep}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="px-1 pt-4">
+        <p className="eyebrow">Área por área</p>
+        <h2 className="title mt-3 text-[2rem]">
+          Seu diagnóstico <b>completo</b>
+        </h2>
+        <p className="mt-2 leading-relaxed text-muted">O que suas respostas mostram e o que um estrategista faria no seu lugar.</p>
+        <div className="mt-5">
+          <BandLegend />
+        </div>
+      </section>
+
+      {AREAS.map((a) => (
+        <AreaDiagnosis key={a.id} area={a} score={result.areas[a.id]} answers={answers} />
+      ))}
 
       <section className="rounded-3xl border border-line bg-bg2 p-6">
         <p className="eyebrow">Sua área mais forte</p>

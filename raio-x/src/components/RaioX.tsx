@@ -27,19 +27,43 @@ function validOrders(orders: unknown): orders is Record<number, number[]> {
   });
 }
 
+function localId() {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `demo-${Date.now()}`;
+  }
+}
+
+/** Envia o resultado para completar o lead. Devolve true se chegou no servidor. */
+async function sendCompletion(leadId: string, answers: Answers): Promise<boolean> {
+  if (DEMO) return true;
+  try {
+    const res = await fetch("/api/leads", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: leadId, answers }),
+      keepalive: true,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 const BG: Record<Step["kind"], string> = {
   intro: "#0F0E11",
+  lead: "#0F0E11",
   question: "#0F0E11",
   areaDone: "#EDECEF",
-  lead: "#0F0E11",
   result: "#0F0E11",
 };
 
 const BG_CLASS: Record<Step["kind"], string> = {
   intro: "bg-bg text-fg",
+  lead: "bg-bg text-fg",
   question: "bg-bg text-fg",
   areaDone: "bg-light text-ink",
-  lead: "bg-bg text-fg",
   result: "bg-bg text-fg",
 };
 
@@ -51,16 +75,14 @@ function stepKey(step: Step) {
 
 function announce(step: Step): string {
   switch (step.kind) {
-    case "question": {
-      const q = QUESTIONS[step.index];
-      return `Pergunta ${step.index + 1} de ${TOTAL}. ${q.text}`;
-    }
+    case "question":
+      return `Pergunta ${step.index + 1} de ${TOTAL}. ${QUESTIONS[step.index].text}`;
     case "areaDone":
-      return `${AREAS[step.areaIndex].name} concluído.`;
+      return `${AREAS[step.areaIndex].name} ${AREAS[step.areaIndex].doneWord}.`;
     case "lead":
-      return COPY.lead.title;
+      return COPY.lead.title.replace(/\*\*/g, "");
     case "result":
-      return "Seu resultado está pronto.";
+      return "Seu diagnóstico completo está pronto.";
     default:
       return "";
   }
@@ -71,6 +93,8 @@ export default function RaioX() {
   const [answers, setAnswers] = useState<Answers>({});
   const [orders, setOrders] = useState<Record<number, number[]>>({});
   const [name, setName] = useState("");
+  const [leadId, setLeadId] = useState<string | undefined>(undefined);
+  const [pendingCompletion, setPendingCompletion] = useState(false);
   const [utm, setUtm] = useState<UTM>({});
   const [pixelCompleted, setPixelCompleted] = useState(false);
   const [resumeStep, setResumeStep] = useState<Step | null>(null);
@@ -83,19 +107,20 @@ export default function RaioX() {
   useEffect(() => {
     const saved = loadState();
     const urlUtm = readUtmFromUrl();
-    const savedOrders = validOrders(saved?.orders) ? saved!.orders : newOrders();
     /* eslint-disable react-hooks/set-state-in-effect -- leitura única do localStorage ao montar */
-    setOrders(savedOrders);
+    setOrders(validOrders(saved?.orders) ? saved!.orders : newOrders());
     setUtm({ ...(saved?.utm ?? {}), ...urlUtm });
     if (saved) {
-      setAnswers(saved.answers ?? {});
+      const savedAnswers = saved.answers ?? {};
+      setAnswers(savedAnswers);
       setName(saved.name ?? "");
+      setLeadId(saved.leadId);
       setPixelCompleted(!!saved.pixelCompleted);
+      setPendingCompletion(!!saved.pendingCompletion);
       const s = saved.step;
-      if (s.kind === "result" && saved.name && isComplete(saved.answers)) {
-        setStep(s);
-      } else if (s.kind === "question" || s.kind === "areaDone" || (s.kind === "lead" && isComplete(saved.answers))) {
-        setResumeStep(s);
+      if (saved.leadId) {
+        if (s.kind === "result" && isComplete(savedAnswers)) setStep(s);
+        else if (s.kind === "question" || s.kind === "areaDone") setResumeStep(s);
       }
     }
     setHydrated(true);
@@ -105,9 +130,21 @@ export default function RaioX() {
   // Salva a cada mudança.
   useEffect(() => {
     if (!hydrated) return;
-    const state: SavedState = { step, answers, orders, name, utm, pixelCompleted };
+    const state: SavedState = { step, answers, orders, name, leadId, pendingCompletion, utm, pixelCompleted };
     saveState(state);
-  }, [hydrated, step, answers, orders, name, utm, pixelCompleted]);
+  }, [hydrated, step, answers, orders, name, leadId, pendingCompletion, utm, pixelCompleted]);
+
+  // Se o resultado não chegou no servidor da última vez, tenta de novo.
+  useEffect(() => {
+    if (!hydrated || !pendingCompletion || !leadId || !isComplete(answers)) return;
+    let cancelled = false;
+    sendCompletion(leadId, answers).then((ok) => {
+      if (ok && !cancelled) setPendingCompletion(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, pendingCompletion, leadId, answers]);
 
   // Cor de fundo do documento acompanha a tela (overscroll no iPhone).
   useEffect(() => {
@@ -128,7 +165,7 @@ export default function RaioX() {
 
   const result = useMemo(() => (step.kind === "result" ? computeResult(answers) : null), [step.kind, answers]);
 
-  // Pixel: CompleteRegistration uma vez, ao ver o resultado.
+  // Pixel: CompleteRegistration uma vez, ao ver o diagnóstico.
   useEffect(() => {
     if (step.kind === "result" && !pixelCompleted) {
       trackPixel("CompleteRegistration");
@@ -141,13 +178,54 @@ export default function RaioX() {
     setStep(next);
   }, []);
 
-  const startFresh = useCallback(() => {
+  /** Começa as perguntas do zero (o contato, se já existe, é mantido). */
+  const startQuestions = useCallback(() => {
     setAnswers({});
     setOrders(newOrders());
     setResumeStep(null);
     setPixelCompleted(false);
     go({ kind: "question", index: 0 });
   }, [go]);
+
+  const handleStart = useCallback(() => {
+    if (leadId) startQuestions();
+    else go({ kind: "lead" });
+  }, [leadId, startQuestions, go]);
+
+  const handleLead = useCallback(
+    async (lead: LeadInput) => {
+      let id = localId();
+      if (!DEMO) {
+        let res: Response;
+        try {
+          res = await fetch("/api/leads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...lead, utm }),
+          });
+        } catch {
+          throw new Error("Parece que a internet caiu. Confere a conexão e tenta de novo.");
+        }
+        const data = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
+        if (!res.ok || !data?.id) throw new Error(data?.error ?? "Não rolou enviar. Tenta de novo em alguns segundos.");
+        id = data.id;
+      }
+      trackPixel("Lead");
+      setLeadId(id);
+      setName(lead.name.trim());
+      startQuestions();
+    },
+    [utm, startQuestions],
+  );
+
+  const finish = useCallback(
+    (finalAnswers: Answers) => {
+      go({ kind: "result" });
+      if (!leadId) return;
+      sendCompletion(leadId, finalAnswers).then((ok) => setPendingCompletion(!ok));
+    },
+    [go, leadId],
+  );
 
   const handleAnswer = useCallback(
     (index: number, optionIndex: number) => {
@@ -169,46 +247,17 @@ export default function RaioX() {
 
   const handleAreaContinue = useCallback(
     (areaIndex: number) => {
-      if (areaIndex >= AREAS.length - 1) go({ kind: "lead" });
+      if (areaIndex >= AREAS.length - 1) finish(answers);
       else go({ kind: "question", index: (areaIndex + 1) * PER_AREA });
     },
-    [go],
-  );
-
-  const handleLead = useCallback(
-    async (lead: LeadInput) => {
-      if (!DEMO) {
-        let res: Response;
-        try {
-          res = await fetch("/api/leads", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...lead, answers, utm }),
-          });
-        } catch {
-          throw new Error("Parece que a internet caiu. Confere a conexão e tenta de novo.");
-        }
-        if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(data?.error ?? "Não rolou enviar. Tenta de novo em alguns segundos.");
-        }
-      }
-      trackPixel("Lead");
-      setName(lead.name.trim());
-      go({ kind: "result" });
-    },
-    [answers, utm, go],
+    [go, finish, answers],
   );
 
   const handleRestart = useCallback(() => {
+    // Mantém o contato: refazer só zera as respostas.
     clearState();
-    setAnswers({});
-    setOrders(newOrders());
-    setName("");
-    setPixelCompleted(false);
-    setResumeStep(null);
-    go({ kind: "intro" }, "back");
-  }, [go]);
+    startQuestions();
+  }, [startQuestions]);
 
   let screen: React.ReactNode = null;
   switch (step.kind) {
@@ -221,7 +270,7 @@ export default function RaioX() {
             : undefined;
       screen = (
         <Intro
-          onStart={startFresh}
+          onStart={handleStart}
           resumeLabel={resumeLabel}
           onResume={
             resumeStep
@@ -236,6 +285,9 @@ export default function RaioX() {
       );
       break;
     }
+    case "lead":
+      screen = <LeadForm initialName={name} onSubmit={handleLead} onBack={() => go({ kind: "intro" }, "back")} />;
+      break;
     case "question": {
       const q = QUESTIONS[step.index];
       const area = AREAS.find((a) => a.id === q.area)!;
@@ -259,11 +311,8 @@ export default function RaioX() {
         <AreaDone area={AREAS[step.areaIndex]} areaIndex={step.areaIndex} onContinue={() => handleAreaContinue(step.areaIndex)} />
       );
       break;
-    case "lead":
-      screen = <LeadForm initialName={name} onSubmit={handleLead} />;
-      break;
     case "result":
-      screen = result ? <Result result={result} name={name} onRestart={handleRestart} /> : null;
+      screen = result ? <Result result={result} answers={answers} name={name} onRestart={handleRestart} /> : null;
       break;
   }
 

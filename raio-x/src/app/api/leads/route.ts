@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { AREAS, QUESTIONS } from "@/data/raiox";
 import { computeResult, isComplete, type Answers } from "@/lib/scoring";
-import { insertLead, isSupabaseConfigured, type LeadRow } from "@/lib/supabase";
+import { insertLead, isSupabaseConfigured, updateLead, type LeadContact, type LeadResult } from "@/lib/supabase";
 import {
   isValidInstagram,
   isValidName,
@@ -11,15 +11,25 @@ import {
 } from "@/lib/validation";
 
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-const bad = (error: string) => NextResponse.json({ ok: false, error }, { status: 400 });
+const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+async function readJson(request: Request): Promise<Record<string, unknown> | null> {
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    const body = await request.json();
+    return body && typeof body === "object" ? (body as Record<string, unknown>) : null;
   } catch {
-    return bad("Requisição inválida.");
+    return null;
   }
+}
+
+/**
+ * POST /api/leads: contato preenchido ANTES das perguntas.
+ * Cria o lead com status "iniciado" e devolve o id, usado no PATCH do final.
+ */
+export async function POST(request: Request) {
+  const body = await readJson(request);
+  if (!body) return bad("Requisição inválida.");
 
   const name = str(body.name, 80);
   const whatsapp = str(body.whatsapp, 30);
@@ -27,25 +37,61 @@ export async function POST(request: Request) {
   if (!isValidName(name)) return bad("Confere o seu nome.");
   if (!isValidWhatsApp(whatsapp)) return bad("Confere o seu WhatsApp.");
   if (!isValidInstagram(instagram)) return bad("Confere o seu @ do Instagram.");
-  if (body.consent !== true) return bad("Precisamos do seu aceite pra liberar o resultado.");
+  if (body.consent !== true) return bad("Precisamos do seu aceite pra continuar.");
 
-  // Recalcula a nota no servidor a partir das respostas (não confia no navegador).
+  const utm = (body.utm ?? {}) as Record<string, unknown>;
+  const row: LeadContact = {
+    id: crypto.randomUUID(),
+    nome: name,
+    whatsapp: normalizeWhatsApp(whatsapp),
+    instagram: normalizeInstagram(instagram) || null,
+    consentimento: true,
+    utm_source: str(utm.utm_source) || null,
+    utm_medium: str(utm.utm_medium) || null,
+    utm_campaign: str(utm.utm_campaign) || null,
+    utm_content: str(utm.utm_content) || null,
+    user_agent: str(request.headers.get("user-agent"), 300) || null,
+    status: "iniciado",
+  };
+
+  if (!isSupabaseConfigured()) {
+    // Plano B: sem Supabase, só registra no log do servidor.
+    console.log("[raiox] Lead iniciado (Supabase não configurado):", JSON.stringify({ ...row, created_at: new Date().toISOString() }));
+    return NextResponse.json({ ok: true, id: row.id, stored: false });
+  }
+
+  try {
+    await insertLead(row);
+    return NextResponse.json({ ok: true, id: row.id, stored: true });
+  } catch (err) {
+    // Não trava a pessoa: o lead completo fica no log pra recuperar depois.
+    console.error("[raiox] Falha ao gravar lead no Supabase:", err, JSON.stringify(row));
+    return NextResponse.json({ ok: true, id: row.id, stored: false });
+  }
+}
+
+/**
+ * PATCH /api/leads: ao terminar as perguntas.
+ * Recalcula a nota no servidor (não confia no navegador) e completa o lead.
+ */
+export async function PATCH(request: Request) {
+  const body = await readJson(request);
+  if (!body) return bad("Requisição inválida.");
+
+  const id = str(body.id, 40);
+  if (!UUID.test(id)) return bad("Lead inválido.");
+
   const rawAnswers = (body.answers ?? {}) as Record<string, unknown>;
   const answers: Answers = {};
   for (const q of QUESTIONS) {
     const v = rawAnswers[q.id];
     if (typeof v === "number") answers[q.id] = v;
   }
-  if (!isComplete(answers)) return bad("Faltam respostas. Refaz o raio-x, por favor.");
+  if (!isComplete(answers)) return bad("Faltam respostas.");
+
   const result = computeResult(answers);
-
-  const utm = (body.utm ?? {}) as Record<string, unknown>;
-  const area = (id: string) => AREAS.find((a) => a.id === id)!.name;
-
-  const row: LeadRow = {
-    nome: name,
-    whatsapp: normalizeWhatsApp(whatsapp),
-    instagram: normalizeInstagram(instagram) || null,
+  const area = (aid: string) => AREAS.find((a) => a.id === aid)!.name;
+  const patch: LeadResult = {
     nota_geral: result.overall,
     nota_objetivo: result.areas.objetivo,
     nota_diagnostico: result.areas.diagnostico,
@@ -63,26 +109,21 @@ export async function POST(request: Request) {
       resposta: q.options[answers[q.id]].text,
       pontos: q.options[answers[q.id]].points,
     })),
-    consentimento: true,
-    utm_source: str(utm.utm_source) || null,
-    utm_medium: str(utm.utm_medium) || null,
-    utm_campaign: str(utm.utm_campaign) || null,
-    utm_content: str(utm.utm_content) || null,
-    user_agent: str(request.headers.get("user-agent"), 300) || null,
+    status: "concluido",
+    concluido_em: new Date().toISOString(),
   };
 
   if (!isSupabaseConfigured()) {
-    // Plano B: sem Supabase, só registra no log do servidor.
-    console.log("[raiox] Lead (Supabase não configurado):", JSON.stringify({ ...row, created_at: new Date().toISOString() }));
+    console.log("[raiox] Lead concluído (Supabase não configurado):", JSON.stringify({ id, ...patch }));
     return NextResponse.json({ ok: true, stored: false });
   }
 
   try {
-    await insertLead(row);
-    return NextResponse.json({ ok: true, stored: true });
+    const found = await updateLead(id, patch);
+    if (!found) console.error("[raiox] Lead não encontrado para concluir:", id, JSON.stringify(patch));
+    return NextResponse.json({ ok: true, stored: found });
   } catch (err) {
-    // Não trava a pessoa: o lead completo fica no log pra recuperar depois.
-    console.error("[raiox] Falha ao gravar no Supabase:", err, JSON.stringify(row));
+    console.error("[raiox] Falha ao concluir lead no Supabase:", err, JSON.stringify({ id, ...patch }));
     return NextResponse.json({ ok: true, stored: false });
   }
 }

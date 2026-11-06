@@ -2,7 +2,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { listLeads } from "@/lib/supabase";
 
 const COLUMNS = [
-  "created_at", "nome", "whatsapp", "instagram", "nota_geral", "nivel", "gargalo",
+  "created_at", "nome", "whatsapp", "instagram", "status", "concluido_em", "nota_geral", "nivel", "gargalo",
   "nota_objetivo", "nota_diagnostico", "nota_concorrentes", "nota_conteudo", "nota_apresentacao", "nota_valor",
   "utm_source", "utm_medium", "utm_campaign", "utm_content",
 ] as const;

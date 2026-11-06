@@ -76,6 +76,13 @@ export function bottleneckFor(scores: AreaScores): AreaId {
   return best;
 }
 
+/** Áreas da menor para a maior nota; empate segue BOTTLENECK_PRIORITY. Usado no plano de ação. */
+export function rankedAreas(scores: AreaScores): AreaId[] {
+  return [...BOTTLENECK_PRIORITY].sort(
+    (a, b) => scores[a] - scores[b] || BOTTLENECK_PRIORITY.indexOf(a) - BOTTLENECK_PRIORITY.indexOf(b),
+  );
+}
+
 /** Maior nota; empate resolvido pela ordem das áreas (01 a 06). */
 export function strongestFor(scores: AreaScores): AreaId {
   let best: AreaId = AREAS[0].id;

@@ -26,7 +26,7 @@ export default function AreaDone({ area, areaIndex, onContinue }: { area: Area; 
       </div>
       <div className="pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <button type="button" onClick={onContinue} className="btn-main">
-          Continuar <span className="arr" aria-hidden="true">↗</span>
+          {areaIndex === total - 1 ? "Ver meu diagnóstico" : "Continuar"} <span className="arr" aria-hidden="true">↗</span>
         </button>
       </div>
     </div>

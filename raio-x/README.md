@@ -1,9 +1,9 @@
 # Raio-X do Social Media · UAU Digital
 
-Diagnóstico interativo: o social media responde 12 perguntas (2 por área) e recebe uma nota de 0 a 100, um gráfico por área, o principal gargalo e o primeiro passo para melhorar. No caminho, a gente captura nome, WhatsApp e @ (lista de interesse do lançamento).
+Diagnóstico interativo: o social media deixa o contato (nome, WhatsApp e @), responde 12 perguntas (2 por área) e recebe um **diagnóstico completo**: nota de 0 a 100, nível, radar, principal gargalo, plano de ação em 3 passos e a análise de cada área com as respostas dela e o que um estrategista faria no lugar.
 
 - **Stack:** Next.js 16 (App Router) + TypeScript + Tailwind CSS 4
-- **Leads:** Supabase (tabela `leads`), gravados pelo servidor em `POST /api/leads`
+- **Leads:** Supabase (tabela `leads`). O contato é gravado antes das perguntas (`POST /api/leads`, status `iniciado`) e o resultado completa o mesmo registro no fim (`PATCH /api/leads`, status `concluido`). Quem desiste no meio continua na lista.
 - **Sem Supabase?** O app funciona igual e registra cada lead no log do servidor (plano B)
 - **Admin:** `/admin`, protegido por senha, com exportação CSV
 - **Visual:** o mesmo da landing da UAU (`site-uau/`): fundo escuro com faixas claras, degradê roxo → magenta → laranja, botões em pílula e eyebrows lilás
@@ -73,20 +73,25 @@ create extension if not exists "pgcrypto";
 create table if not exists public.leads (
   id                uuid primary key default gen_random_uuid(),
   created_at        timestamptz not null default now(),
+  -- contato (preenchido ANTES das perguntas)
   nome              text not null,
   whatsapp          text not null,           -- formato 5511987654321
   instagram         text,                    -- sem o @
-  nota_geral        smallint not null check (nota_geral between 0 and 100),
-  nota_objetivo     smallint not null,
-  nota_diagnostico  smallint not null,
-  nota_concorrentes smallint not null,
-  nota_conteudo     smallint not null,
-  nota_apresentacao smallint not null,
-  nota_valor        smallint not null,
-  nivel             text not null,
-  gargalo           text not null,
-  respostas         jsonb not null,          -- [{ id, area, pergunta, resposta, pontos }]
   consentimento     boolean not null default true,
+  status            text not null default 'iniciado' check (status in ('iniciado', 'concluido')),
+  -- resultado (preenchido quando a pessoa termina)
+  concluido_em      timestamptz,
+  nota_geral        smallint check (nota_geral between 0 and 100),
+  nota_objetivo     smallint,
+  nota_diagnostico  smallint,
+  nota_concorrentes smallint,
+  nota_conteudo     smallint,
+  nota_apresentacao smallint,
+  nota_valor        smallint,
+  nivel             text,
+  gargalo           text,
+  respostas         jsonb,                   -- [{ id, area, pergunta, resposta, pontos }]
+  -- origem
   utm_source        text,
   utm_medium        text,
   utm_campaign      text,
@@ -96,10 +101,31 @@ create table if not exists public.leads (
 
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
 create index if not exists leads_whatsapp_idx   on public.leads (whatsapp);
+create index if not exists leads_status_idx     on public.leads (status);
 
 -- Segurança: RLS ligado e nenhuma policy pública.
 -- Só o servidor (com a service_role key) consegue ler e gravar.
 alter table public.leads enable row level security;
+```
+
+**Já tinha criado a tabela com a versão anterior?** Rode isto para atualizar:
+
+```sql
+alter table public.leads
+  add column if not exists status text not null default 'concluido',
+  add column if not exists concluido_em timestamptz;
+alter table public.leads alter column status set default 'iniciado';
+alter table public.leads
+  alter column nota_geral drop not null,
+  alter column nota_objetivo drop not null,
+  alter column nota_diagnostico drop not null,
+  alter column nota_concorrentes drop not null,
+  alter column nota_conteudo drop not null,
+  alter column nota_apresentacao drop not null,
+  alter column nota_valor drop not null,
+  alter column nivel drop not null,
+  alter column gargalo drop not null,
+  alter column respostas drop not null;
 ```
 
 Se a mesma pessoa refizer o teste, entra uma linha nova (dá pra ver a evolução). Para pegar só o último de cada número:
@@ -119,7 +145,7 @@ Este app fica na pasta `raio-x/` do repositório `uaudigital`.
 3. Em **Environment Variables**, adicione as variáveis da tabela acima (no mínimo `ADMIN_PASSWORD` e as 3 do Supabase).
 4. Clique em **Deploy**.
 5. (Opcional) Em **Settings → Domains**, adicione um domínio, por exemplo `raiox.uaudigital.com.br`, e crie o CNAME que a Vercel indicar.
-6. Teste: faça o raio-x inteiro, depois abra `/admin`, entre com a senha e confira se o lead apareceu.
+6. Teste: preencha o contato, abra `/admin` e veja o lead como "Só iniciou". Termine o raio-x, atualize o admin e confira se virou "Concluiu" com a nota.
 
 Ao mudar uma variável de ambiente, faça um **Redeploy** para valer.
 
@@ -137,15 +163,16 @@ As UTMs ficam salvas mesmo se a pessoa navegar pelo teste e vão junto com o lea
 
 ## Como funciona
 
-- **Fluxo:** inicial → 12 perguntas → "área concluída" a cada 2 perguntas (faixa clara) → contato → resultado.
+- **Fluxo:** inicial → contato → 12 perguntas → "área concluída" a cada 2 perguntas (faixa clara) → diagnóstico completo.
+- **Diagnóstico completo:** nota e nível, radar, principal gargalo, plano de ação (as 3 áreas mais fracas, na ordem, com o primeiro passo de cada) e um card por área com a análise da faixa (Crítico, Frágil, Em desenvolvimento, Avançado), as 2 respostas da pessoa e, quando a resposta não foi a ideal, "Como um estrategista faz". Esses textos ficam em `src/data/raiox.ts` (`analysis` em cada área e `tip` em cada pergunta).
 - **Pontuação:** cada opção vale 0 a 3. Nota da área = soma ÷ 6 × 100 (arredondada). Nota geral = média das 6 áreas (arredondada). A nota é recalculada no servidor a partir das respostas.
 - **Gargalo:** área com menor nota. Empate: Objetivo → Apresentação → Diagnóstico → Conteúdo → Valor → Concorrentes.
 - **Área mais forte:** maior nota. Empate: ordem das áreas (01 a 06).
 - **Opções embaralhadas** por pessoa (a ordem fica salva, então não muda se ela voltar ou recarregar).
-- **Progresso salvo** no `localStorage`. Se a pessoa fechar a aba no meio, a tela inicial mostra "Continuar da pergunta X". Quem já viu o resultado volta direto para ele. "Refazer o raio-x" limpa tudo.
+- **Progresso salvo** no `localStorage`. Se a pessoa fechar a aba no meio, a tela inicial mostra "Continuar da pergunta X". Quem já viu o resultado volta direto para ele. "Refazer o raio-x" mantém o contato e zera só as respostas (o registro do lead é atualizado com o novo resultado). Se o envio do resultado falhar (sem internet), o app tenta de novo na próxima vez que a pessoa abrir.
 - **Story:** "Compartilhar no story" gera um PNG 1080×1920 no próprio navegador (canvas, sem biblioteca) e abre o compartilhamento do celular. No desktop, baixa a imagem.
-- **Pixel da Meta:** só carrega com `NEXT_PUBLIC_META_PIXEL_ID`. PageView na entrada, Lead ao enviar o formulário e CompleteRegistration ao ver o resultado (uma vez).
-- **Admin:** `/admin` pede a senha (`ADMIN_PASSWORD`), lista os leads e exporta CSV (separado por `;`, abre direto no Excel).
+- **Pixel da Meta:** só carrega com `NEXT_PUBLIC_META_PIXEL_ID`. PageView na entrada, Lead ao enviar o contato (antes das perguntas) e CompleteRegistration ao ver o diagnóstico (uma vez).
+- **Admin:** `/admin` pede a senha (`ADMIN_PASSWORD`), lista os leads com o status ("Concluiu" ou "Só iniciou") e exporta CSV (separado por `;`, abre direto no Excel).
 
 ## Estrutura
 
@@ -155,12 +182,12 @@ src/
     page.tsx                 # monta o <RaioX />
     layout.tsx               # fonte, SEO e Pixel
     opengraph-image.tsx      # imagem de compartilhamento 1200x630
-    api/leads/route.ts       # POST /api/leads
+    api/leads/route.ts       # POST (contato) e PATCH (resultado) /api/leads
     admin/                   # página de admin, login e exportação CSV
   components/
     RaioX.tsx                # controla as telas e o progresso
-    Intro, Question, AreaDone, LeadForm, Result,
-    RadarChart, AreaBars, ShareImage, Logo, MetaPixel
+    Intro, LeadForm, Question, AreaDone, Result, AreaDiagnosis,
+    RadarChart, AreaBars, ShareImage, Logo, MetaPixel, Rich
   data/raiox.ts              # TODOS os textos e perguntas
   lib/
     scoring.ts               # cálculo das notas, nível e gargalo

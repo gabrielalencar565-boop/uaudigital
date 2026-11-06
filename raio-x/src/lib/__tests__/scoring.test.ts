@@ -8,6 +8,7 @@ import {
   isComplete,
   levelFor,
   overallScore,
+  rankedAreas,
   shuffledOrder,
   strongestFor,
   type Answers,
@@ -150,6 +151,15 @@ describe("principal gargalo", () => {
 
   it("menor nota vence a prioridade", () => {
     expect(bottleneckFor(scores({ objetivo: 30, concorrentes: 29 }))).toBe("concorrentes");
+  });
+});
+
+describe("plano de ação (ordem das áreas)", () => {
+  it("vai da menor para a maior nota, com empate pela prioridade", () => {
+    const order = rankedAreas(scores({ valor: 10, concorrentes: 10, conteudo: 30, objetivo: 90 }));
+    expect(order.slice(0, 3)).toEqual(["valor", "concorrentes", "conteudo"]);
+    expect(order[order.length - 1]).toBe("objetivo");
+    expect(order[0]).toBe(bottleneckFor(scores({ valor: 10, concorrentes: 10, conteudo: 30, objetivo: 90 })));
   });
 });
 

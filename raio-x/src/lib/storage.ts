@@ -1,6 +1,6 @@
 /** localStorage seguro: em aba anônima ou com storage bloqueado, não quebra. */
 
-const KEY = "raiox-uau:v2";
+const KEY = "raiox-uau:v3";
 
 export type UTM = Partial<Record<"utm_source" | "utm_medium" | "utm_campaign" | "utm_content", string>>;
 
@@ -17,6 +17,10 @@ export type SavedState = {
   /** id da pergunta -> ordem embaralhada dos índices das opções */
   orders: Record<number, number[]>;
   name?: string;
+  /** id do lead criado no início (POST /api/leads). */
+  leadId?: string;
+  /** O resultado ainda não chegou no servidor (tenta de novo ao abrir). */
+  pendingCompletion?: boolean;
   utm?: UTM;
   pixelCompleted?: boolean;
 };

@@ -12,6 +12,7 @@ type Errors = Partial<Record<keyof LeadInput | "form", string>>;
 type Props = {
   initialName?: string;
   onSubmit: (lead: LeadInput) => Promise<void>;
+  onBack: () => void;
 };
 
 function validate(v: LeadInput): Errors {
@@ -20,14 +21,14 @@ function validate(v: LeadInput): Errors {
   if (!v.whatsapp.trim()) e.whatsapp = "Preenche seu WhatsApp com DDD.";
   else if (!isValidWhatsApp(v.whatsapp)) e.whatsapp = "Esse número não parece certo. Confere o DDD e os dígitos.";
   if (!isValidInstagram(v.instagram)) e.instagram = "Esse @ não parece válido. Pode deixar em branco se preferir.";
-  if (!v.consent) e.consent = "Marca essa opção pra liberar seu resultado.";
+  if (!v.consent) e.consent = "Marca essa opção pra continuar.";
   return e;
 }
 
 const inputClass =
   "block h-14 w-full rounded-2xl border-[1.5px] border-line bg-bg2 px-4 text-[17px] text-fg placeholder:text-dim outline-none focus-visible:outline-none transition-colors focus:border-lilac aria-[invalid=true]:border-orange";
 
-export default function LeadForm({ initialName = "", onSubmit }: Props) {
+export default function LeadForm({ initialName = "", onSubmit, onBack }: Props) {
   const [values, setValues] = useState<LeadInput>({ name: initialName, whatsapp: "", instagram: "", consent: false });
   const [errors, setErrors] = useState<Errors>({});
   const [sending, setSending] = useState(false);
@@ -57,11 +58,18 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh flex-col justify-center py-10">
+    <div className="relative isolate flex min-h-dvh flex-col pt-3 pb-10">
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 overflow-hidden">
         <div className="orb -top-32 -right-48 size-[380px] bg-purple" />
       </div>
-      <p className="eyebrow">Último passo</p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="-ml-2 inline-flex min-h-12 w-fit items-center gap-1.5 rounded-xl px-2 text-[15px] font-medium text-muted transition-colors hover:text-fg"
+      >
+        <span aria-hidden="true">←</span> Voltar
+      </button>
+      <p className="eyebrow mt-6">{COPY.lead.eyebrow}</p>
       <h1 data-autofocus tabIndex={-1} className="title mt-4 text-[2.6rem]">
         <Rich text={COPY.lead.title} />
       </h1>
@@ -162,7 +170,7 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
         ) : null}
 
         <button type="submit" className="btn-main mt-2" disabled={sending}>
-          {sending ? "Liberando seu resultado…" : COPY.lead.cta} {sending ? null : <span className="arr" aria-hidden="true">↗</span>}
+          {sending ? "Só um instante…" : COPY.lead.cta} {sending ? null : <span className="arr" aria-hidden="true">↗</span>}
         </button>
         <p className="text-center text-sm text-dim">Sem spam. Seus dados ficam só com a UAU. 🔒</p>
       </form>
