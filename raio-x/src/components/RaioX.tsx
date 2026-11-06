@@ -28,19 +28,19 @@ function validOrders(orders: unknown): orders is Record<number, number[]> {
 }
 
 const BG: Record<Step["kind"], string> = {
-  intro: "#7A35D6",
-  question: "#08080A",
-  areaDone: "#FFD23F",
-  lead: "#7A35D6",
-  result: "#08080A",
+  intro: "#0F0E11",
+  question: "#0F0E11",
+  areaDone: "#EDECEF",
+  lead: "#0F0E11",
+  result: "#0F0E11",
 };
 
 const BG_CLASS: Record<Step["kind"], string> = {
-  intro: "bg-roxo text-white",
-  question: "bg-ink text-white",
-  areaDone: "bg-amarelo text-ink",
-  lead: "bg-roxo text-white",
-  result: "bg-ink text-white",
+  intro: "bg-bg text-fg",
+  question: "bg-bg text-fg",
+  areaDone: "bg-light text-ink",
+  lead: "bg-bg text-fg",
+  result: "bg-bg text-fg",
 };
 
 function stepKey(step: Step) {
@@ -268,7 +268,7 @@ export default function RaioX() {
   }
 
   return (
-    <main className={`min-h-dvh ${BG_CLASS[step.kind]}`}>
+    <main className={`min-h-dvh overflow-x-clip ${BG_CLASS[step.kind]}`}>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {announce(step)}
       </p>

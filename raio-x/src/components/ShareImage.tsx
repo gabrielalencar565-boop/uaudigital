@@ -58,7 +58,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
 export async function generateStoryImage({ overall, level, scores, name }: Props): Promise<Blob> {
   const family = fontFamily();
   try {
-    await Promise.all([document.fonts.load(`800 100px ${family}`), document.fonts.load(`500 40px ${family}`)]);
+    await Promise.all([300, 600, 700, 800].map((w) => document.fonts.load(`${w} 100px ${family}`)));
   } catch {
     // segue com a fonte que tiver
   }
@@ -72,64 +72,82 @@ export async function generateStoryImage({ overall, level, scores, name }: Props
   const font = (weight: number, size: number) => `${weight} ${size}px ${family}`;
   const pad = 96;
 
-  // Fundo roxo chapado
-  ctx.fillStyle = "#7A35D6";
+  const grad = (x0: number, y0: number, x1: number, y1: number) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, "#7B2FE0");
+    g.addColorStop(0.6, "#C9307A");
+    g.addColorStop(1, "#F2A04A");
+    return g;
+  };
+
+  // Fundo escuro da landing + brilho roxo
+  ctx.fillStyle = "#0F0E11";
   ctx.fillRect(0, 0, W, H);
+  const glow = (x: number, y: number, r: number, color: string) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color);
+    g.addColorStop(1, "rgba(15,14,17,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  };
+  glow(W - 80, 260, 760, "rgba(123,47,224,0.42)");
+  glow(80, H - 260, 640, "rgba(201,48,122,0.22)");
 
   // Logo (ou texto)
   const logo = await loadImage("/logo-uau.png");
   if (logo && logo.naturalWidth > 0) {
-    const h = 72;
+    const h = 80;
     const w = (logo.naturalWidth / logo.naturalHeight) * h;
     ctx.drawImage(logo, pad, 200, w, h);
   } else {
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = "#F4F2F7";
     ctx.font = font(800, 56);
     ctx.textBaseline = "top";
     ctx.fillText("uaudigital", pad, 210);
   }
 
-  // Selo
+  // Eyebrow com bolinha em degradê
   ctx.textBaseline = "middle";
-  ctx.font = font(700, 30);
+  ctx.font = font(600, 30);
   const badge = "RAIO-X DO SOCIAL MEDIA";
-  const spacing = 4;
-  const badgeTextW = ctx.measureText(badge).width + spacing * (badge.length - 1);
-  roundRect(ctx, pad, 330, badgeTextW + 64, 72, 36);
-  ctx.strokeStyle = "rgba(255,255,255,0.6)";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.fillStyle = "#FFFFFF";
-  let x = pad + 32;
+  const spacing = 5;
+  ctx.beginPath();
+  ctx.arc(pad + 10, 372, 10, 0, Math.PI * 2);
+  ctx.fillStyle = grad(pad, 362, pad + 20, 382);
+  ctx.fill();
+  ctx.fillStyle = "#A877F7";
+  let x = pad + 40;
   for (const ch of badge) {
-    ctx.fillText(ch, x, 367);
+    ctx.fillText(ch, x, 372);
     x += ctx.measureText(ch).width + spacing;
   }
 
   // "Minha nota"
   ctx.textBaseline = "alphabetic";
-  ctx.font = font(700, 52);
+  ctx.fillStyle = "#F4F2F7";
+  ctx.font = font(300, 58);
   ctx.fillText(name ? `${name}, minha nota é` : "Minha nota é", pad, 520);
 
-  // Nota gigante
+  // Nota gigante em degradê
   ctx.font = font(800, 360);
   const scoreText = String(overall);
-  ctx.fillText(scoreText, pad - 14, 840);
   const scoreW = ctx.measureText(scoreText).width;
-  ctx.font = font(800, 110);
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.fillStyle = grad(pad, 600, pad + scoreW, 840);
+  ctx.fillText(scoreText, pad - 14, 840);
+  ctx.font = font(300, 110);
+  ctx.fillStyle = "#8C8796";
   ctx.fillText("/100", pad - 14 + scoreW + 16, 840);
 
-  // Nível (pílula amarela)
-  ctx.font = font(800, 54);
+  // Nível (pílula em degradê)
+  ctx.font = font(700, 52);
   const levelText = `${level.name} ${level.emoji}`;
-  const levelW = Math.min(W - pad * 2, ctx.measureText(levelText).width + 80);
-  roundRect(ctx, pad, 900, levelW, 110, 55);
-  ctx.fillStyle = "#FFD23F";
+  const levelW = Math.min(W - pad * 2, ctx.measureText(levelText).width + 88);
+  roundRect(ctx, pad, 900, levelW, 112, 56);
+  ctx.fillStyle = grad(pad, 900, pad + levelW, 1012);
   ctx.fill();
-  ctx.fillStyle = "#08080A";
+  ctx.fillStyle = "#FFFFFF";
   ctx.textBaseline = "middle";
-  ctx.fillText(levelText, pad + 40, 957, levelW - 80);
+  ctx.fillText(levelText, pad + 44, 958, levelW - 88);
 
   // Mini radar
   const cx = W / 2;
@@ -137,7 +155,7 @@ export async function generateStoryImage({ overall, level, scores, name }: Props
   const r = 180;
   const n = AREAS.length;
   ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.strokeStyle = "#2A2730";
   for (const ring of [25, 50, 75, 100]) {
     const pts = radarPolygon(Array(n).fill(ring), cx, cy, r);
     ctx.beginPath();
@@ -161,15 +179,17 @@ export async function generateStoryImage({ overall, level, scores, name }: Props
   ctx.beginPath();
   shape.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
   ctx.closePath();
-  ctx.fillStyle = "rgba(255,210,63,0.9)";
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = grad(cx - r, cy - r, cx + r, cy + r);
   ctx.fill();
-  ctx.strokeStyle = "#FFD23F";
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = grad(cx - r, cy - r, cx + r, cy + r);
   ctx.lineWidth = 6;
   ctx.lineJoin = "round";
   ctx.stroke();
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = font(700, 36);
+  ctx.fillStyle = "#B9B4C4";
+  ctx.font = font(600, 34);
   AREAS.forEach((a, i) => {
     const p = radarPoint(i, n, 100, cx, cy, r + 40);
     const cos = Math.cos(p.angle);
@@ -182,8 +202,8 @@ export async function generateStoryImage({ overall, level, scores, name }: Props
 
   // Rodapé
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = font(700, 42);
+  ctx.fillStyle = "#F4F2F7";
+  ctx.font = font(600, 42);
   ctx.textAlign = "center";
   const lines = COPY.result.shareFooter.split(" · ").flatMap((part) => wrap(ctx, part, W - pad * 2));
   lines.forEach((line, i) => ctx.fillText(line, W / 2, 1640 + i * 54));
@@ -232,10 +252,10 @@ export default function ShareImage(props: Props) {
 
   return (
     <div>
-      <button type="button" onClick={share} disabled={busy} className="btn-primary">
+      <button type="button" onClick={share} disabled={busy} className="btn-ghost text-fg">
         <span aria-hidden="true">📲</span> {busy ? "Gerando imagem…" : COPY.result.share}
       </button>
-      <p aria-live="polite" className="mt-3 min-h-0 text-center text-sm text-muted empty:hidden">
+      <p aria-live="polite" className="mt-3 min-h-0 text-center text-sm text-dim empty:hidden">
         {msg}
       </p>
     </div>

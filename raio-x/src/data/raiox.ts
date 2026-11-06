@@ -19,7 +19,7 @@ export type AreaId =
 export type Option = { text: string; points: 0 | 1 | 2 | 3 };
 
 export type Question = {
-  id: number; // 1..24
+  id: number; // 1..12
   area: AreaId;
   text: string;
   options: [Option, Option, Option, Option];
@@ -226,7 +226,7 @@ export const BANDS: Band[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/* Banco de perguntas (24)                                             */
+/* Banco de perguntas (12: 2 por área)                                             */
 /* ------------------------------------------------------------------ */
 
 const q = (
@@ -260,166 +260,95 @@ export const QUESTIONS: Question[] = [
     "Vender mais / atrair mais clientes.",
     "Uma meta clara, com número e prazo (ex.: 20 agendamentos pelo direct por mês).",
   ]),
-  q(3, "objetivo", "Seus clientes têm metas definidas para o trabalho de vocês?", [
-    "Não, a gente vai postando e vendo no que dá.",
-    "Tem uma ideia geral, mas nada escrito.",
-    "Tem metas, mas sem número ou sem prazo.",
-    "Sim, metas com número, prazo e uma forma de medir.",
-  ]),
-  q(4, "objetivo", "Quando o cliente pede um post que não tem nada a ver com o objetivo dele, você…", [
-    "Faço, cliente é quem manda.",
-    "Faço, mas fico incomodado.",
-    "Faço e tento sugerir algo melhor da próxima vez.",
-    "Explico por que aquilo não ajuda no objetivo e proponho uma alternativa.",
-  ]),
-
   // 02 · Diagnóstico
-  q(5, "diagnostico", "Antes de criar o primeiro conteúdo, você analisa como o perfil do cliente está hoje?", [
-    "Não, já começo do zero com a minha ideia.",
-    "Dou uma olhada rápida no feed.",
-    "Olho bio, destaques e feed com mais calma.",
-    "Faço uma análise completa e registro o que precisa melhorar.",
-  ]),
-  q(6, "diagnostico", "Você sabe dizer quem é o público do seu cliente, além de idade e gênero?", [
+  q(3, "diagnostico", "Você sabe dizer quem é o público do seu cliente, além de idade e gênero?", [
     "Não muito, é \"todo mundo que pode comprar\".",
     "Sei a faixa de idade e a cidade.",
     "Sei mais ou menos as dores e os desejos dele.",
     "Sei a dor, o desejo, as objeções e o que faz ele decidir comprar.",
   ]),
-  q(7, "diagnostico", "Com que frequência você olha os números do perfil do cliente?", [
+  q(4, "diagnostico", "Com que frequência você olha os números do perfil do cliente?", [
     "Quase nunca.",
     "Quando o cliente pergunta.",
     "Uma vez por mês, mais por obrigação.",
     "Toda semana ou todo mês, e uso isso pra ajustar o que vou postar.",
   ]),
-  q(8, "diagnostico", "Você sabe quais conteúdos funcionam melhor para o seu principal cliente?", [
-    "Não faço ideia.",
-    "Tenho um palpite.",
-    "Sei mais ou menos, pelo que lembro.",
-    "Sei, com base nos números, e repito o que dá certo.",
-  ]),
-
   // 03 · Concorrentes
-  q(9, "concorrentes", "Você analisa os concorrentes do seu cliente?", [
-    "Nunca.",
-    "Às vezes dou uma olhada pra me inspirar.",
-    "Olho os principais de vez em quando.",
-    "Analiso com método e anoto o que eles fazem e o que não fazem.",
-  ]),
-  q(10, "concorrentes", "Quando você olha um concorrente, o que você procura?", [
+  q(5, "concorrentes", "Quando você olha um concorrente, o que você procura?", [
     "Ideias pra copiar.",
     "O que está bombando pra fazer igual.",
     "O que eles fazem bem.",
     "O que eles NÃO fazem, pra achar o espaço do meu cliente.",
   ]),
-  q(11, "concorrentes", "Você consegue explicar em uma frase o que diferencia o seu cliente dos concorrentes?", [
+  q(6, "concorrentes", "Você consegue explicar em uma frase o que diferencia o seu cliente dos concorrentes?", [
     "Não.",
     "Mais ou menos: \"ele é melhor/mais caprichado\".",
     "Consigo, mas não uso isso no conteúdo.",
     "Consigo, e isso guia o conteúdo dele.",
   ]),
-  q(12, "concorrentes", "O conteúdo do seu cliente é parecido com o dos concorrentes?", [
-    "Bem parecido, pra ser sincero.",
-    "Parecido, só muda a cor e a logo.",
-    "Um pouco diferente em alguns pontos.",
-    "Bem diferente: tem identidade e posicionamento próprios.",
-  ]),
-
   // 04 · Conteúdo
-  q(13, "conteudo", "Como você decide o que postar no mês?", [
+  q(7, "conteudo", "Como você decide o que postar no mês?", [
     "Na hora, conforme vou tendo ideia.",
     "Pelas datas comemorativas e trends.",
     "Monto um calendário com temas variados.",
     "A partir do objetivo e do diagnóstico, cada post tem um papel.",
   ]),
-  q(14, "conteudo", "Se o cliente perguntar \"por que esse post?\", você responde…", [
+  q(8, "conteudo", "Se o cliente perguntar \"por que esse post?\", você responde…", [
     "\"Porque estava em alta.\"",
     "\"Porque fica bonito no feed.\"",
     "\"Porque o público gosta desse tipo de conteúdo.\"",
     "\"Porque ele cumpre essa função no plano do mês\" (ex.: quebrar a objeção de preço).",
   ]),
-  q(15, "conteudo", "Seus conteúdos levam o público por um caminho (conhecer, confiar, comprar)?", [
-    "Não penso nisso.",
-    "Já ouvi falar, mas não aplico.",
-    "Aplico às vezes.",
-    "Sim, distribuo os posts pensando nessa jornada.",
-  ]),
-  q(16, "conteudo", "Quanto do conteúdo do mês você consegue planejar com antecedência?", [
-    "Quase nada, é tudo de última hora.",
-    "Uma semana, no máximo.",
-    "Boa parte do mês.",
-    "O mês inteiro, com espaço pra ajustes e trends que fazem sentido.",
-  ]),
-
   // 05 · Apresentação
-  q(17, "apresentacao", "Como o cliente recebe o seu trabalho todo mês?", [
+  q(9, "apresentacao", "Como o cliente recebe o seu trabalho todo mês?", [
     "Mando os posts pelo WhatsApp pra aprovar.",
     "Mando o feed montado pra ele ver.",
     "Mando um calendário com as legendas.",
     "Apresento um planejamento, explicando o objetivo e o porquê de cada conteúdo.",
   ]),
-  q(18, "apresentacao", "Você faz reunião com o cliente para apresentar o planejamento ou os resultados?", [
-    "Nunca.",
-    "Só quando dá problema.",
-    "De vez em quando.",
-    "Sim, com frequência definida (mensal, por exemplo).",
-  ]),
-  q(19, "apresentacao", "Você entrega algum relatório para o cliente?", [
-    "Não.",
-    "Mando print dos números quando ele pede.",
-    "Mando um relatório com curtidas, alcance e seguidores.",
-    "Mando um relatório que mostra o que mudou no negócio e os próximos passos.",
-  ]),
-  q(20, "apresentacao", "Se o seu cliente fosse explicar para um amigo o que você faz, ele diria…", [
+  q(10, "apresentacao", "Se o seu cliente fosse explicar para um amigo o que você faz, ele diria…", [
     "\"Ela posta no meu Instagram.\"",
     "\"Ela cuida das minhas redes.\"",
     "\"Ela cria o conteúdo e acompanha os números.\"",
     "\"Ela planeja a estratégia do meu Instagram pra trazer resultado.\"",
   ]),
-
   // 06 · Valor e preço
-  q(21, "valor", "Como você define o preço que cobra do cliente?", [
+  q(11, "valor", "Como você define o preço que cobra do cliente?", [
     "Cobro o que o cliente pode pagar.",
     "Pelo que os outros cobram na minha cidade.",
     "Pela quantidade de posts.",
     "Pelo que entrego (estratégia, análise, conteúdo, relatório) e pelo resultado.",
   ]),
-  q(22, "valor", "Com que frequência o cliente pede desconto ou questiona o seu preço?", [
-    "Quase sempre.",
-    "Com frequência.",
-    "Às vezes.",
-    "Raramente ou nunca.",
-  ]),
-  q(23, "valor", "Na sua proposta, o que o cliente enxerga?", [
+  q(12, "valor", "Na sua proposta, o que o cliente enxerga?", [
     "Só o valor e a quantidade de posts.",
     "Os posts e os stories por semana.",
     "Os serviços e o que está incluso.",
     "O processo completo, o que ele ganha com isso e como vamos medir.",
   ]),
-  q(24, "valor", "Se um concorrente oferecesse o mesmo número de posts pela metade do preço, seu cliente…", [
-    "Provavelmente iria embora.",
-    "Ficaria balançado.",
-    "Talvez ficasse, pela relação.",
-    "Ficaria, porque sabe que o seu trabalho vai muito além dos posts.",
-  ]),
 ];
 
 /* ------------------------------------------------------------------ */
 /* Textos das telas                                                    */
+/* Nos títulos, **palavra** vira negrito com o degradê da UAU.          */
 /* ------------------------------------------------------------------ */
 
 export const COPY = {
   intro: {
     badge: "RAIO-X DO SOCIAL MEDIA",
-    title: "Seu cliente te vê como estrategista ou como quem só posta?",
+    title: "Seu cliente te vê como **estrategista** ou como quem só posta?",
     subtitle:
-      "Responda 24 perguntas rápidas e descubra sua nota, seu principal gargalo e o que fazer primeiro. Leva uns 4 minutos.",
+      "Responda 12 perguntas rápidas e descubra sua nota, seu principal gargalo e o que fazer primeiro. Leva uns 2 minutos.",
     areasTitle: "O que a gente analisa",
+    meta: [
+      { value: "12", label: "perguntas" },
+      { value: "2 min", label: "pra responder" },
+      { value: "6", label: "áreas no raio-x" },
+    ],
     cta: "Começar meu raio-x",
     resume: "Continuar de onde parei",
   },
   lead: {
-    title: "Seu raio-x está pronto. 🔍",
+    title: "Seu raio-x está **pronto.** 🔍",
     text: "Pra liberar seu resultado, deixa seu contato. A gente também vai te avisar quando sair um conteúdo especial sobre isso.",
     consent:
       "Aceito receber mensagens da UAU Digital no WhatsApp e no e-mail sobre conteúdos e novidades. Posso cancelar quando quiser.",
@@ -427,7 +356,7 @@ export const COPY = {
   },
   result: {
     teaser: "Vem coisa grande sobre isso no perfil da UAU 👀",
-    ctaTitle: "Quer aprender a virar esse jogo?",
+    ctaTitle: "Quer aprender a **virar esse jogo?**",
     ctaText: "Segue a @uaudigital: vem coisa grande sobre planejamento por aí 👀",
     ctaButton: "Seguir a @uaudigital",
     instagramUrl: "https://instagram.com/uaudigital",

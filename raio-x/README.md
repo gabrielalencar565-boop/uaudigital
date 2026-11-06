@@ -1,11 +1,12 @@
 # Raio-X do Social Media · UAU Digital
 
-Diagnóstico interativo: o social media responde 24 perguntas e recebe uma nota de 0 a 100, um gráfico por área, o principal gargalo e o primeiro passo para melhorar. No caminho, a gente captura nome, WhatsApp e @ (lista de interesse do lançamento).
+Diagnóstico interativo: o social media responde 12 perguntas (2 por área) e recebe uma nota de 0 a 100, um gráfico por área, o principal gargalo e o primeiro passo para melhorar. No caminho, a gente captura nome, WhatsApp e @ (lista de interesse do lançamento).
 
 - **Stack:** Next.js 16 (App Router) + TypeScript + Tailwind CSS 4
 - **Leads:** Supabase (tabela `leads`), gravados pelo servidor em `POST /api/leads`
 - **Sem Supabase?** O app funciona igual e registra cada lead no log do servidor (plano B)
 - **Admin:** `/admin`, protegido por senha, com exportação CSV
+- **Visual:** o mesmo da landing da UAU (`site-uau/`): fundo escuro com faixas claras, degradê roxo → magenta → laranja, botões em pílula e eyebrows lilás
 
 ---
 
@@ -34,9 +35,11 @@ O cálculo está em `src/lib/scoring.ts` (com testes em `src/lib/__tests__`).
 
 ## Logo
 
-Coloque o arquivo em **`public/logo-uau.png`**. Ele aparece no topo da tela inicial, do resultado e na imagem do story. Enquanto o arquivo não existir, aparece o texto "uaudigital".
+A logo fica em **`public/logo-uau.png`** (é a mesma do site, `site-uau/img/logo-uau.png`). Ela aparece no topo da tela inicial, do resultado, na imagem do story e na imagem de compartilhamento. Se o arquivo for removido, aparece o texto "uaudigital".
 
-> Dica: a tela inicial e o story têm fundo roxo. Use uma versão da logo que funcione sobre roxo (branca ou amarela). A logo atual do site (`site-uau/img/logo-uau.png`) tem o "uau" roxo, que some no fundo roxo.
+## Quantidade de perguntas
+
+Hoje são 12 (2 por área). Para mudar, é só adicionar ou tirar perguntas em `QUESTIONS` no `src/data/raiox.ts`: a nota de cada área se ajusta sozinha (máximo = nº de perguntas da área × 3) e a tela de "área concluída" aparece ao fim de cada área. Mantenha o mesmo número de perguntas em todas as áreas.
 
 ---
 
@@ -134,8 +137,8 @@ As UTMs ficam salvas mesmo se a pessoa navegar pelo teste e vão junto com o lea
 
 ## Como funciona
 
-- **Fluxo:** inicial (roxo) → 24 perguntas (preto) → "área concluída" a cada 4 perguntas (amarelo) → contato (roxo) → resultado (preto).
-- **Pontuação:** cada opção vale 0 a 3. Nota da área = soma ÷ 12 × 100 (arredondada). Nota geral = média das 6 áreas (arredondada). A nota é recalculada no servidor a partir das respostas.
+- **Fluxo:** inicial → 12 perguntas → "área concluída" a cada 2 perguntas (faixa clara) → contato → resultado.
+- **Pontuação:** cada opção vale 0 a 3. Nota da área = soma ÷ 6 × 100 (arredondada). Nota geral = média das 6 áreas (arredondada). A nota é recalculada no servidor a partir das respostas.
 - **Gargalo:** área com menor nota. Empate: Objetivo → Apresentação → Diagnóstico → Conteúdo → Valor → Concorrentes.
 - **Área mais forte:** maior nota. Empate: ordem das áreas (01 a 06).
 - **Opções embaralhadas** por pessoa (a ordem fica salva, então não muda se ela voltar ou recarregar).

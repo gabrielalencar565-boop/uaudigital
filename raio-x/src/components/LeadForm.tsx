@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { COPY } from "@/data/raiox";
+import Rich from "./Rich";
 import { isValidInstagram, isValidName, isValidWhatsApp, maskWhatsApp } from "@/lib/validation";
 
 export type LeadInput = { name: string; whatsapp: string; instagram: string; consent: boolean };
@@ -24,7 +25,7 @@ function validate(v: LeadInput): Errors {
 }
 
 const inputClass =
-  "block h-14 w-full rounded-2xl border-2 border-transparent bg-ink px-4 text-[17px] text-white placeholder:text-muted/70 outline-none focus-visible:outline-none transition-colors focus:border-amarelo aria-[invalid=true]:border-amarelo";
+  "block h-14 w-full rounded-2xl border-[1.5px] border-line bg-bg2 px-4 text-[17px] text-fg placeholder:text-dim outline-none focus-visible:outline-none transition-colors focus:border-lilac aria-[invalid=true]:border-orange";
 
 export default function LeadForm({ initialName = "", onSubmit }: Props) {
   const [values, setValues] = useState<LeadInput>({ name: initialName, whatsapp: "", instagram: "", consent: false });
@@ -56,15 +57,19 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col justify-center py-10">
-      <h1 data-autofocus tabIndex={-1} className="title text-[2.5rem]">
-        {COPY.lead.title}
+    <div className="relative isolate flex min-h-dvh flex-col justify-center py-10">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 overflow-hidden">
+        <div className="orb -top-32 -right-48 size-[380px] bg-purple" />
+      </div>
+      <p className="eyebrow">Último passo</p>
+      <h1 data-autofocus tabIndex={-1} className="title mt-4 text-[2.6rem]">
+        <Rich text={COPY.lead.title} />
       </h1>
-      <p className="mt-4 text-lg leading-snug text-white/90">{COPY.lead.text}</p>
+      <p className="mt-4 text-[17px] leading-relaxed text-muted">{COPY.lead.text}</p>
 
       <form noValidate onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
         <div>
-          <label htmlFor="lead-name" className="mb-2 block font-bold">
+          <label htmlFor="lead-name" className="mb-2 block font-semibold">
             Nome
           </label>
           <input
@@ -85,7 +90,7 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
         </div>
 
         <div>
-          <label htmlFor="lead-whatsapp" className="mb-2 block font-bold">
+          <label htmlFor="lead-whatsapp" className="mb-2 block font-semibold">
             WhatsApp
           </label>
           <input
@@ -106,11 +111,11 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
         </div>
 
         <div>
-          <label htmlFor="lead-instagram" className="mb-2 block font-bold">
-            @ do Instagram <span className="font-medium text-white/75">(opcional)</span>
+          <label htmlFor="lead-instagram" className="mb-2 block font-semibold">
+            @ do Instagram <span className="font-normal text-dim">(opcional)</span>
           </label>
           <div className="relative">
-            <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[17px] text-muted">
+            <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[17px] text-dim">
               @
             </span>
             <input
@@ -138,28 +143,28 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
               id="lead-consent"
               name="consent"
               type="checkbox"
-              className="mt-0.5 size-6 shrink-0 cursor-pointer accent-amarelo"
+              className="mt-0.5 size-6 shrink-0 cursor-pointer accent-purple"
               checked={values.consent}
               onChange={(e) => set("consent", e.target.checked)}
               aria-invalid={!!errors.consent}
               aria-describedby={errors.consent ? "lead-consent-error" : undefined}
               required
             />
-            <span className="text-[15px] leading-snug text-white/90">{COPY.lead.consent}</span>
+            <span className="text-[15px] leading-snug text-muted">{COPY.lead.consent}</span>
           </label>
           <FieldError id="lead-consent-error" message={errors.consent} />
         </div>
 
         {errors.form ? (
-          <p role="alert" className="rounded-2xl border-2 border-amarelo px-4 py-3 font-medium">
+          <p role="alert" className="rounded-2xl border-[1.5px] border-orange px-4 py-3 font-medium">
             {errors.form}
           </p>
         ) : null}
 
-        <button type="submit" className="btn-primary mt-2" disabled={sending}>
-          {sending ? "Liberando seu resultado…" : COPY.lead.cta}
+        <button type="submit" className="btn-main mt-2" disabled={sending}>
+          {sending ? "Liberando seu resultado…" : COPY.lead.cta} {sending ? null : <span className="arr" aria-hidden="true">↗</span>}
         </button>
-        <p className="text-center text-sm text-white/75">Sem spam. Seus dados ficam só com a UAU. 🔒</p>
+        <p className="text-center text-sm text-dim">Sem spam. Seus dados ficam só com a UAU. 🔒</p>
       </form>
     </div>
   );
@@ -168,7 +173,7 @@ export default function LeadForm({ initialName = "", onSubmit }: Props) {
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="mt-2 text-[15px] font-bold text-amarelo">
+    <p id={id} className="mt-2 text-[15px] font-semibold text-orange">
       {message}
     </p>
   );

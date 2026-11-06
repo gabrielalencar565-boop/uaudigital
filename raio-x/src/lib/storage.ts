@@ -1,6 +1,6 @@
 /** localStorage seguro: em aba anônima ou com storage bloqueado, não quebra. */
 
-const KEY = "raiox-uau:v1";
+const KEY = "raiox-uau:v2";
 
 export type UTM = Partial<Record<"utm_source" | "utm_medium" | "utm_campaign" | "utm_content", string>>;
 

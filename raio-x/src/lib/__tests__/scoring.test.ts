@@ -29,15 +29,15 @@ function scores(partial: Partial<AreaScores>, fallback = 50): AreaScores {
 }
 
 describe("banco de perguntas", () => {
-  it("tem 6 áreas com 4 perguntas cada e opções de 0 a 3 pontos", () => {
-    expect(QUESTIONS).toHaveLength(24);
+  it("tem 6 áreas com 2 perguntas cada e opções de 0 a 3 pontos", () => {
+    expect(QUESTIONS).toHaveLength(12);
     for (const area of AREAS) {
-      expect(QUESTIONS.filter((q) => q.area === area.id)).toHaveLength(4);
+      expect(QUESTIONS.filter((q) => q.area === area.id)).toHaveLength(2);
     }
     for (const q of QUESTIONS) {
       expect(q.options.map((o) => o.points).sort()).toEqual([0, 1, 2, 3]);
     }
-    expect(QUESTIONS.map((q) => q.id)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+    expect(QUESTIONS.map((q) => q.id)).toEqual(Array.from({ length: 12 }, (_, i) => i + 1));
   });
 });
 
@@ -47,28 +47,28 @@ describe("nota por área", () => {
     expect(Object.values(areaScores(answersByArea({}, 3)))).toEqual([100, 100, 100, 100, 100, 100]);
   });
 
-  it("calcula (soma ÷ 12) × 100 arredondado", () => {
+  it("calcula (soma ÷ 6) × 100 arredondado", () => {
     const answers = answersByArea({}, 0);
-    // Objetivo: 3 + 2 + 1 + 1 = 7 -> 58,33 -> 58
-    const [a, b, c, d] = QUESTIONS.filter((q) => q.area === "objetivo");
+    // Objetivo: 3 + 2 = 5 -> 83,33 -> 83
+    const [a, b] = QUESTIONS.filter((q) => q.area === "objetivo");
     answers[a.id] = a.options.findIndex((o) => o.points === 3);
     answers[b.id] = b.options.findIndex((o) => o.points === 2);
-    answers[c.id] = c.options.findIndex((o) => o.points === 1);
-    answers[d.id] = d.options.findIndex((o) => o.points === 1);
-    expect(areaScores(answers).objetivo).toBe(58);
-    // Diagnóstico: só 1 ponto -> 8,33 -> 8
+    expect(areaScores(answers).objetivo).toBe(83);
+    // Diagnóstico: só 1 ponto -> 16,67 -> 17
     const diag = QUESTIONS.find((q) => q.area === "diagnostico")!;
     answers[diag.id] = 1;
-    expect(areaScores(answers).diagnostico).toBe(8);
+    expect(areaScores(answers).diagnostico).toBe(17);
   });
 
-  it("arredonda pro inteiro mais próximo (2/12 = 16,67 -> 17)", () => {
-    expect(areaScores(answersByArea({ valor: 0 }, 0)).valor).toBe(0);
+  it("arredonda pro inteiro mais próximo (2/6 = 33,33 -> 33; 4/6 = 66,67 -> 67)", () => {
     const answers = answersByArea({}, 0);
     const [v1, v2] = QUESTIONS.filter((q) => q.area === "valor");
     answers[v1.id] = 1;
     answers[v2.id] = 1;
-    expect(areaScores(answers).valor).toBe(17);
+    expect(areaScores(answers).valor).toBe(33);
+    answers[v1.id] = 2;
+    answers[v2.id] = 2;
+    expect(areaScores(answers).valor).toBe(67);
   });
 
   it("pergunta sem resposta vale 0", () => {
@@ -162,10 +162,10 @@ describe("área mais forte", () => {
 });
 
 describe("utilitários", () => {
-  it("isComplete exige as 24 respostas válidas", () => {
+  it("isComplete exige todas as respostas válidas", () => {
     expect(isComplete(answersByArea({}, 2))).toBe(true);
     const missing = answersByArea({}, 2);
-    delete missing[24];
+    delete missing[12];
     expect(isComplete(missing)).toBe(false);
     expect(isComplete({ ...answersByArea({}, 2), 3: 7 })).toBe(false);
   });

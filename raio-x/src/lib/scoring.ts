@@ -25,8 +25,6 @@ export type RaioXResult = {
   strongest: AreaId;
 };
 
-const MAX_POINTS_PER_AREA = 12;
-
 export function pointsFor(questionId: number, optionIndex: number | undefined): number {
   if (optionIndex === undefined) return 0;
   const question = QUESTIONS.find((q) => q.id === questionId);
@@ -34,15 +32,17 @@ export function pointsFor(questionId: number, optionIndex: number | undefined): 
   return option ? option.points : 0;
 }
 
-/** Nota da área = (soma dos pontos da área ÷ 12) × 100, arredondada. */
+/**
+ * Nota da área = (soma dos pontos da área ÷ máximo possível) × 100, arredondada.
+ * Máximo = nº de perguntas da área × 3 (hoje: 2 perguntas → 6 pontos).
+ */
 export function areaScores(answers: Answers): AreaScores {
   const scores = {} as AreaScores;
   for (const area of AREAS) {
-    const sum = QUESTIONS.filter((q) => q.area === area.id).reduce(
-      (acc, q) => acc + pointsFor(q.id, answers[q.id]),
-      0,
-    );
-    scores[area.id] = Math.round((sum / MAX_POINTS_PER_AREA) * 100);
+    const questions = QUESTIONS.filter((q) => q.area === area.id);
+    const sum = questions.reduce((acc, q) => acc + pointsFor(q.id, answers[q.id]), 0);
+    const max = questions.length * 3;
+    scores[area.id] = max ? Math.round((sum / max) * 100) : 0;
   }
   return scores;
 }

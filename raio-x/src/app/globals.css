@@ -1,45 +1,198 @@
 @import "tailwindcss";
 
+/* Identidade da landing da UAU: faixas escuras com blocos claros,
+   degradê roxo → magenta → laranja, botões em pílula, Bricolage Grotesque. */
 @theme {
-  --color-ink: #08080a;
-  --color-roxo: #7a35d6;
-  --color-roxo-escuro: #5f22b3;
-  --color-amarelo: #ffd23f;
-  --color-muted: #a9a3b4;
-  --color-card: #131218;
-  --color-borda: #24212c;
-  --font-sans: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --color-bg: #0f0e11;
+  --color-bg2: #17151b;
+  --color-bg3: #1f1c25;
+  --color-line: #2a2730;
+  --color-fg: #f4f2f7;
+  --color-muted: #b9b4c4;
+  --color-dim: #8c8796;
+  --color-light: #edecef;
+  --color-ink: #141217;
+  --color-ink-muted: #5a5563;
+  --color-purple: #7b2fe0;
+  --color-purple-dark: #6b33b5;
+  --color-magenta: #c9307a;
+  --color-orange: #f2a04a;
+  --color-lilac: #a877f7;
+  --font-sans: var(--font-bricolage), "Bricolage Grotesque", system-ui, Arial, sans-serif;
+}
+
+:root {
+  --grad: linear-gradient(90deg, #7b2fe0, #c9307a 60%, #f2a04a);
+  color-scheme: dark;
 }
 
 html {
-  background: #08080a;
-  color: #ffffff;
+  background: #0f0e11;
+  color: #f4f2f7;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: #08080a;
-  color: #ffffff;
+  background: #0f0e11;
+  color: #f4f2f7;
   font-family: var(--font-sans);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Títulos: grandes, peso 800, letter-spacing negativo */
+/* Títulos como na landing: peso leve com palavra-chave em negrito */
 .title {
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 300;
+  letter-spacing: -0.035em;
   line-height: 1.02;
   text-wrap: balance;
 }
+.title b,
+.title strong {
+  font-weight: 800;
+}
 
-/* Foco visível e consistente em tudo que é clicável */
+.grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Eyebrow lilás com bolinha em degradê piscando */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #a877f7;
+}
+.eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--grad);
+  animation: blink 1.6s infinite;
+}
+.on-light .eyebrow {
+  color: #6b33b5;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Botões em pílula */
+.btn-main,
+.btn-ghost,
+.btn-white {
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 999px;
+  padding: 0 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition:
+    transform 200ms,
+    box-shadow 200ms,
+    background-color 200ms;
+}
+.btn-main {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(123, 47, 224, 0.35);
+}
+.btn-main:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(201, 48, 122, 0.45);
+}
+.btn-ghost {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+}
+.btn-ghost:hover {
+  background: rgba(168, 119, 247, 0.12);
+}
+.btn-white {
+  background: #fff;
+  color: #141217;
+}
+.btn-main:active,
+.btn-ghost:active,
+.btn-white:active {
+  transform: scale(0.98);
+}
+.btn-main:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.arr {
+  display: inline-block;
+  transition: transform 200ms;
+}
+.btn-main:hover .arr,
+.btn-white:hover .arr {
+  transform: translate(3px, -3px);
+}
+
+/* Card com borda em degradê (como o card "UAU" do comparativo) */
+.grad-border {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(#17151b, #17151b) padding-box,
+    linear-gradient(135deg, #7b2fe0, #c9307a 55%, #f2a04a) border-box;
+}
+
+/* Brilho roxo que se move devagar (fundo do hero da landing) */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.28;
+  pointer-events: none;
+  animation: drift 20s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  to {
+    transform: translate(-50px, 40px) scale(1.12);
+  }
+}
+
+/* Faixa que corre (banda de serviços da landing) */
+.marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.track {
+  display: flex;
+  width: max-content;
+  animation: scroll 32s linear infinite;
+}
+@keyframes scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Foco visível */
 :focus-visible {
-  outline: 3px solid #ffd23f;
+  outline: 2px solid #f2a04a;
   outline-offset: 3px;
 }
-.on-yellow :focus-visible {
-  outline-color: #08080a;
+.on-light :focus-visible {
+  outline-color: #6b33b5;
 }
 [tabindex="-1"]:focus {
   outline: none;
@@ -96,48 +249,4 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* Botões */
-.btn-primary {
-  display: flex;
-  width: 100%;
-  min-height: 3.5rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 1.25rem;
-  background: #ffd23f;
-  color: #08080a;
-  font-size: 1.0625rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  transition: transform 150ms ease, filter 150ms ease;
-}
-.btn-primary:hover {
-  filter: brightness(1.05);
-}
-.btn-primary:active {
-  transform: scale(0.98);
-}
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: progress;
-}
-.btn-dark {
-  display: flex;
-  width: 100%;
-  min-height: 3.5rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 1.25rem;
-  background: #08080a;
-  color: #ffffff;
-  font-size: 1.0625rem;
-  font-weight: 800;
-  transition: transform 150ms ease;
-}
-.btn-dark:active {
-  transform: scale(0.98);
 }

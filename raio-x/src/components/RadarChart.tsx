@@ -19,19 +19,26 @@ export default function RadarChart({ scores }: { scores: AreaScores }) {
     <figure className="m-0">
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-labelledby="radar-title radar-desc">
         <title id="radar-title">Gráfico radar das 6 áreas</title>
+        <defs>
+          <linearGradient id="radar-fill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#7B2FE0" />
+            <stop offset="60%" stopColor="#C9307A" />
+            <stop offset="100%" stopColor="#F2A04A" />
+          </linearGradient>
+        </defs>
         <desc id="radar-desc">{AREAS.map((a) => `${a.name}: ${scores[a.id]}`).join(", ")}</desc>
 
         {RINGS.map((ring) => (
-          <path key={ring} d={toPath(radarPolygon(Array(n).fill(ring), CX, CY, R))} fill="none" stroke="#24212C" strokeWidth={1.5} />
+          <path key={ring} d={toPath(radarPolygon(Array(n).fill(ring), CX, CY, R))} fill="none" stroke="#2A2730" strokeWidth={1.5} />
         ))}
         {AREAS.map((a, i) => {
           const p = radarPoint(i, n, 100, CX, CY, R);
-          return <line key={a.id} x1={CX} y1={CY} x2={p.x} y2={p.y} stroke="#24212C" strokeWidth={1.5} />;
+          return <line key={a.id} x1={CX} y1={CY} x2={p.x} y2={p.y} stroke="#2A2730" strokeWidth={1.5} />;
         })}
 
-        <path d={toPath(shape)} fill="rgba(122,53,214,0.5)" stroke="#7A35D6" strokeWidth={2.5} strokeLinejoin="round" />
+        <path d={toPath(shape)} fill="url(#radar-fill)" fillOpacity={0.45} stroke="url(#radar-fill)" strokeWidth={2.5} strokeLinejoin="round" />
         {shape.map((p, i) => (
-          <circle key={AREAS[i].id} cx={p.x} cy={p.y} r={4} fill="#FFD23F" />
+          <circle key={AREAS[i].id} cx={p.x} cy={p.y} r={4} fill="#F4F2F7" />
         ))}
 
         {AREAS.map((a, i) => {
@@ -41,9 +48,9 @@ export default function RadarChart({ scores }: { scores: AreaScores }) {
           const sin = Math.sin(p.angle);
           const dy = sin < -0.9 ? -10 : sin > 0.9 ? 14 : 0;
           return (
-            <text key={a.id} x={p.x} y={p.y + dy} textAnchor={anchor} fill="#FFFFFF" fontSize={13} fontWeight={700} fontFamily="inherit">
+            <text key={a.id} x={p.x} y={p.y + dy} textAnchor={anchor} fill="#F4F2F7" fontSize={13} fontWeight={600} fontFamily="inherit">
               <tspan>{a.shortName}</tspan>
-              <tspan x={p.x} dy={15} fill="#A9A3B4" fontWeight={500}>
+              <tspan x={p.x} dy={15} fill="#8C8796" fontWeight={500}>
                 {scores[a.id]}
               </tspan>
             </text>
