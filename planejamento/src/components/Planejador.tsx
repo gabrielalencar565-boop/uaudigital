@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { COPY } from "@/data/textos";
 import { withBase } from "@/lib/base";
 import { trackPixel } from "@/lib/pixel";
-import type { PlanoSalvo } from "@/lib/plano";
+import { nomeDoNicho } from "@/lib/input";
+import { gerarPlanoModelo } from "@/lib/modeloB";
+import { mesAtual, type PlanoSalvo } from "@/lib/plano";
 import {
   CONTATO_VAZIO,
   RASCUNHO_VAZIO,
+  paraFormInput,
   primeiraEtapaIncompleta,
   validarContato,
   validarEtapa,
@@ -25,6 +28,9 @@ import StepObjetivo from "./StepObjetivo";
 import StepPerfil from "./StepPerfil";
 import StepPublico from "./StepPublico";
 import StepShell from "./StepShell";
+
+/** Versão demo (artefato estático): monta o plano no navegador, pelos modelos prontos. */
+const DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
 
 type Tela = { tipo: "intro" } | { tipo: "etapa"; i: number } | { tipo: "gerando" } | { tipo: "resultado" };
 
@@ -175,6 +181,22 @@ export default function Planejador() {
     ir({ tipo: "gerando" });
     // A tela de geração fica pelo menos 4 s, mesmo quando o plano sai na hora.
     const minimo = new Promise((r) => setTimeout(r, 4000));
+    if (DEMO) {
+      await minimo;
+      const form = paraFormInput(rascunho);
+      const mes = mesAtual();
+      const novo: PlanoSalvo = {
+        id: crypto.randomUUID(),
+        criado_em: new Date().toISOString(),
+        plano: gerarPlanoModelo(form, mes),
+        meta: { mes, cliente: form.cliente, nicho: nomeDoNicho(form), fonte: "modelo" },
+      };
+      guardarPlano(novo);
+      setSalvo(novo);
+      setRegerando(false);
+      ir({ tipo: "resultado" });
+      return;
+    }
     try {
       const res = await fetch(withBase("/api/gerar"), {
         method: "POST",

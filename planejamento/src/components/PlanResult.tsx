@@ -33,6 +33,10 @@ export default function PlanResult({ salvo, acoes }: { salvo: PlanoSalvo; acoes?
   const [baixando, setBaixando] = useState(false);
 
   async function baixarPdf() {
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === "1") {
+      setAviso("Na versão demo o PDF fica desligado. No site publicado, ele baixa pronto pra apresentar ao cliente.");
+      return;
+    }
     if (baixando) return;
     setBaixando(true);
     setAviso(null);
@@ -88,7 +92,7 @@ export default function PlanResult({ salvo, acoes }: { salvo: PlanoSalvo; acoes?
             O mês de {meta.cliente} tá planejado. 🗓️
           </h1>
           <p className="mt-2 text-muted">{meta.nicho}</p>
-          {acoes ? (
+          {acoes && process.env.NEXT_PUBLIC_DEMO_MODE !== "1" ? (
             <p className="mt-3 text-sm text-muted">
               🔗 Pra reabrir depois:{" "}
               <a href={withBase(`/p/${salvo.id}`)} className="font-bold text-white underline underline-offset-4">
