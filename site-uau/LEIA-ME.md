@@ -63,7 +63,7 @@ O site fica no ar como um projeto Vercel separado do Fluxo, apontando para esta 
 - Domínio: `www.uaucomunicacaodigital.com.br` (principal; o endereço sem www redireciona para ele), configurado em Settings → Domains do projeto; os registros DNS ficam no Registro.br.
 - `vercel.json` desta pasta deixa os endereços sem `.html` (`/sobre`, `/clientes`…), guarda imagens e vídeos em cache e liga cabeçalhos de segurança.
 - `robots.txt` e `sitemap.xml` já apontam para o domínio.
-- **`/raiox`**: o Raio-X do Social Media (pasta `raio-x/` do repositório) roda num projeto próprio na Vercel (`raiox-uau`) e aparece em `www.uaucomunicacaodigital.com.br/raiox` pelo `rewrites` do `vercel.json` desta pasta. Se o endereço do projeto mudar, atualize as duas linhas de `rewrites`.
+- **`/raioxsocialmedia`**: o Raio-X do Social Media (pasta `raio-x/` do repositório) roda num projeto próprio na Vercel (`raioxsocialmedia`) e aparece em `www.uaucomunicacaodigital.com.br/raioxsocialmedia` pelo `rewrites` do `vercel.json` desta pasta. Se o endereço do projeto mudar, atualize as duas linhas de `rewrites`.
 
 ## Formulário de contato
 No momento os botões levam direto ao WhatsApp (`modo:'whatsapp'` no `CONTATO`). Para voltar a abrir o formulário, troque para `modo:'formulario'`.

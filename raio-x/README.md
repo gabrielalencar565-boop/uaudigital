@@ -16,7 +16,7 @@ Diagnóstico interativo: o social media deixa o contato (nome, WhatsApp e @), re
 cd raio-x
 npm install
 cp .env.example .env.local   # preencha o que tiver (tudo é opcional para testar)
-npm run dev                  # http://localhost:3000/raiox
+npm run dev                  # http://localhost:3000/raioxsocialmedia
 ```
 
 Outros comandos:
@@ -52,7 +52,7 @@ Hoje são 12 (2 por área). Para mudar, é só adicionar ou tirar perguntas em `
 | `SUPABASE_SERVICE_ROLE_KEY` | **só servidor** | não* | Grava e lê os leads. Nunca vai para o navegador |
 | `ADMIN_PASSWORD` | servidor | para usar o `/admin` | Senha da página de admin |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navegador | não | Liga o Pixel da Meta (PageView, Lead, CompleteRegistration) |
-| `NEXT_PUBLIC_SITE_URL` | servidor | não | Domínio público, sem `/raiox`: `https://www.uaucomunicacaodigital.com.br`. Usado na imagem de compartilhamento do link |
+| `NEXT_PUBLIC_SITE_URL` | servidor | não | Domínio público, sem `/raioxsocialmedia`: `https://www.uaucomunicacaodigital.com.br`. Usado na imagem de compartilhamento do link |
 
 \* Sem as duas variáveis do Supabase, os leads vão só para o log do servidor (na Vercel: **Project → Logs**, procure por `[raiox] Lead`).
 
@@ -136,54 +136,54 @@ select distinct on (whatsapp) * from public.leads order by whatsapp, created_at 
 
 ---
 
-## Publicar em www.uaucomunicacaodigital.com.br/raiox
+## Publicar em www.uaucomunicacaodigital.com.br/raioxsocialmedia
 
-O Raio-X aparece como uma página da landing (`/raiox`), mas roda num **projeto próprio na Vercel**, porque precisa do servidor para gravar os leads com segurança. A landing repassa tudo o que chega em `/raiox` para esse projeto (o "rewrite" já está no `site-uau/vercel.json`). Não precisa mexer em DNS.
+O Raio-X aparece como uma página da landing (`/raioxsocialmedia`), mas roda num **projeto próprio na Vercel**, porque precisa do servidor para gravar os leads com segurança. A landing repassa tudo o que chega em `/raioxsocialmedia` para esse projeto (o "rewrite" já está no `site-uau/vercel.json`). Não precisa mexer em DNS.
 
 ```
 www.uaucomunicacaodigital.com.br/          → landing (projeto site-uau, como sempre)
-www.uaucomunicacaodigital.com.br/raiox     → repassado para raiox-uau.vercel.app/raiox
+www.uaucomunicacaodigital.com.br/raioxsocialmedia     → repassado para raioxsocialmedia.vercel.app/raioxsocialmedia
 ```
 
 ### 1. Criar o projeto do Raio-X na Vercel
 
 1. Entre em [vercel.com](https://vercel.com) com a mesma conta da landing → **Add New… → Project** → importe o repositório `uaudigital`.
-2. Em **Project Name**, use **`raiox-uau`**. É esse nome que gera o endereço `raiox-uau.vercel.app`, que a landing usa no repasse.
+2. Em **Project Name**, use **`raioxsocialmedia`**. É esse nome que gera o endereço `raioxsocialmedia.vercel.app`, que a landing usa no repasse.
 3. Em **Root Directory**, clique em **Edit** e escolha **`raio-x`**. O Framework Preset fica **Next.js**.
 4. Em **Environment Variables**, adicione:
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (ver "Configurar o Supabase")
    - `ADMIN_PASSWORD` (uma senha forte)
-   - `NEXT_PUBLIC_SITE_URL` = `https://www.uaucomunicacaodigital.com.br` (só o domínio, sem `/raiox`)
+   - `NEXT_PUBLIC_SITE_URL` = `https://www.uaucomunicacaodigital.com.br` (só o domínio, sem `/raioxsocialmedia`)
    - `NEXT_PUBLIC_META_PIXEL_ID` (opcional)
-5. Clique em **Deploy**. Para conferir, abra `https://raiox-uau.vercel.app/raiox`.
+5. Clique em **Deploy**. Para conferir, abra `https://raioxsocialmedia.vercel.app/raioxsocialmedia`.
 
-> **Se o nome `raiox-uau` já estiver em uso** na Vercel, o endereço vai ser outro. Nesse caso, troque `raiox-uau.vercel.app` pelo endereço certo nas duas linhas de `rewrites` do `site-uau/vercel.json` e publique de novo.
+> **Se o nome `raioxsocialmedia` já estiver em uso** na Vercel, o endereço vai ser outro. Nesse caso, troque `raioxsocialmedia.vercel.app` pelo endereço certo nas duas linhas de `rewrites` do `site-uau/vercel.json` e publique de novo.
 
 > Não adicione domínio nenhum neste projeto: quem responde pelo domínio é a landing.
 
 ### 2. Atualizar a landing
 
-O repasse de `/raiox` está no `site-uau/vercel.json`. Assim que esse arquivo chegar à branch principal, a Vercel publica a landing de novo sozinha e `/raiox` passa a funcionar. Nada mais na landing muda.
+O repasse de `/raioxsocialmedia` está no `site-uau/vercel.json`. Assim que esse arquivo chegar à branch principal, a Vercel publica a landing de novo sozinha e `/raioxsocialmedia` passa a funcionar. Nada mais na landing muda.
 
 ### 3. Testar
 
-1. Abra `https://www.uaucomunicacaodigital.com.br/raiox` no celular.
-2. Preencha o contato, abra `https://www.uaucomunicacaodigital.com.br/raiox/admin`, entre com a senha e veja o lead como "Só iniciou".
+1. Abra `https://www.uaucomunicacaodigital.com.br/raioxsocialmedia` no celular.
+2. Preencha o contato, abra `https://www.uaucomunicacaodigital.com.br/raioxsocialmedia/admin`, entre com a senha e veja o lead como "Só iniciou".
 3. Termine o raio-x, atualize o admin e confira se virou "Concluiu" com a nota.
 4. Confira que a landing (`/`, `/sobre`, etc.) continua normal.
 
-Ao mudar uma variável de ambiente, faça um **Redeploy** do projeto `raiox-uau` para valer.
+Ao mudar uma variável de ambiente, faça um **Redeploy** do projeto `raioxsocialmedia` para valer.
 
 ### Rodar localmente
 
-Como o app mora em `/raiox`, o endereço local é `http://localhost:3000/raiox`.
+Como o app mora em `/raioxsocialmedia`, o endereço local é `http://localhost:3000/raioxsocialmedia`.
 
 ### Link para a bio / comentários
 
 Use UTMs para saber de onde veio cada lead, por exemplo:
 
 ```
-https://www.uaucomunicacaodigital.com.br/raiox?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
+https://www.uaucomunicacaodigital.com.br/raioxsocialmedia?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
 ```
 
 As UTMs ficam salvas mesmo se a pessoa navegar pelo teste e vão junto com o lead.

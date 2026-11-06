@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 /**
- * O Raio-X mora em www.uaucomunicacaodigital.com.br/raiox.
- * A landing (site-uau) repassa /raiox para este projeto (rewrite no vercel.json dela).
+ * O Raio-X mora em www.uaucomunicacaodigital.com.br/raioxsocialmedia.
+ * A landing (site-uau) repassa /raioxsocialmedia para este projeto (rewrite no vercel.json dela).
  */
-const basePath = "/raiox";
+const basePath = "/raioxsocialmedia";
 
 const nextConfig: NextConfig = {
   basePath,

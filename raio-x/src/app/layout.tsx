@@ -10,7 +10,7 @@ const bricolage = Bricolage_Grotesque({
   display: "swap",
 });
 
-// Só o domínio (sem /raiox): o Next já coloca o /raiox nos endereços das imagens.
+// Só o domínio (sem /raioxsocialmedia): o Next já coloca o /raioxsocialmedia nos endereços das imagens.
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.NODE_ENV === "production" ? "https://www.uaucomunicacaodigital.com.br" : "http://localhost:3000");

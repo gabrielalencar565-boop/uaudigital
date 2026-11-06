@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/raiox/admin(.*)",
+      "source": "/raioxsocialmedia/admin(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
