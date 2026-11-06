@@ -49,8 +49,13 @@ export function isSupabaseConfigured() {
   return config() !== null;
 }
 
-function headers(key: string) {
-  return { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+/**
+ * Aceita a chave nova do Supabase (sb_secret_...) e a antiga (service_role, um JWT).
+ * A nova vai só no cabeçalho apikey; a antiga também vai como Bearer.
+ */
+function headers(key: string): Record<string, string> {
+  const base: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
+  return key.startsWith("sb_") ? base : { ...base, Authorization: `Bearer ${key}` };
 }
 
 export async function insertLead(row: LeadContact): Promise<void> {
