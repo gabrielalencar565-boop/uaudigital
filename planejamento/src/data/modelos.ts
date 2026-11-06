@@ -405,7 +405,7 @@ export const STORY_VENDA = "Lembrete com link direto pro WhatsApp ou pra agenda,
 export const FRASES_APRESENTAR = [
   "Esse mês, o foco é {objetivoCurto}. Por isso, cada post tem uma função clara: atrair, gerar confiança, quebrar objeção ou vender.",
   "Nas primeiras semanas, o público se reconhece no problema. Nas últimas, a gente mostra prova e derruba a objeção de {objecao}.",
-  "No fim do mês, a gente olha {indicador} pra saber se o plano funcionou e ajustar o próximo.",
+  "No fim do mês, a gente compara os números com a meta ({indicador}) pra saber se o plano funcionou e ajustar o próximo.",
 ];
 
 /** Como chamar a conversão em cada nicho. */

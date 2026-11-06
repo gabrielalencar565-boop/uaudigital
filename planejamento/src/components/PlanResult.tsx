@@ -102,7 +102,7 @@ export default function PlanResult({ salvo, acoes }: { salvo: PlanoSalvo; acoes?
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="on-yellow rounded-3xl bg-amarelo p-6 text-ink lg:col-span-2">
           <p className="text-xs font-extrabold tracking-[0.14em] uppercase">Objetivo do mês 🎯</p>
-          <p className="title mt-3 text-[1.6rem] leading-tight">{plano.objetivo_mes}</p>
+          <p className="title mt-3 text-[1.3rem] leading-snug lg:text-[1.6rem]">{plano.objetivo_mes}</p>
           <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {plano.metas.map((m) => (
               <li key={m.meta} className="rounded-2xl bg-ink p-4 text-white">
@@ -209,7 +209,8 @@ export default function PlanResult({ salvo, acoes }: { salvo: PlanoSalvo; acoes?
       </p>
 
       <section className="rounded-3xl bg-roxo p-6">
-        <p className="title text-[1.6rem] leading-tight">{COPY.resultado.ctaTexto}</p>
+        <p className="title text-[2rem]">{COPY.resultado.ctaTitulo}</p>
+        <p className="mt-3 text-lg leading-snug text-white/90">{COPY.resultado.ctaTexto}</p>
         <a href={COPY.resultado.instagram} target="_blank" rel="noopener noreferrer" className="btn-primary mt-5">
           {COPY.resultado.ctaBotao} <span aria-hidden="true">→</span>
         </a>

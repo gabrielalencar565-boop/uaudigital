@@ -38,6 +38,11 @@ body {
   outline: 3px solid #ffd23f;
   outline-offset: 3px;
 }
+/* Campos de texto já mostram o foco com a borda amarela. */
+input:not([type="checkbox"]):focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
 .on-yellow :focus-visible {
   outline-color: #08080a;
 }

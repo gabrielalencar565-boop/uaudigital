@@ -39,8 +39,9 @@ export const COPY = {
   erroGenerico: "Não rolou gerar agora. Confere a internet e tenta de novo.",
   resultado: {
     teaser: "Esse é só o resumo. Vem coisa grande sobre planejamento no perfil da UAU 👀",
+    ctaTitulo: "Esse é só o resumo.",
     ctaTexto:
-      "Esse é só o resumo. Um planejamento completo tem diagnóstico do perfil, análise de concorrentes e relatório de resultados. Segue a @uaudigital: vem coisa grande sobre isso 👀",
+      "Um planejamento completo tem diagnóstico do perfil, análise de concorrentes e relatório de resultados. Segue a @uaudigital: vem coisa grande sobre isso 👀",
     ctaBotao: "Seguir a @uaudigital",
     instagram: "https://instagram.com/uaudigital",
     pdf: "Baixar PDF para apresentar",

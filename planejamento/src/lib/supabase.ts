@@ -55,12 +55,12 @@ export type LeadRow = {
 };
 
 export async function inserirLead(row: LeadRow) {
-  await rest("leads", { method: "POST", body: JSON.stringify(row), extraHeaders: { Prefer: "return=minimal" } });
+  await rest("leads_planejamento", { method: "POST", body: JSON.stringify(row), extraHeaders: { Prefer: "return=minimal" } });
 }
 
 /** Atualiza as últimas respostas do lead (ao planejar outro cliente). */
 export async function atualizarLead(id: string, patch: Partial<LeadRow>): Promise<boolean> {
-  const res = await rest(`leads?id=eq.${encodeURIComponent(id)}`, {
+  const res = await rest(`leads_planejamento?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
     extraHeaders: { Prefer: "return=representation" },
@@ -71,7 +71,7 @@ export async function atualizarLead(id: string, patch: Partial<LeadRow>): Promis
 export type LeadAdmin = LeadRow & { created_at: string; geracoes: { count: number }[] };
 
 export async function listarLeads(limite = 5000): Promise<LeadAdmin[]> {
-  const res = await rest(`leads?select=*,geracoes(count)&order=created_at.desc&limit=${limite}`);
+  const res = await rest(`leads_planejamento?select=*,geracoes(count)&order=created_at.desc&limit=${limite}`);
   return (await res.json()) as LeadAdmin[];
 }
 
