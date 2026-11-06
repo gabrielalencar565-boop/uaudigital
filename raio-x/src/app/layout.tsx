@@ -14,7 +14,9 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
+    : process.env.NODE_ENV === "production"
+      ? "https://raiox.uaucomunicacaodigital.com.br"
+      : "http://localhost:3000");
 
 const title = "Raio-X do Social Media · UAU Digital";
 const description = "Descubra se seu cliente te vê como estrategista ou como quem só posta.";

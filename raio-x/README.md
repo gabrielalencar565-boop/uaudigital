@@ -52,7 +52,7 @@ Hoje são 12 (2 por área). Para mudar, é só adicionar ou tirar perguntas em `
 | `SUPABASE_SERVICE_ROLE_KEY` | **só servidor** | não* | Grava e lê os leads. Nunca vai para o navegador |
 | `ADMIN_PASSWORD` | servidor | para usar o `/admin` | Senha da página de admin |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navegador | não | Liga o Pixel da Meta (PageView, Lead, CompleteRegistration) |
-| `NEXT_PUBLIC_SITE_URL` | servidor | não | URL pública (ex.: `https://raiox.uaudigital.com.br`), usada na imagem Open Graph. Na Vercel é detectada sozinha |
+| `NEXT_PUBLIC_SITE_URL` | servidor | não | URL pública: `https://raiox.uaucomunicacaodigital.com.br`. Usada na imagem de compartilhamento do link |
 
 \* Sem as duas variáveis do Supabase, os leads vão só para o log do servidor (na Vercel: **Project → Logs**, procure por `[raiox] Lead`).
 
@@ -136,16 +136,41 @@ select distinct on (whatsapp) * from public.leads order by whatsapp, created_at 
 
 ---
 
-## Deploy na Vercel
+## Publicar em raiox.uaucomunicacaodigital.com.br
 
-Este app fica na pasta `raio-x/` do repositório `uaudigital`.
+A landing (`www.uaucomunicacaodigital.com.br`) continua como está: o Raio-X é **outro projeto na Vercel**, no subdomínio `raiox`. Nada no projeto da landing nem nos registros DNS dela muda.
 
-1. Entre em [vercel.com](https://vercel.com) → **Add New… → Project** e importe o repositório `uaudigital`.
-2. Em **Root Directory**, clique em **Edit** e escolha **`raio-x`**. O Framework Preset fica como **Next.js**.
-3. Em **Environment Variables**, adicione as variáveis da tabela acima (no mínimo `ADMIN_PASSWORD` e as 3 do Supabase).
-4. Clique em **Deploy**.
-5. (Opcional) Em **Settings → Domains**, adicione um domínio, por exemplo `raiox.uaudigital.com.br`, e crie o CNAME que a Vercel indicar.
-6. Teste: preencha o contato, abra `/admin` e veja o lead como "Só iniciou". Termine o raio-x, atualize o admin e confira se virou "Concluiu" com a nota.
+### 1. Criar o projeto na Vercel
+
+1. Entre em [vercel.com](https://vercel.com) com a mesma conta da landing → **Add New… → Project** → importe o repositório `uaudigital`.
+2. Em **Root Directory**, clique em **Edit** e escolha **`raio-x`**. O Framework Preset fica **Next.js** (detectado sozinho).
+3. Em **Environment Variables**, adicione:
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (ver "Configurar o Supabase")
+   - `ADMIN_PASSWORD` (uma senha forte)
+   - `NEXT_PUBLIC_SITE_URL` = `https://raiox.uaucomunicacaodigital.com.br`
+   - `NEXT_PUBLIC_META_PIXEL_ID` (opcional)
+4. Clique em **Deploy**. Ao terminar, a Vercel mostra um endereço `….vercel.app` para testar.
+
+> A Vercel publica em produção o que estiver na branch principal (`main`). Se o código do Raio-X ainda estiver em outra branch, faça o merge antes, ou troque a branch em **Settings → Git → Production Branch**.
+
+### 2. Ligar o subdomínio
+
+1. No projeto do Raio-X na Vercel: **Settings → Domains → Add** → digite `raiox.uaucomunicacaodigital.com.br` → **Add**.
+2. A Vercel vai mostrar um registro **CNAME** para criar (normalmente `cname.vercel-dns.com`, mas use exatamente o valor que aparecer na tela).
+3. No [Registro.br](https://registro.br): entre → clique no domínio `uaucomunicacaodigital.com.br` → **DNS → Editar zona** → **Nova entrada**:
+   - **Tipo:** `CNAME`
+   - **Nome:** `raiox`
+   - **Dados / Valor:** o valor que a Vercel mostrou (ex.: `cname.vercel-dns.com`)
+   - Salve e clique em **Salvar alterações** no fim da página.
+4. Não mexa nos registros que já existem (os da landing: `www` e o domínio sem www).
+5. Volte à Vercel e espere o domínio ficar **Valid Configuration** (de alguns minutos a algumas horas). O HTTPS é ativado sozinho.
+
+### 3. Testar
+
+1. Abra `https://raiox.uaucomunicacaodigital.com.br` no celular.
+2. Preencha o contato, abra `https://raiox.uaucomunicacaodigital.com.br/admin`, entre com a senha e veja o lead como "Só iniciou".
+3. Termine o raio-x, atualize o admin e confira se virou "Concluiu" com a nota.
+4. Confira que `https://www.uaucomunicacaodigital.com.br` continua abrindo a landing normalmente.
 
 Ao mudar uma variável de ambiente, faça um **Redeploy** para valer.
 
@@ -154,7 +179,7 @@ Ao mudar uma variável de ambiente, faça um **Redeploy** para valer.
 Use UTMs para saber de onde veio cada lead, por exemplo:
 
 ```
-https://SEU-DOMINIO/?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
+https://raiox.uaucomunicacaodigital.com.br/?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
 ```
 
 As UTMs ficam salvas mesmo se a pessoa navegar pelo teste e vão junto com o lead.
