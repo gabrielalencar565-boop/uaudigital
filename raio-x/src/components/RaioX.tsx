@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AREAS, COPY, QUESTIONS } from "@/data/raiox";
+import { withBase } from "@/lib/base";
 import { trackPixel } from "@/lib/pixel";
 import { computeResult, isComplete, shuffledOrder, type Answers } from "@/lib/scoring";
 import { clearState, loadState, readUtmFromUrl, saveState, type SavedState, type Step, type UTM } from "@/lib/storage";
@@ -39,7 +40,7 @@ function localId() {
 async function sendCompletion(leadId: string, answers: Answers): Promise<boolean> {
   if (DEMO) return true;
   try {
-    const res = await fetch("/api/leads", {
+    const res = await fetch(withBase("/api/leads"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: leadId, answers }),
@@ -198,7 +199,7 @@ export default function RaioX() {
       if (!DEMO) {
         let res: Response;
         try {
-          res = await fetch("/api/leads", {
+          res = await fetch(withBase("/api/leads"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...lead, utm }),

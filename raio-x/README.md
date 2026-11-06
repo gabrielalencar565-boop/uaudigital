@@ -16,7 +16,7 @@ Diagnóstico interativo: o social media deixa o contato (nome, WhatsApp e @), re
 cd raio-x
 npm install
 cp .env.example .env.local   # preencha o que tiver (tudo é opcional para testar)
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3000/raiox
 ```
 
 Outros comandos:
@@ -52,7 +52,7 @@ Hoje são 12 (2 por área). Para mudar, é só adicionar ou tirar perguntas em `
 | `SUPABASE_SERVICE_ROLE_KEY` | **só servidor** | não* | Grava e lê os leads. Nunca vai para o navegador |
 | `ADMIN_PASSWORD` | servidor | para usar o `/admin` | Senha da página de admin |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navegador | não | Liga o Pixel da Meta (PageView, Lead, CompleteRegistration) |
-| `NEXT_PUBLIC_SITE_URL` | servidor | não | URL pública: `https://raiox.uaucomunicacaodigital.com.br`. Usada na imagem de compartilhamento do link |
+| `NEXT_PUBLIC_SITE_URL` | servidor | não | Domínio público, sem `/raiox`: `https://www.uaucomunicacaodigital.com.br`. Usado na imagem de compartilhamento do link |
 
 \* Sem as duas variáveis do Supabase, os leads vão só para o log do servidor (na Vercel: **Project → Logs**, procure por `[raiox] Lead`).
 
@@ -136,50 +136,54 @@ select distinct on (whatsapp) * from public.leads order by whatsapp, created_at 
 
 ---
 
-## Publicar em raiox.uaucomunicacaodigital.com.br
+## Publicar em www.uaucomunicacaodigital.com.br/raiox
 
-A landing (`www.uaucomunicacaodigital.com.br`) continua como está: o Raio-X é **outro projeto na Vercel**, no subdomínio `raiox`. Nada no projeto da landing nem nos registros DNS dela muda.
+O Raio-X aparece como uma página da landing (`/raiox`), mas roda num **projeto próprio na Vercel**, porque precisa do servidor para gravar os leads com segurança. A landing repassa tudo o que chega em `/raiox` para esse projeto (o "rewrite" já está no `site-uau/vercel.json`). Não precisa mexer em DNS.
 
-### 1. Criar o projeto na Vercel
+```
+www.uaucomunicacaodigital.com.br/          → landing (projeto site-uau, como sempre)
+www.uaucomunicacaodigital.com.br/raiox     → repassado para raiox-uau.vercel.app/raiox
+```
+
+### 1. Criar o projeto do Raio-X na Vercel
 
 1. Entre em [vercel.com](https://vercel.com) com a mesma conta da landing → **Add New… → Project** → importe o repositório `uaudigital`.
-2. Em **Root Directory**, clique em **Edit** e escolha **`raio-x`**. O Framework Preset fica **Next.js** (detectado sozinho).
-3. Em **Environment Variables**, adicione:
+2. Em **Project Name**, use **`raiox-uau`**. É esse nome que gera o endereço `raiox-uau.vercel.app`, que a landing usa no repasse.
+3. Em **Root Directory**, clique em **Edit** e escolha **`raio-x`**. O Framework Preset fica **Next.js**.
+4. Em **Environment Variables**, adicione:
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (ver "Configurar o Supabase")
    - `ADMIN_PASSWORD` (uma senha forte)
-   - `NEXT_PUBLIC_SITE_URL` = `https://raiox.uaucomunicacaodigital.com.br`
+   - `NEXT_PUBLIC_SITE_URL` = `https://www.uaucomunicacaodigital.com.br` (só o domínio, sem `/raiox`)
    - `NEXT_PUBLIC_META_PIXEL_ID` (opcional)
-4. Clique em **Deploy**. Ao terminar, a Vercel mostra um endereço `….vercel.app` para testar.
+5. Clique em **Deploy**. Para conferir, abra `https://raiox-uau.vercel.app/raiox`.
 
-> A Vercel publica em produção o que estiver na branch principal (`main`). Se o código do Raio-X ainda estiver em outra branch, faça o merge antes, ou troque a branch em **Settings → Git → Production Branch**.
+> **Se o nome `raiox-uau` já estiver em uso** na Vercel, o endereço vai ser outro. Nesse caso, troque `raiox-uau.vercel.app` pelo endereço certo nas duas linhas de `rewrites` do `site-uau/vercel.json` e publique de novo.
 
-### 2. Ligar o subdomínio
+> Não adicione domínio nenhum neste projeto: quem responde pelo domínio é a landing.
 
-1. No projeto do Raio-X na Vercel: **Settings → Domains → Add** → digite `raiox.uaucomunicacaodigital.com.br` → **Add**.
-2. A Vercel vai mostrar um registro **CNAME** para criar (normalmente `cname.vercel-dns.com`, mas use exatamente o valor que aparecer na tela).
-3. No [Registro.br](https://registro.br): entre → clique no domínio `uaucomunicacaodigital.com.br` → **DNS → Editar zona** → **Nova entrada**:
-   - **Tipo:** `CNAME`
-   - **Nome:** `raiox`
-   - **Dados / Valor:** o valor que a Vercel mostrou (ex.: `cname.vercel-dns.com`)
-   - Salve e clique em **Salvar alterações** no fim da página.
-4. Não mexa nos registros que já existem (os da landing: `www` e o domínio sem www).
-5. Volte à Vercel e espere o domínio ficar **Valid Configuration** (de alguns minutos a algumas horas). O HTTPS é ativado sozinho.
+### 2. Atualizar a landing
+
+O repasse de `/raiox` está no `site-uau/vercel.json`. Assim que esse arquivo chegar à branch principal, a Vercel publica a landing de novo sozinha e `/raiox` passa a funcionar. Nada mais na landing muda.
 
 ### 3. Testar
 
-1. Abra `https://raiox.uaucomunicacaodigital.com.br` no celular.
-2. Preencha o contato, abra `https://raiox.uaucomunicacaodigital.com.br/admin`, entre com a senha e veja o lead como "Só iniciou".
+1. Abra `https://www.uaucomunicacaodigital.com.br/raiox` no celular.
+2. Preencha o contato, abra `https://www.uaucomunicacaodigital.com.br/raiox/admin`, entre com a senha e veja o lead como "Só iniciou".
 3. Termine o raio-x, atualize o admin e confira se virou "Concluiu" com a nota.
-4. Confira que `https://www.uaucomunicacaodigital.com.br` continua abrindo a landing normalmente.
+4. Confira que a landing (`/`, `/sobre`, etc.) continua normal.
 
-Ao mudar uma variável de ambiente, faça um **Redeploy** para valer.
+Ao mudar uma variável de ambiente, faça um **Redeploy** do projeto `raiox-uau` para valer.
+
+### Rodar localmente
+
+Como o app mora em `/raiox`, o endereço local é `http://localhost:3000/raiox`.
 
 ### Link para a bio / comentários
 
 Use UTMs para saber de onde veio cada lead, por exemplo:
 
 ```
-https://raiox.uaucomunicacaodigital.com.br/?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
+https://www.uaucomunicacaodigital.com.br/raiox?utm_source=instagram&utm_medium=comentario&utm_campaign=raiox&utm_content=video1
 ```
 
 As UTMs ficam salvas mesmo se a pessoa navegar pelo teste e vão junto com o lead.

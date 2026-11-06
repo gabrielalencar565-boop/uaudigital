@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { withBase } from "@/lib/base";
 
 /**
  * Logo da UAU (/public/logo-uau.png). Se o arquivo não existir ou falhar,
@@ -22,6 +23,6 @@ export default function Logo({ className = "h-8", textClassName = "text-fg" }: {
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img ref={ref} src="/logo-uau.png" alt="UAU Digital" className={`w-auto ${className}`} onError={() => setFailed(true)} />
+    <img ref={ref} src={withBase("/logo-uau.png")} alt="UAU Digital" className={`w-auto ${className}`} onError={() => setFailed(true)} />
   );
 }

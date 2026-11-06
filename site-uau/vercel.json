@@ -49,5 +49,15 @@
       "destination": "/",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/raiox",
+      "destination": "https://raiox-uau.vercel.app/raiox"
+    },
+    {
+      "source": "/raiox/:path*",
+      "destination": "https://raiox-uau.vercel.app/raiox/:path*"
+    }
   ]
 }

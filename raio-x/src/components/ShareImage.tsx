@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AREAS, COPY, type Level } from "@/data/raiox";
 import type { AreaScores } from "@/lib/scoring";
 import { radarPoint, radarPolygon } from "@/lib/radar";
+import { withBase } from "@/lib/base";
 
 const W = 1080;
 const H = 1920;
@@ -94,7 +95,7 @@ export async function generateStoryImage({ overall, level, scores, name }: Props
   glow(80, H - 260, 640, "rgba(201,48,122,0.22)");
 
   // Logo (ou texto)
-  const logo = await loadImage("/logo-uau.png");
+  const logo = await loadImage(withBase("/logo-uau.png"));
   if (logo && logo.naturalWidth > 0) {
     const h = 80;
     const w = (logo.naturalWidth / logo.naturalHeight) * h;

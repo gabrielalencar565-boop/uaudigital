@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { isAdmin } from "@/lib/admin-auth";
 import { isSupabaseConfigured, listLeads, type LeadRow } from "@/lib/supabase";
-import { login, logout } from "./actions";
+import { withBase } from "@/lib/base";
 
 export const metadata: Metadata = { title: "Admin · Raio-X", robots: { index: false, follow: false } };
 
@@ -29,7 +29,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (!(await isAdmin())) {
     return (
       <Shell>
-        <form action={login} className="flex max-w-sm flex-col gap-3">
+        <form method="post" action={withBase("/admin/login")} className="flex max-w-sm flex-col gap-3">
           <label htmlFor="password" className="font-bold">
             Senha
           </label>
@@ -66,10 +66,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <strong className="text-fg">{leads.length}</strong> leads ·{" "}
           <strong className="text-fg">{leads.filter((l) => l.status === "concluido").length}</strong> concluíram o raio-x
         </p>
-        <a href="/admin/export" className="rounded-full px-5 py-3 font-semibold text-white [background:var(--grad)]">
+        <a href={withBase("/admin/export")} className="rounded-full px-5 py-3 font-semibold text-white [background:var(--grad)]">
           Exportar CSV
         </a>
-        <form action={logout}>
+        <form method="post" action={withBase("/admin/logout")}>
           <button className="rounded-full border border-line px-5 py-3 font-semibold text-muted hover:text-fg">Sair</button>
         </form>
       </div>
