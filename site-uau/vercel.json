@@ -48,6 +48,21 @@
       "source": "/clientes.html",
       "destination": "/",
       "permanent": true
+    },
+    {
+      "source": "/raiox",
+      "destination": "/raioxsocialmedia",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/raioxsocialmedia",
+      "destination": "https://raioxsocialmedia.vercel.app/raioxsocialmedia"
+    },
+    {
+      "source": "/raioxsocialmedia/:path*",
+      "destination": "https://raioxsocialmedia.vercel.app/raioxsocialmedia/:path*"
     }
   ]
 }
