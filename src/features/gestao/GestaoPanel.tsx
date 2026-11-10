@@ -897,7 +897,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
         )}
         style={(isAlteracaoWithOrigin || isAlteracaoPlanejamento) && !(highlightOverdue && isOverdue(t)) ? { background: 'linear-gradient(135deg, #FED404 0%, #FF9A02 100%)' } : (highlightOverdue && isOverdue(t) ? { background: '#ff2c2c', borderColor: '#ff2c2c' } : undefined)}
         onClick={isLegacy ? undefined : () => onTaskClick(t)}>
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-1">
           <div
             className={cn("inline-flex h-5 items-center rounded-md px-2 text-[9px] font-bold tracking-wide text-white", badge.bg)}
             style={badge.style}
@@ -1419,13 +1419,13 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
                         <ChevronDown className={cn("h-3 w-3 transition-transform", expandedDoneDays.has(key) && "rotate-180")} />
                       </button>
                       {expandedDoneDays.has(key) && (
-                        <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                        <div className="space-y-1.5 max-h-[520px] overflow-y-auto overflow-x-hidden">
                           {dayTasks.map(renderTaskCard)}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-1.5 max-h-[520px] overflow-y-auto">
+                    <div className="space-y-1.5 max-h-[520px] overflow-y-auto overflow-x-hidden">
                       {renderSpecialDates(key, true)}
                       {dayTasks.slice(0, 5).map(renderTaskCard)}
                       {dayTasks.length > 5 &&
