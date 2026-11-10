@@ -7,13 +7,13 @@ import { curta, DIAS_DA_SEMANA, gradeDoMes, postsDatados, type PostDatado } from
 import type { Plano, PlanoMeta } from "@/lib/plano";
 import { promptDoPost } from "@/lib/promptRoteiro";
 import PhaseChip from "./PhaseChip";
-import PostCard from "./PostCard";
+import PostModal from "./PostModal";
 
 /**
  * O calendário do resultado, com duas abas:
  * - Calendário: mês de parede no computador e agenda vertical no celular;
  * - Estratégia: mapa da jornada (fases × semanas), que mostra por que cada post existe.
- * Tocar num post abre o cartão completo (ideia, CTA, por que e prompt do roteiro).
+ * Tocar num post abre uma janela por cima da página com ideia, CTA, por que e o prompt do roteiro.
  */
 
 type Aba = "calendario" | "estrategia";
@@ -25,13 +25,9 @@ export default function CalendarioPlano({ plano, meta }: { plano: Plano; meta: P
   const posts = useMemo(() => postsDatados(plano, meta.mes), [plano, meta.mes]);
   const grade = useMemo(() => gradeDoMes(meta.mes), [meta.mes]);
   const [aba, setAba] = useState<Aba>("calendario");
-  const [sel, setSel] = useState(0);
-  const atual = posts[sel] ?? posts[0];
+  const [sel, setSel] = useState<number | null>(null);
+  const atual = sel === null ? undefined : posts[sel];
   const mesNome = meta.mes.split(" de ")[0];
-
-  const cartao = (p: PostDatado) => (
-    <PostCard key={p.indice} post={p.post} rotulo={rotulo(p)} prompt={promptDoPost(p.post, plano, meta, p.semana)} />
-  );
 
   return (
     <section aria-labelledby="calendario-titulo" className="flex flex-col gap-4">
@@ -117,7 +113,6 @@ export default function CalendarioPlano({ plano, meta }: { plano: Plano; meta: P
               <Legenda />
             </div>
           ) : null}
-          {atual ? <div className={grade ? "hidden md:block" : ""}>{cartao(atual)}</div> : null}
 
           {/* Celular (e mês não reconhecido): agenda semana a semana */}
           <div className={`flex flex-col gap-6 ${grade ? "md:hidden" : "hidden"}`}>
@@ -139,10 +134,7 @@ export default function CalendarioPlano({ plano, meta }: { plano: Plano; meta: P
                       ))}
                     </div>
                   </div>
-                  {daSemana.map((p) =>
-                    atual?.indice === p.indice ? (
-                      cartao(p)
-                    ) : (
+                  {daSemana.map((p) => (
                       <button
                         key={p.indice}
                         type="button"
@@ -163,8 +155,7 @@ export default function CalendarioPlano({ plano, meta }: { plano: Plano; meta: P
                           </span>
                         </span>
                       </button>
-                    ),
-                  )}
+                  ))}
                 </div>
               );
             })}
@@ -216,9 +207,21 @@ export default function CalendarioPlano({ plano, meta }: { plano: Plano; meta: P
               <b className="text-fg">termina com prova social e recompensa</b>, quando a pessoa já confia e está pronta pra agir.
             </p>
           </div>
-          {atual ? cartao(atual) : null}
         </>
       )}
+
+      <PostModal
+        aberto={!!atual}
+        post={atual?.post}
+        rotulo={atual ? rotulo(atual) : undefined}
+        semana={atual?.semana}
+        foco={atual ? plano.semanas[atual.semana - 1]?.foco : undefined}
+        prompt={atual ? promptDoPost(atual.post, plano, meta, atual.semana) : undefined}
+        posicao={atual ? `${atual.indice + 1} de ${posts.length}` : undefined}
+        onFechar={() => setSel(null)}
+        onAnterior={atual && atual.indice > 0 ? () => setSel(atual.indice - 1) : undefined}
+        onProximo={atual && atual.indice < posts.length - 1 ? () => setSel(atual.indice + 1) : undefined}
+      />
     </section>
   );
 }
