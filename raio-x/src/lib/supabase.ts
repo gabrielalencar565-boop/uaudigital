@@ -70,19 +70,22 @@ export async function insertLead(row: LeadContact): Promise<void> {
   if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
 }
 
-/** Completa o lead com o resultado. Devolve false se o id não existir. */
-export async function updateLead(id: string, patch: LeadResult): Promise<boolean> {
+/** Completa o lead com o resultado. Devolve o contato do lead, ou null se o id não existir. */
+export async function updateLead(
+  id: string,
+  patch: LeadResult,
+): Promise<Pick<LeadRow, "nome" | "whatsapp" | "instagram"> | null> {
   const c = config();
   if (!c) throw new Error("Supabase não configurado");
-  const res = await fetch(`${c.url}/rest/v1/leads?id=eq.${encodeURIComponent(id)}`, {
+  const res = await fetch(`${c.url}/rest/v1/leads?id=eq.${encodeURIComponent(id)}&select=nome,whatsapp,instagram`, {
     method: "PATCH",
     headers: { ...headers(c.key), Prefer: "return=representation" },
     body: JSON.stringify(patch),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
-  const rows = (await res.json()) as unknown[];
-  return rows.length > 0;
+  const rows = (await res.json()) as Pick<LeadRow, "nome" | "whatsapp" | "instagram">[];
+  return rows[0] ?? null;
 }
 
 export async function listLeads(limit = 5000): Promise<LeadRow[]> {

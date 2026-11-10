@@ -63,6 +63,14 @@
     {
       "source": "/raioxsocialmedia/:path*",
       "destination": "https://raioxsocialmedia.vercel.app/raioxsocialmedia/:path*"
+    },
+    {
+      "source": "/planejamento",
+      "destination": "https://planejamentodomes.vercel.app/planejamento"
+    },
+    {
+      "source": "/planejamento/:path*",
+      "destination": "https://planejamentodomes.vercel.app/planejamento/:path*"
     }
   ]
 }

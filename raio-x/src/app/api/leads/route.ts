@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { AREAS, QUESTIONS } from "@/data/raiox";
 import { computeResult, isComplete, type Answers } from "@/lib/scoring";
+import { enviarParaFluxo } from "@/lib/fluxo";
+import { bandFor } from "@/lib/scoring";
 import { insertLead, isSupabaseConfigured, updateLead, type LeadContact, type LeadResult } from "@/lib/supabase";
 import {
   isValidInstagram,
@@ -54,14 +56,25 @@ export async function POST(request: Request) {
     status: "iniciado",
   };
 
+  // Funil comercial do Fluxo (se FLUXO_FORM_SLUG estiver configurado). Nunca trava o teste.
+  const utmTexto = [row.utm_source, row.utm_medium, row.utm_campaign, row.utm_content].filter(Boolean).join(" / ");
+  const fluxo = enviarParaFluxo({
+    nome: row.nome,
+    whatsapp: row.whatsapp,
+    instagram: row.instagram,
+    origem: "Raio-X do Social Media",
+    resumo: `Iniciou o Raio-X do Social Media.${utmTexto ? ` Origem do link: ${utmTexto}.` : ""}`,
+  });
+
   if (!isSupabaseConfigured()) {
+    await fluxo;
     // Plano B: sem Supabase, só registra no log do servidor.
     console.log("[raiox] Lead iniciado (Supabase não configurado):", JSON.stringify({ ...row, created_at: new Date().toISOString() }));
     return NextResponse.json({ ok: true, id: row.id, stored: false });
   }
 
   try {
-    await insertLead(row);
+    await Promise.all([insertLead(row), fluxo]);
     return NextResponse.json({ ok: true, id: row.id, stored: true });
   } catch (err) {
     // Não trava a pessoa: o lead completo fica no log pra recuperar depois.
@@ -119,9 +132,21 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const found = await updateLead(id, patch);
-    if (!found) console.error("[raiox] Lead não encontrado para concluir:", id, JSON.stringify(patch));
-    return NextResponse.json({ ok: true, stored: found });
+    const contato = await updateLead(id, patch);
+    if (!contato) {
+      console.error("[raiox] Lead não encontrado para concluir:", id, JSON.stringify(patch));
+      return NextResponse.json({ ok: true, stored: false });
+    }
+    // Nota com o resultado no mesmo lead do Fluxo (ele reconhece pelo WhatsApp).
+    const notas = AREAS.map((a) => `${a.name} ${result.areas[a.id]} (${bandFor(result.areas[a.id]).name})`).join(" · ");
+    await enviarParaFluxo({
+      nome: contato.nome,
+      whatsapp: contato.whatsapp,
+      instagram: contato.instagram,
+      origem: "Raio-X do Social Media",
+      resumo: `Concluiu o Raio-X. Nota geral: ${result.overall}/100 · Nível: ${result.level.name} · Principal gargalo: ${area(result.bottleneck)}. Notas por área: ${notas}.`,
+    });
+    return NextResponse.json({ ok: true, stored: true });
   } catch (err) {
     console.error("[raiox] Falha ao concluir lead no Supabase:", err, JSON.stringify({ id, ...patch }));
     return NextResponse.json({ ok: true, stored: false });

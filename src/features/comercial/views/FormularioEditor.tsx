@@ -25,7 +25,9 @@ function OptionLines({ value, onChange }: { value: string[]; onChange: (v: strin
 }
 
 export function FormularioEditor({ id, onBack, onFill }: { id: string; onBack: () => void; onFill: (f: ComercialForm) => void }) {
-  const { stages, team } = useComercial();
+  const { allStages, stageLabel, team } = useComercial();
+  // etapas dos dois funis, com o nome do funil na frente ("Produtos digitais · Novo lead")
+  const stages = useMemo(() => [...allStages].sort((a, b) => a.position - b.position).map((s) => ({ ...s, name: stageLabel(s.id) })), [allStages, stageLabel]);
   const formsQ = useForms();
   const autos = useAutomations().data ?? [];
   const update = useUpdateForm();

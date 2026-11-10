@@ -9,7 +9,21 @@ export interface Stage {
   type: StageType;
   probability: number;
   position: number;
+  /** funil a que a etapa pertence (Serviços UAU ou Produtos digitais) */
+  pipeline_id: string;
 }
+
+/** Funis do Comercial: os serviços da agência e os produtos digitais (Raio-X, Planejamento do Mês, curso). */
+export type PipelineKey = "servicos" | "produtos";
+
+export interface Pipeline {
+  id: string;
+  key: PipelineKey;
+  name: string;
+  position: number;
+}
+
+export const PIPELINE_LABEL: Record<PipelineKey, string> = { servicos: "Serviços UAU", produtos: "Produtos digitais" };
 
 export interface Lead {
   id: string;

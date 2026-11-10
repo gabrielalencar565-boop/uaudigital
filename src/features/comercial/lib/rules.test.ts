@@ -8,11 +8,11 @@ const TODAY = "2026-10-14";
 const NOW = new Date("2026-10-14T15:00:00Z");
 
 const stages: Stage[] = [
-  { id: "s0", name: "Entrar em contato", type: "open", probability: 5, position: 0 },
-  { id: "s1", name: "Novo contato", type: "open", probability: 10, position: 1 },
-  { id: "s2", name: "Em conversa", type: "open", probability: 20, position: 2 },
-  { id: "won", name: "Fechado", type: "won", probability: 100, position: 3 },
-  { id: "lost", name: "Perdido", type: "lost", probability: 0, position: 4 },
+  { pipeline_id: "p", id: "s0", name: "Entrar em contato", type: "open", probability: 5, position: 0 },
+  { pipeline_id: "p", id: "s1", name: "Novo contato", type: "open", probability: 10, position: 1 },
+  { pipeline_id: "p", id: "s2", name: "Em conversa", type: "open", probability: 20, position: 2 },
+  { pipeline_id: "p", id: "won", name: "Fechado", type: "won", probability: 100, position: 3 },
+  { pipeline_id: "p", id: "lost", name: "Perdido", type: "lost", probability: 0, position: 4 },
 ];
 
 const lead = (over: Partial<Lead> = {}): Lead => ({

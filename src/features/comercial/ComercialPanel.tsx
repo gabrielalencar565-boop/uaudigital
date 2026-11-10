@@ -11,9 +11,9 @@ import { ComercialContext, type ComercialCtx, type ComercialView } from "./Comer
 import { GanhoDialog, NovaAtividadeDialog, NovoLeadDialog, PerdaDialog } from "./components/Dialogs";
 import { ClientDrawer, LeadDrawer } from "./components/Drawers";
 import {
-  useActivities, useClientTasks, useComercialClients, useContactedLeadIds, useLeads, useStages, useTeam, useUnreadChats, useUpdateLead,
+  useActivities, useClientTasks, useComercialClients, useContactedLeadIds, useLeads, usePipelines, useStages, useTeam, useUnreadChats, useUpdateLead,
 } from "./hooks/use-comercial";
-import { attentionCount, attentionGroups, diffDays, isOpenStage, nextActivity, todayBR, type Lead } from "./lib/rules";
+import { attentionCount, attentionGroups, diffDays, isOpenStage, nextActivity, PIPELINE_LABEL, todayBR, type Lead, type PipelineKey } from "./lib/rules";
 import { sendWhatsApp, sendWhatsAppAudio, useCloudStatus, useZapiStatus } from "./hooks/use-whatsapp-cloud";
 import { Atividades } from "./views/Atividades";
 import { Biblioteca } from "./views/Biblioteca";
@@ -44,6 +44,17 @@ const GROUPS: NavGroup[] = [
 ];
 
 const VIEWS = GROUPS.flatMap((g) => g.items.map((i) => i.view));
+/** telas que mostram um funil só (as outras valem para os dois) */
+const POR_FUNIL: ComercialView[] = ["overview", "funil", "leads", "acts", "cfg"];
+const FUNIL_SALVO = "comercial:funil";
+
+function lerFunilSalvo(): PipelineKey {
+  try {
+    return localStorage.getItem(FUNIL_SALVO) === "produtos" ? "produtos" : "servicos";
+  } catch {
+    return "servicos";
+  }
+}
 const groupOf = (view: ComercialView) => GROUPS.find((g) => g.items.some((i) => i.view === view)) ?? GROUPS[0];
 
 function Count({ n, tone }: { n: number; tone?: "alert" | "new" }) {
@@ -62,6 +73,7 @@ export function ComercialPanel() {
   const leadId = params.get("lead");
 
   const stagesQ = useStages();
+  const pipelinesQ = usePipelines(stagesQ.isSuccess);
   const leadsQ = useLeads();
   const actsQ = useActivities();
   const clientsQ = useComercialClients();
@@ -73,11 +85,34 @@ export function ComercialPanel() {
   const zapiQ = useZapiStatus();
   const updateLead = useUpdateLead();
 
-  const stages = stagesQ.data ?? [];
-  const leads = leadsQ.data ?? [];
-  const acts = actsQ.data ?? [];
-  const clients = clientsQ.data ?? [];
-  const clientTasks = tasksQ.data ?? [];
+  // ── funil escolhido: Serviços UAU (padrão) ou Produtos digitais ──
+  const [funilSalvo, setFunilSalvo] = useState<PipelineKey>(lerFunilSalvo);
+  const funilParam = params.get("funil");
+  const pipelineKey: PipelineKey = funilParam === "produtos" || funilParam === "servicos" ? funilParam : funilSalvo;
+  const pipelines = useMemo(() => pipelinesQ.data ?? [], [pipelinesQ.data]);
+  const pipeline = pipelines.find((p) => p.key === pipelineKey) ?? pipelines.find((p) => p.key === "servicos");
+  const produtos = pipeline?.key === "produtos";
+
+  const allStages = useMemo(() => stagesQ.data ?? [], [stagesQ.data]);
+  const allLeads = useMemo(() => leadsQ.data ?? [], [leadsQ.data]);
+  const allActs = useMemo(() => actsQ.data ?? [], [actsQ.data]);
+  const stages = useMemo(() => (pipeline ? allStages.filter((s) => s.pipeline_id === pipeline.id) : allStages), [allStages, pipeline]);
+  // leads e atividades só são separados nas telas do funil; conversas, onboarding etc. veem tudo
+  const porFunil = POR_FUNIL.includes(view);
+  const leads = useMemo(() => {
+    if (!porFunil) return allLeads;
+    const ids = new Set(stages.map((s) => s.id));
+    return allLeads.filter((l) => ids.has(l.stage_id));
+  }, [porFunil, allLeads, stages]);
+  const acts = useMemo(() => {
+    if (!porFunil) return allActs;
+    const ids = new Set(leads.map((l) => l.id));
+    return allActs.filter((a) => ids.has(a.lead_id));
+  }, [porFunil, allActs, leads]);
+  // clientes e onboarding são da agência (Serviços UAU): somem da visão geral de Produtos digitais
+  const semClientes = produtos && porFunil;
+  const clients = useMemo(() => (semClientes ? [] : clientsQ.data ?? []), [semClientes, clientsQ.data]);
+  const clientTasks = useMemo(() => (semClientes ? [] : tasksQ.data ?? []), [semClientes, tasksQ.data]);
   const team = teamQ.data ?? [];
   const contacted = contactedQ.data ?? new Set<string>();
   const today = todayBR();
@@ -88,9 +123,15 @@ export function ComercialPanel() {
   const [win, setWin] = useState<{ lead: Lead; stageId: string } | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  const stageOf = useCallback((id: string) => stages.find((s) => s.id === id), [stages]);
+  const stageOf = useCallback((id: string) => allStages.find((s) => s.id === id), [allStages]);
   const memberOf = useCallback((id: string | null | undefined) => (id ? team.find((m) => m.user_id === id) : undefined), [team]);
-  const leadOf = useCallback((id: string) => leads.find((l) => l.id === id), [leads]);
+  const leadOf = useCallback((id: string) => allLeads.find((l) => l.id === id), [allLeads]);
+  const stageLabel = useCallback((id: string) => {
+    const s = allStages.find((x) => x.id === id);
+    if (!s) return "";
+    const p = pipelines.find((x) => x.id === s.pipeline_id);
+    return p && pipelines.length > 1 ? `${p.name} · ${s.name}` : s.name;
+  }, [allStages, pipelines]);
 
   const setParam = useCallback((patch: Record<string, string | null>) => {
     setParams((prev) => {
@@ -101,9 +142,15 @@ export function ComercialPanel() {
   }, [setParams]);
 
   const moveLead = useCallback((lead: Lead, stageId: string) => {
-    const target = stages.find((s) => s.id === stageId);
+    const target = allStages.find((s) => s.id === stageId);
     if (!target || lead.stage_id === stageId) return;
     if (target.type === "lost") return setLoss({ lead, stageId });
+    const funilDoAlvo = pipelines.find((p) => p.id === target.pipeline_id);
+    if (target.type === "won" && funilDoAlvo?.key === "produtos") {
+      // venda de produto digital: não vira cliente da agência (sem onboarding)
+      updateLead.mutate({ id: lead.id, patch: { stage_id: stageId } }, { onSuccess: () => toast.success("Venda registrada 🎉") });
+      return;
+    }
     if (target.type === "won") return setWin({ lead, stageId });
     updateLead.mutate({ id: lead.id, patch: { stage_id: stageId } }, {
       onSuccess: () => {
@@ -113,10 +160,25 @@ export function ComercialPanel() {
         }
       },
     });
-  }, [stages, acts, updateLead]);
+  }, [allStages, pipelines, acts, updateLead]);
+
+  const setPipeline = useCallback((key: PipelineKey) => {
+    setFunilSalvo(key);
+    try {
+      localStorage.setItem(FUNIL_SALVO, key);
+    } catch {
+      // sem storage: vale só nesta visita
+    }
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("funil", key);
+      return next;
+    }, { replace: true });
+  }, [setParams]);
 
   const ctx: ComercialCtx = {
     stages, leads, acts, clients, clientTasks, team, contacted, today, stageOf, memberOf, leadOf,
+    allStages, allLeads, pipelines, pipeline, setPipeline, stageLabel,
     openLead: (id) => setParam({ lead: id }),
     openClient: setClientId,
     newActivity: (id) => setActivityDlg({ open: true, leadId: id }),
@@ -208,6 +270,28 @@ export function ComercialPanel() {
               ))}
             </nav>
           </div>
+
+          {POR_FUNIL.includes(view) && pipelines.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="radiogroup" aria-label="Funil" className="inline-flex rounded-xl bg-muted/50 p-1">
+                {(["servicos", "produtos"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={pipelineKey === k}
+                    onClick={() => setPipeline(k)}
+                    className={cn("rounded-lg px-4 py-1.5 text-sm transition", pipelineKey === k ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/60" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    {PIPELINE_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {produtos ? "Leads do Raio-X, do Planejamento do Mês e do curso." : "Clientes e propostas dos serviços da agência."}
+              </p>
+            </div>
+          ) : null}
 
           {stagesQ.isError || leadsQ.isError ? (
             <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">

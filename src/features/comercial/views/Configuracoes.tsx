@@ -49,7 +49,7 @@ function StageRow({ stage, index, openStages, count, onDelete }: { stage: Stage;
 }
 
 export function Configuracoes() {
-  const { stages, leads } = useComercial();
+  const { stages, leads, pipeline } = useComercial();
   const create = useCreateStage();
   const del = useDeleteStage();
   const [newName, setNewName] = useState("");
@@ -71,7 +71,7 @@ export function Configuracoes() {
     <div className="space-y-4">
       <PageHead title="Configurações" />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <Panel title="Etapas do funil">
+        <Panel title={pipeline ? `Etapas do funil · ${pipeline.name}` : "Etapas do funil"}>
           <p className="mb-3 text-xs text-muted-foreground">Renomeie, reordene, defina a probabilidade de fechamento de cada etapa ou crie novas. “Ganho” e “Perdido” são fixas.</p>
           <div className="space-y-2">
             {sorted.map((s) => (
@@ -80,10 +80,10 @@ export function Configuracoes() {
           </div>
           <form
             className="mt-3 flex gap-2"
-            onSubmit={(e) => { e.preventDefault(); const n = newName.trim(); if (n) create.mutate({ name: n, stages }, { onSuccess: () => { setNewName(""); toast(`Etapa criada antes de ${sorted.find((s) => s.type !== "open")?.name ?? "Ganho"}`); } }); }}
+            onSubmit={(e) => { e.preventDefault(); const n = newName.trim(); if (n && pipeline) create.mutate({ name: n, stages, pipelineId: pipeline.id }, { onSuccess: () => { setNewName(""); toast(`Etapa criada antes de ${sorted.find((s) => s.type !== "open")?.name ?? "Ganho"}`); } }); }}
           >
             <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nova etapa (ex.: Proposta enviada)" className="h-9" />
-            <Button type="submit" variant="outline" className="h-9" disabled={!newName.trim() || create.isPending}>Adicionar etapa</Button>
+            <Button type="submit" variant="outline" className="h-9" disabled={!newName.trim() || !pipeline || create.isPending}>Adicionar etapa</Button>
           </form>
         </Panel>
 
