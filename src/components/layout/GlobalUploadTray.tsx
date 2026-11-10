@@ -53,6 +53,7 @@ export function GlobalUploadTray() {
               <FileVideo className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium">{item.fileName}</p>
+                {item.taskTitle && <p className="truncate text-[10px] text-muted-foreground" title={item.taskTitle}>em {item.taskTitle}</p>}
                 {item.status === "uploading" && (
                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
                     <div

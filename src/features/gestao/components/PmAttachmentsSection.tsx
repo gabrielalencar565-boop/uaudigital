@@ -353,6 +353,8 @@ interface UploadingFile {
   size: number;
   progress: number;
   category: AttachmentCategory;
+  /** tarefa de onde o arquivo está sendo enviado (a lista é do componente, que é reaproveitado ao trocar de tarefa) */
+  taskId: string;
   phase?: "compressing" | "uploading";
 }
 
@@ -541,7 +543,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
       ? await requestFeedCrop(rawFile)
       : rawFile;
     const isVideo = file.type.startsWith("video/");
-    const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category };
+    const uploadEntry: UploadingFile = { name: file.name, size: file.size, progress: 0, category, taskId };
     setUploadingFiles(prev => [...prev, uploadEntry]);
 
     // Mirrors this upload's lifecycle into the global tray store (src/lib/upload-tray-store.ts)
@@ -549,11 +551,11 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
     // the XHR/fetch itself already isn't tied to this component's lifecycle, only the
     // progress UI was, until now.
     const globalId = `${taskId}-${file.name}-${Date.now()}`;
-    addGlobalUpload({ id: globalId, taskId, fileName: file.name, fileSize: file.size, progress: 0, status: "uploading" });
+    addGlobalUpload({ id: globalId, taskId, taskTitle, fileName: file.name, fileSize: file.size, progress: 0, status: "uploading" });
 
     const applyProgress = (pct: number, phase?: UploadingFile["phase"]) => {
       setUploadingFiles(prev =>
-        prev.map(f => f.name === file.name && f.category === category ? { ...f, progress: pct, ...(phase ? { phase } : {}) } : f)
+        prev.map(f => f.name === file.name && f.category === category && f.taskId === taskId ? { ...f, progress: pct, ...(phase ? { phase } : {}) } : f)
       );
       updateGlobalUpload(globalId, { progress: pct });
     };
@@ -619,7 +621,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
       applyProgress(100);
       updateGlobalUpload(globalId, { status: "success" });
       setTimeout(() => {
-        setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
+        setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category && f.taskId === taskId)));
         removeGlobalUpload(globalId);
       }, 800);
       toast.success("Arquivo anexado!");
@@ -653,12 +655,12 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
       }
     } catch (err: any) {
       if (interval) clearInterval(interval);
-      setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category)));
+      setUploadingFiles(prev => prev.filter(f => !(f.name === file.name && f.category === category && f.taskId === taskId)));
       updateGlobalUpload(globalId, { status: "error", errorMessage: err?.message ?? "Erro ao enviar arquivo" });
       toast.error(err?.message ?? "Erro ao enviar arquivo");
     }
     return uploaded;
-  }, [taskId, upload, uploadResumable, cropFormat, requestFeedCrop]);
+  }, [taskId, taskTitle, upload, uploadResumable, cropFormat, requestFeedCrop]);
 
   // Attaching a file whose name matches one already here is ambiguous — could be an
   // updated version meant to replace it, or a genuinely different file that happens to
@@ -961,7 +963,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
         accentClass="border-amber-500/30"
         list={materials}
         posterMap={videoPosterMap}
-        uploadingFiles={uploadingFiles.filter(u => u.category === "material")}
+        uploadingFiles={uploadingFiles.filter(u => u.taskId === taskId && u.category === "material")}
         onUpload={(file) => doUpload(file, "material")}
         onDelete={deleteWithPoster}
         onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
@@ -994,7 +996,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
         accentClass="border-emerald-500/30"
         list={finals}
         posterMap={videoPosterMap}
-        uploadingFiles={uploadingFiles.filter(u => u.category === "final")}
+        uploadingFiles={uploadingFiles.filter(u => u.taskId === taskId && u.category === "final")}
         onUpload={(file) => doUpload(file, "final")}
         onDelete={deleteWithPoster}
         onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
