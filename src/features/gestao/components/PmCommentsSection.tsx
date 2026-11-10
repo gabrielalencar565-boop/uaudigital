@@ -416,7 +416,8 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [], 
   const [fileDescription, setFileDescription] = useState("");
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const [showAll, setShowAll] = useState(false);
-  const [filter, setFilter] = useState<"all" | "comments" | "history">("all");
+  // Abre em Comentários; "Tudo" fica por último
+  const [filter, setFilter] = useState<"all" | "comments" | "history">("comments");
   const bottomRef = useRef<HTMLDivElement>(null);
   // Only the newest day starts open; the person's own folding/unfolding (by calendar date) wins over that default
   const [foldOverride, setFoldOverride] = useState<Record<string, boolean>>({});
@@ -615,9 +616,9 @@ export function PmCommentsSection({ taskId, comments, membersMap, members = [], 
 
   const counts = { all: comments.length + events.length, comments: comments.length, history: events.length };
   const FILTERS: Array<{ key: "all" | "comments" | "history"; label: string }> = [
-    { key: "all", label: "Tudo" },
     { key: "comments", label: "Comentários" },
     { key: "history", label: "Histórico" },
+    { key: "all", label: "Tudo" },
   ];
 
   return (

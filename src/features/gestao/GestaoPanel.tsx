@@ -1,11 +1,12 @@
 import { FluxoSection } from "./components/FluxoSection";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CapturasPanel, usePendingCaptureCount } from "@/features/agenda/components/CapturasPanel";
 import { tabPath } from "@/lib/app-routes";
 import { PM_STAGES } from "./pm-constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Clock, Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft, Flag } from "lucide-react";
+import { Clock, Plus, Search, LayoutGrid, CalendarDays, FolderOpen, Settings2, CheckCircle2, FileSpreadsheet, Trash2, FileText, Users, ChevronLeft, ChevronRight, ChevronDown, CalendarRange, Cake, Star, Calendar, TriangleAlert, PanelRightOpen, ArrowLeft, Flag, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { addDays, addMonths, differenceInCalendarDays, subMonths, endOfMonth, format, startOfMonth, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
@@ -132,6 +134,8 @@ export function GestaoPanel({
 
   // Agenda calendar state
   const [agendaCursor, setAgendaCursor] = useState(() => startOfMonth(new Date()));
+  // Canto direito do cabeçalho da Agenda: os alertas e o menu "⋯" são desenhados ali pela própria agenda
+  const [agendaActionsEl, setAgendaActionsEl] = useState<HTMLDivElement | null>(null);
 
   // Data
   // Cronograma (Instagram calendar), Fluxos and Responsáveis don't read `allTasks`/
@@ -232,29 +236,28 @@ export function GestaoPanel({
       {/* Header — título + filtros alinhados (Pauta traz seu próprio cabeçalho/barra) */}
       {effectiveView !== "equipe" && effectiveView !== "calendario" &&
       <div className="flex flex-col gap-3 opacity-0" style={{ animation: "fadeUp 0.6s ease-out forwards", animationDelay: "0s" }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {/* Flow settings is opened from Configurações, so it gets a way back there */}
-            {effectiveView === "fluxo" && (
-              <Button variant="ghost" size="icon" onClick={() => navigate(tabPath("configuracoes"))} aria-label="Voltar para Configurações">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{capturasMode ? "Agenda de Gravação" : VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/* Flow settings is opened from Configurações, so it gets a way back there */}
+          {effectiveView === "fluxo" && (
+            <Button variant="ghost" size="icon" onClick={() => navigate(tabPath("configuracoes"))} aria-label="Voltar para Configurações">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <h2 className="font-bold tracking-tight text-2xl sm:text-3xl">{capturasMode ? "Agenda de Gravação" : VIEW_TITLES[effectiveView] ?? "Tarefas"}</h2>
+          {effectiveView === "agenda" && (
+            <Tabs value={capturasMode ? "capturas" : "agenda"} onValueChange={setAgendaSection}>
+              <TabsList className="h-10 w-fit gap-1 rounded-full bg-muted/40 p-1">
+                <TabsTrigger value="agenda" className="h-8 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">Tarefas</TabsTrigger>
+                <TabsTrigger value="capturas" className="h-8 gap-2 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">
+                  Agenda de Gravação
+                  <span className="rounded-full bg-violet-500/20 px-1.5 text-[10px] font-semibold uppercase leading-4 tracking-wide text-violet-300">beta</span>
+                  {pendingCaptures > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white">{pendingCaptures}</span>}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          {effectiveView === "agenda" && !capturasMode && <div ref={setAgendaActionsEl} className="ml-auto flex items-center gap-1.5" />}
         </div>
-        {effectiveView === "agenda" && (
-          <Tabs value={capturasMode ? "capturas" : "agenda"} onValueChange={setAgendaSection}>
-            <TabsList className="h-10 w-fit gap-1 rounded-full bg-muted/40 p-1">
-              <TabsTrigger value="agenda" className="h-8 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">Tarefas</TabsTrigger>
-              <TabsTrigger value="capturas" className="h-8 gap-2 rounded-full px-5 text-sm data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-md">
-                Agenda de Gravação
-                <span className="rounded-full bg-violet-500/20 px-1.5 text-[10px] font-semibold uppercase leading-4 tracking-wide text-violet-300">beta</span>
-                {pendingCaptures > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white">{pendingCaptures}</span>}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
         {/* The flow settings are about the pipeline itself, not about tasks: no task search or filters there */}
         {effectiveView !== "fluxo" && !capturasMode && <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/30 bg-muted/20 p-2">
           <div className="relative flex-1 min-w-[160px] sm:max-w-xs">
@@ -410,7 +413,8 @@ export function GestaoPanel({
           members={membersList}
           avatarsPrimed={avatarsPrimed}
           isAdmin={isAdmin}
-          filterStage={filterStage} />
+          filterStage={filterStage}
+          headerActionsEl={agendaActionsEl} />
 
         }
         {effectiveView === "clientes" &&
@@ -520,7 +524,7 @@ export function GestaoPanel({
 }
 
 // ─── Agenda Calendar View (matches main Agenda module) ───
-function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, avatarsPrimed, isAdmin, filterStage }: {
+function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, teamMembers, userId, onTaskClick, filterClient, filterAssignee, search, cursor, setCursor, fixedAssigneeClientIds, clients, members, avatarsPrimed, isAdmin, filterStage, headerActionsEl }: {
   tasks: PmTask[];
   childTasksMap: Record<string, PmTask[]>;
   clientsMap: Record<string, string>;
@@ -539,6 +543,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   avatarsPrimed: boolean;
   isAdmin: boolean;
   filterStage: string;
+  headerActionsEl: HTMLElement | null;
 }) {
   const isMobile = useIsMobile();
   const { label: magicLabel, dayFor } = useMagicNumberConfig();
@@ -561,6 +566,8 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
   const [trashOpen, setTrashOpen] = useState(false);
   const [draggedTask, setDraggedTask] = useState<PmTask | null>(null);
   const [highlightOverdue, setHighlightOverdue] = useState(false);
+  // Tipo da demanda: fluxo do mês (planejadas) ou avulsas (extras). Reuniões periódicas só aparecem em "Tudo".
+  const [typeFilter, setTypeFilter] = useState<"all" | "flow" | "extra">("all");
   const { data: periodicStages = [] } = usePeriodicStages();
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
@@ -630,7 +637,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     setPendingDeleteId(null);
   };
 
-  const filteredTasks = useMemo(() => {
+  const baseTasks = useMemo(() => {
     let list = tasks.filter((t) => t.status_global !== "pausado");
     if (filterClient && filterClient !== "__all__") list = list.filter((t) => t.client_id === filterClient);
     if (filterAssignee && filterAssignee !== "__all__") {
@@ -654,6 +661,19 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     }
     return list;
    }, [tasks, filterClient, filterAssignee, search, clientsMap, fixedAssigneeClientIds, filterStage]);
+
+  const isExtraTask = (t: PmTask) => !!t.is_extra_demand && !t.periodic_stage_key;
+  const isFlowTask = (t: PmTask) => !t.is_extra_demand;
+  const filteredTasks = useMemo(
+    () => (typeFilter === "flow" ? baseTasks.filter(isFlowTask) : typeFilter === "extra" ? baseTasks.filter(isExtraTask) : baseTasks),
+    [baseTasks, typeFilter],
+  );
+  // Quantas tarefas de cada tipo há no mês mostrado (com os outros filtros aplicados)
+  const typeCounts = useMemo(() => {
+    const ym = format(cursor, "yyyy-MM");
+    const inMonth = baseTasks.filter((t) => (t.due_date ?? "").startsWith(ym));
+    return { all: inMonth.length, flow: inMonth.filter(isFlowTask).length, extra: inMonth.filter(isExtraTask).length };
+  }, [baseTasks, cursor]);
 
   const hasActiveFilter = (filterClient !== "__all__") || (filterAssignee !== "__all__") || (filterStage !== "__all__") || !!search;
 
@@ -708,7 +728,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
       map.set(key, [...prev, t]);
     }
     // Add legacy tasks converted to PmTask shape (skip pm_sync snapshots)
-    for (const lt of legacyTasksQ.data ?? []) {
+    for (const lt of typeFilter === "all" ? legacyTasksQ.data ?? [] : []) {
       if (lt.description?.startsWith("pm:")) continue;
       const key = lt.due_date ?? "";
       if (!key) continue;
@@ -777,7 +797,7 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
     }
 
     return map;
-  }, [filteredTasks, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, filterStage, search, clientsMap]);
+  }, [filteredTasks, typeFilter, legacyTasksQ.data, legacyAssigneesByTaskId, filterClient, filterAssignee, filterStage, search, clientsMap]);
 
   const daySpecialDates = (dayKey: string) => specialDatesMap.get(dayKey) ?? [];
 
@@ -1016,7 +1036,37 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
           </Select>
         </div>
 
-        <div className="flex items-center gap-1.5 ml-auto">
+        {/* Tipo da demanda: Fluxo do mês (planejadas) × Avulsas (extras) */}
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tabs value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | "flow" | "extra")}>
+            <TabsList className="bg-background/60 h-9 p-1 rounded-full gap-1 border border-border/30">
+              {([["all", "Tudo"], ["flow", "Fluxo do mês"], ["extra", "Extra"]] as const).map(([k, label]) => (
+                <TabsTrigger key={k} value={k} className="h-7 gap-1.5 rounded-full text-xs data-[state=active]:bg-sidebar data-[state=active]:text-sidebar-foreground data-[state=active]:shadow-sm px-3 transition-all">
+                  {label}
+                  <span className="text-[10px] opacity-60">{typeCounts[k]}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          {/* No celular não há grade com o "+" por dia (só aparece ao passar o mouse no desktop), então a criação fica aqui. */}
+          {isMobile && (
+            <Button
+              size="sm"
+              className="h-8 gap-1 rounded-full px-3"
+              onClick={() => {
+                setQuickCreateDate(agendaView === "day" ? format(cursor, "yyyy-MM-dd") : todayKey);
+                setQuickCreateOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Nova
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Alertas e menu "⋯" ficam no canto do cabeçalho da Agenda (ao lado do título) */}
+      {headerActionsEl && createPortal(
+        <>
           {(() => {
             const todayCount = Array.from(tasksByDay.entries())
               .filter(([k]) => k === todayKey)
@@ -1078,29 +1128,26 @@ function AgendaCalendarView({ tasks, childTasksMap, clientsMap, membersMap, team
               </button>
             ) : null;
           })()}
-          {isAdmin && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setReportOpen(true)} title="Relatório">
-              <FileText className="h-4 w-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTrashOpen(true)} title="Lixeira">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {/* No celular não há grade com o "+" por dia (só aparece ao passar o mouse no desktop), então a criação fica aqui. */}
-          {isMobile && (
-            <Button
-              size="sm"
-              className="h-8 gap-1 rounded-full px-3"
-              onClick={() => {
-                setQuickCreateDate(agendaView === "day" ? format(cursor, "yyyy-MM-dd") : todayKey);
-                setQuickCreateOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Nova
-            </Button>
-          )}
-        </div>
-      </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Mais opções" title="Mais opções">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-[120]">
+              {isAdmin && (
+                <DropdownMenuItem onSelect={() => setReportOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" /> Relatório
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => setTrashOpen(true)}>
+                <Trash2 className="mr-2 h-4 w-4" /> Lixeira
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>,
+        headerActionsEl,
+      )}
 
       {/* Dialog de relatórios (admin only) */}
       {isAdmin && (
