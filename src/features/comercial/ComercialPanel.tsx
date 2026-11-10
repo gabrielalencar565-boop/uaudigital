@@ -236,6 +236,27 @@ export function ComercialPanel() {
     <TooltipProvider delayDuration={150}>
       <ComercialContext.Provider value={ctx}>
         <div className="space-y-4">
+          {/* funil em cima de tudo: o vigente em roxo */}
+          {pipelines.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Comercial</h2>
+              <div role="radiogroup" aria-label="Funil" className="inline-flex gap-1 rounded-full bg-primary/15 p-1">
+                {(["servicos", "produtos"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={pipelineKey === k}
+                    onClick={() => setPipeline(k)}
+                    className={cn("whitespace-nowrap rounded-full px-5 py-1.5 text-sm transition", pipelineKey === k ? "bg-primary font-medium text-primary-foreground shadow-sm" : "text-primary hover:bg-primary/10")}
+                  >
+                    {PIPELINE_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* menu horizontal: grupos em cima, itens do grupo embaixo */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
@@ -270,28 +291,6 @@ export function ComercialPanel() {
               ))}
             </nav>
           </div>
-
-          {POR_FUNIL.includes(view) && pipelines.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <div role="radiogroup" aria-label="Funil" className="inline-flex rounded-xl bg-muted/50 p-1">
-                {(["servicos", "produtos"] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="radio"
-                    aria-checked={pipelineKey === k}
-                    onClick={() => setPipeline(k)}
-                    className={cn("rounded-lg px-4 py-1.5 text-sm transition", pipelineKey === k ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-border/60" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    {PIPELINE_LABEL[k]}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {produtos ? "Leads do Raio-X, do Planejamento do Mês e do curso." : "Clientes e propostas dos serviços da agência."}
-              </p>
-            </div>
-          ) : null}
 
           {stagesQ.isError || leadsQ.isError ? (
             <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
