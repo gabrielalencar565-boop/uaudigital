@@ -61,6 +61,7 @@ npm run build
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | não usada | não | Reservada |
 | `ADMIN_PASSWORD` | servidor | para o `/admin` | Senha do admin |
 | `NEXT_PUBLIC_META_PIXEL_ID` | navegador | não | Pixel da Meta (PageView, Lead, CompleteRegistration) |
+| `FLUXO_FORM_SLUG` | servidor | não | Identificador do formulário do Fluxo que recebe os leads |
 | `NEXT_PUBLIC_SITE_URL` | servidor | não | `https://www.uaucomunicacaodigital.com.br` (sem `/planejamento`) |
 
 \* Sem a chave, todo planejamento sai do plano B.
@@ -146,6 +147,43 @@ grant all on public.geracoes to service_role;
 6. Em **Settings → Domains**, confira o endereço `.vercel.app` do projeto. A landing repassa `/planejamento` para ele (rewrite no `site-uau/vercel.json`).
 
 A geração com IA pode levar até 45 s. A rota já pede 60 s de execução (`maxDuration`), que é o máximo do plano Hobby.
+
+---
+
+## Enviar os leads para o funil comercial do Fluxo
+
+Além do Supabase, cada lead pode entrar direto no CRM do Fluxo (Comercial → funil), pelo formulário público do próprio Fluxo. Não precisa de chave: só do identificador do formulário.
+
+**1. Criar o formulário no Fluxo** (uma vez só, serve para o Raio-X e para o Planejamento do Mês)
+
+1. No Fluxo, abra **Comercial → Formulários → Novo formulário** (em branco). Nome: `Leads das ferramentas`.
+2. Deixe **exatamente** estes campos, com estes nomes (maiúsculas e acentos iguais):
+
+| Nome do campo | Tipo | Obrigatório | Salvar no lead |
+| --- | --- | --- | --- |
+| `Seu nome` | Texto curto | sim | Nome |
+| `WhatsApp` | WhatsApp / telefone | sim | WhatsApp |
+| `Instagram` | Texto curto | não | Instagram |
+| `Origem` | Texto curto | não | Não salvar no lead |
+| `Resumo` | Texto longo | não | Não salvar no lead |
+
+   Não adicione o campo de consentimento: o aceite já é pedido no Raio-X e no Planejamento.
+3. Em **Destino**, marque para criar o lead, escolha a etapa do funil e, se quiser, uma tag (ex.: `Ferramentas`).
+4. **Publique** o formulário e copie o identificador do endereço dele: em `appfluxo.app.br/f/leads-das-ferramentas`, o identificador é `leads-das-ferramentas`.
+
+**2. Ligar na Vercel**
+
+No projeto (Raio-X e/ou Planejamento), adicione a variável `FLUXO_FORM_SLUG` com o identificador e faça um **Redeploy**.
+
+**O que chega no Fluxo**
+
+- O lead entra (ou é reconhecido pelo WhatsApp, se já existir) com nome, WhatsApp e @.
+- Cada envio vira uma nota no lead, com a origem e um resumo:
+  - **Raio-X, no início:** "Iniciou o Raio-X" e a origem do link (UTM).
+  - **Raio-X, no fim:** nota geral, nível, principal gargalo e a nota de cada área.
+  - **Planejamento do Mês:** cliente planejado, nicho, cidade, objetivo do mês e posts por semana.
+- O Fluxo cria a tarefa "Analisar respostas e fazer contato" e roda as automações ligadas ao formulário.
+- Se o Fluxo não responder, o teste segue normal e o lead fica no Supabase do mesmo jeito (o erro aparece nos Logs da Vercel como `[fluxo]`).
 
 ---
 

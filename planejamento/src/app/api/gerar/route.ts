@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { COPY } from "@/data/textos";
 import { montarEsqueleto } from "@/lib/distribuicao";
+import { OBJETIVOS } from "@/data/formulario";
+import { enviarParaFluxo } from "@/lib/fluxo";
 import { gerarComIA, MODELO_PADRAO } from "@/lib/ia";
 import { ContatoSchema, FormSchema, nomeDoNicho } from "@/lib/input";
 import { dentroDoLimite, ipDaRequisicao, registrarNaMemoria } from "@/lib/limites";
@@ -72,8 +74,20 @@ export async function POST(request: Request) {
     }
   }
 
+  // Funil comercial do Fluxo (se FLUXO_FORM_SLUG estiver configurado). Corre em paralelo e nunca trava.
+  const objetivo = OBJETIVOS.find((o) => o.id === respostas.objetivo)?.nome ?? respostas.objetivo;
+  const utmTexto = [lead.utm_source, lead.utm_medium, lead.utm_campaign, lead.utm_content].filter(Boolean).join(" / ");
+  const fluxo = enviarParaFluxo({
+    nome: lead.nome,
+    whatsapp: lead.whatsapp,
+    instagram: lead.instagram,
+    origem: "Planejamento do Mês em 5 Minutos",
+    resumo: `Gerou um planejamento para ${respostas.cliente} (${lead.nicho}${respostas.cidade ? `, ${respostas.cidade}` : ""}). Objetivo do mês: ${objetivo}. ${respostas.postsPorSemana} posts por semana.${utmTexto ? ` Origem do link: ${utmTexto}.` : ""}`,
+  });
+
   // 2) Limite de uso por WhatsApp e por IP.
   if (!(await dentroDoLimite(whatsapp, ip))) {
+    await fluxo;
     return NextResponse.json({ ok: false, limite: true, erro: COPY.limite, leadId }, { status: 429 });
   }
 
@@ -111,5 +125,6 @@ export async function POST(request: Request) {
     console.log(`[planejamento] Geração ${id} (${meta.fonte}) para ${respostas.cliente}`);
   }
 
+  await fluxo;
   return NextResponse.json({ ok: true, id, leadId, criado_em, plano, meta });
 }
