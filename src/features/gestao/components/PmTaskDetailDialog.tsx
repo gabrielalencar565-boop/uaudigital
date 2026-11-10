@@ -1168,7 +1168,17 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             // would refetch 0 rows, cache that empty result, and never refetch again —
             // the new task would look permanently empty even though the clone eventually
             // succeeds in the DB (reported bug: subtasks "disappearing" on stage advance).
-            await cloneChildrenToNewTask(newTask.id, nextStage);
+            // Se a página fechar ou recarregar aqui, a etapa nova fica sem subtarefas e anexos: avisa antes de sair e mostra erro se a cópia falhar
+            const guard = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+            window.addEventListener("beforeunload", guard);
+            try {
+              await cloneChildrenToNewTask(newTask.id, nextStage);
+            } catch (err) {
+              console.error("Erro ao copiar subtarefas para a próxima etapa:", err);
+              toast.error(`${stageLabel(nextStage)} foi criada, mas as subtarefas e os anexos não foram copiados. Avise o time antes de continuar.`);
+            } finally {
+              window.removeEventListener("beforeunload", guard);
+            }
             // Copy parent-level comments to new task (background — comments aren't
             // gated by the same empty-cache trap, ok to keep non-blocking)
             void (async () => {
