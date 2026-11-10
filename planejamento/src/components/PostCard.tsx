@@ -24,7 +24,7 @@ async function copiarTexto(texto: string): Promise<boolean> {
   }
 }
 
-export default function PostCard({ post, prompt }: { post: Post; prompt: string }) {
+export default function PostCard({ post, prompt, rotulo }: { post: Post; prompt: string; rotulo?: string }) {
   const [aberto, setAberto] = useState(false);
   const [verPrompt, setVerPrompt] = useState(false);
   const [copiado, setCopiado] = useState<"ok" | "erro" | null>(null);
@@ -48,7 +48,7 @@ export default function PostCard({ post, prompt }: { post: Post; prompt: string 
         className="block w-full p-4 pb-3 text-left"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-lg bg-bg3 px-2 py-1 text-xs font-bold tracking-wide text-fg">{post.dia}</span>
+          <span className="rounded-lg bg-bg3 px-2 py-1 text-xs font-bold tracking-wide text-fg">{rotulo ?? post.dia}</span>
           <PhaseChip fase={post.fase} />
           <span className="text-xs font-medium text-dim">
             <span aria-hidden="true">{formato?.icone}</span> {formato?.curto}

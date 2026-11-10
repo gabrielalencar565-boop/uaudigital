@@ -8,6 +8,7 @@ import type { PlanoSalvo } from "@/lib/plano";
 import { planoParaTexto } from "@/lib/texto";
 import Logo from "./Logo";
 import PhaseChip from "./PhaseChip";
+import CalendarioPlano from "./CalendarioPlano";
 import WeekBlock from "./WeekBlock";
 
 type Acoes = {
@@ -171,11 +172,19 @@ export default function PlanResult({ salvo, acoes }: { salvo: PlanoSalvo; acoes?
         </ul>
       </section>
 
-      <div className="flex flex-col gap-8">
-        {plano.semanas.map((s) => (
-          <WeekBlock key={s.numero} semana={s} plano={plano} meta={meta} />
-        ))}
-      </div>
+      <CalendarioPlano plano={plano} meta={meta} />
+
+      <details className="group rounded-3xl border border-line bg-bg2 p-6">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-lg font-bold">
+          Ver todos os posts em lista, semana a semana
+          <span aria-hidden="true" className="text-dim transition-transform group-open:rotate-180">↓</span>
+        </summary>
+        <div className="mt-6 flex flex-col gap-8">
+          {plano.semanas.map((s) => (
+            <WeekBlock key={s.numero} semana={s} plano={plano} meta={meta} />
+          ))}
+        </div>
+      </details>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="rounded-3xl border border-line bg-bg2 p-6">

@@ -1,5 +1,6 @@
 import { FASES } from "@/data/fases";
 import { FORMATOS } from "@/data/formulario";
+import { rotuloDoPost } from "./datas";
 import type { PlanoSalvo } from "./plano";
 
 const formato = (id: string) => FORMATOS.find((f) => f.id === id);
@@ -22,7 +23,7 @@ export function planoParaTexto({ plano, meta }: PlanoSalvo): string {
     l.push("", `📅 *Semana ${s.numero} · ${s.foco}*`);
     for (const p of s.posts) {
       const f = formato(p.formato);
-      l.push(`*${p.dia}* · ${FASES[p.fase].nome} · ${f?.icone ?? ""} ${f?.curto ?? p.formato}`);
+      l.push(`*${rotuloDoPost(meta.mes, s.numero, p)}* · ${FASES[p.fase].nome} · ${f?.icone ?? ""} ${f?.curto ?? p.formato}`);
       l.push(`Gancho: ${p.gancho}`);
       l.push(`Ideia: ${p.ideia}`);
       l.push(`CTA: ${p.cta}`);
