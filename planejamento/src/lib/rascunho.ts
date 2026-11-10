@@ -76,10 +76,10 @@ export function validarContato(c: Contato): Erros {
   return e;
 }
 
-/** Primeira etapa com erro (para retomar o formulário no lugar certo). */
+/** Primeira pergunta (0 a 3) com erro; 3 se todas estiverem respondidas. */
 export function primeiraEtapaIncompleta(r: Rascunho): number {
   for (let i = 0; i < 4; i++) if (Object.keys(validarEtapa(i, r)).length) return i;
-  return 4;
+  return 3;
 }
 
 export function paraFormInput(r: Rascunho): FormInput {

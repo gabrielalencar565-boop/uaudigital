@@ -21,12 +21,13 @@ export const COPY = {
     perfil: { titulo: "O perfil hoje", emoji: "📱", pergunta: "Como o perfil funciona na prática?" },
   },
   contato: {
-    titulo: "Seu planejamento está **quase pronto.**",
+    titulo: "Antes de começar, **quem é você?**",
     texto:
-      "Deixa seu contato pra liberar o planejamento. A gente também vai te avisar quando sair conteúdo especial sobre planejamento.",
+      "Deixa seu contato pra liberar o planejamento. Depois são só 4 perguntas rápidas sobre o seu cliente.",
     consentimento:
       "Aceito receber mensagens da UAU Digital no WhatsApp e no e-mail sobre conteúdos e novidades. Posso cancelar quando quiser.",
-    cta: "Gerar o planejamento",
+    cta: "Começar o planejamento",
+    gerar: "Gerar o planejamento",
   },
   gerando: [
     "Definindo o objetivo do mês…",

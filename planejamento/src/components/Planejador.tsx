@@ -29,6 +29,11 @@ import StepPerfil from "./StepPerfil";
 import StepPublico from "./StepPublico";
 import StepShell from "./StepShell";
 
+/**
+ * Ordem das telas: intro → etapa 0 (contato: nome, WhatsApp e @) → etapas 1 a 4 (perguntas sobre o cliente) → gerando → resultado.
+ * O contato vem primeiro para o lead ficar salvo mesmo se a pessoa desistir no meio.
+ */
+
 /** Versão demo (artefato estático): monta o plano no navegador, pelos modelos prontos. */
 const DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
 
@@ -67,6 +72,7 @@ export default function Planejador() {
   const [salvo, setSalvo] = useState<PlanoSalvo | null>(null);
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState<string | undefined>();
+  const [salvandoContato, setSalvandoContato] = useState(false);
   const [erroResultado, setErroResultado] = useState<string | undefined>();
   const [regerando, setRegerando] = useState(false);
   const [temProgresso, setTemProgresso] = useState(false);
@@ -88,7 +94,7 @@ export default function Planejador() {
       if (s.tela === "resultado" && anterior) {
         setSalvo(anterior);
         setTela({ tipo: "resultado" });
-      } else if (s.rascunho && (s.rascunho.cliente || s.rascunho.objetivo)) {
+      } else if ((s.rascunho && (s.rascunho.cliente || s.rascunho.objetivo)) || s.leadId) {
         setTemProgresso(true);
       }
     }
@@ -154,19 +160,21 @@ export default function Planejador() {
     });
   }
 
+  /** i = tela (1 a 4); a pergunta é a i - 1. Na última, gera o planejamento. */
   function avancar(i: number) {
-    const e = validarEtapa(i, rascunho);
+    const e = validarEtapa(i - 1, rascunho);
     if (Object.keys(e).length) {
       setErros(e);
       focarPrimeiroErro(e);
       return;
     }
-    ir({ tipo: "etapa", i: i + 1 });
+    if (i < 4) ir({ tipo: "etapa", i: i + 1 });
+    else void gerar("formulario");
   }
 
-  async function gerar(origem: "contato" | "resultado") {
+  async function gerar(origem: "formulario" | "resultado") {
     const mostrarErro = (msg: string) => {
-      if (origem === "contato") {
+      if (origem === "formulario") {
         setErroGeral(msg);
         setTela({ tipo: "etapa", i: 4 });
       } else {
@@ -223,15 +231,38 @@ export default function Planejador() {
     }
   }
 
-  function enviarContato() {
+  /** Etapa 0: grava o contato (Supabase + Fluxo) e segue para as perguntas. */
+  async function enviarContato() {
+    if (salvandoContato) return;
     const e = validarContato(contato);
     if (Object.keys(e).length) {
       setErros(e);
       focarPrimeiroErro(e);
       return;
     }
+    setErroGeral(undefined);
     trackPixel("Lead");
-    void gerar("contato");
+    if (!DEMO) {
+      setSalvandoContato(true);
+      try {
+        const res = await fetch(withBase("/api/contato"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, contato, utm }),
+        });
+        const data = (await res.json().catch(() => null)) as { ok: boolean; leadId?: string; erro?: string } | null;
+        if (res.status === 400 && data?.erro) {
+          setErroGeral(data.erro);
+          return;
+        }
+        if (data?.leadId) setLeadId(data.leadId);
+      } catch {
+        // Sem conexão com o servidor: segue assim mesmo; o /api/gerar grava o lead no final.
+      } finally {
+        setSalvandoContato(false);
+      }
+    }
+    ir({ tipo: "etapa", i: 1 });
   }
 
   function comecarDoZero() {
@@ -242,45 +273,52 @@ export default function Planejador() {
 
   function continuar() {
     setTemProgresso(false);
-    ir({ tipo: "etapa", i: primeiraEtapaIncompleta(rascunho) });
+    ir({ tipo: "etapa", i: Object.keys(validarContato(contato)).length ? 0 : primeiraEtapaIncompleta(rascunho) + 1 });
   }
 
   function outroCliente() {
-    // Limpa as respostas, mas mantém nome e contato.
+    // Limpa as respostas, mas mantém nome e contato (já foi preenchido).
     setRascunho(RASCUNHO_VAZIO);
     setSalvo(null);
-    ir({ tipo: "etapa", i: 0 });
+    ir({ tipo: "etapa", i: 1 });
   }
 
   let conteudo: React.ReactNode = null;
   if (tela.tipo === "intro") {
     conteudo = <Intro onComecar={comecarDoZero} onContinuar={temProgresso ? continuar : undefined} />;
-  } else if (tela.tipo === "etapa" && tela.i < 4) {
-    const { chave, Comp } = ETAPAS[tela.i];
-    const t = COPY.etapas[chave];
-    conteudo = (
-      <StepShell
-        etapa={tela.i}
-        titulo={t.titulo}
-        emoji={t.emoji}
-        pergunta={t.pergunta}
-        onVoltar={() => ir(tela.i === 0 ? { tipo: "intro" } : { tipo: "etapa", i: tela.i - 1 }, "tras")}
-        onAvancar={() => avancar(tela.i)}
-      >
-        <Comp r={rascunho} set={setCampo} erros={erros} />
-      </StepShell>
-    );
-  } else if (tela.tipo === "etapa") {
+  } else if (tela.tipo === "etapa" && tela.i === 0) {
     conteudo = (
       <StepContato
         c={contato}
         set={setContatoCampo}
         erros={erros}
         erroGeral={erroGeral}
-        enviando={false}
-        onVoltar={() => ir({ tipo: "etapa", i: 3 }, "tras")}
-        onEnviar={enviarContato}
+        enviando={salvandoContato}
+        onVoltar={() => ir({ tipo: "intro" }, "tras")}
+        onEnviar={() => void enviarContato()}
       />
+    );
+  } else if (tela.tipo === "etapa") {
+    const { chave, Comp } = ETAPAS[tela.i - 1];
+    const t = COPY.etapas[chave];
+    const ultima = tela.i === 4;
+    conteudo = (
+      <StepShell
+        etapa={tela.i}
+        titulo={t.titulo}
+        emoji={t.emoji}
+        pergunta={t.pergunta}
+        cta={ultima ? COPY.contato.gerar : undefined}
+        onVoltar={() => ir({ tipo: "etapa", i: tela.i - 1 }, "tras")}
+        onAvancar={() => avancar(tela.i)}
+      >
+        <Comp r={rascunho} set={setCampo} erros={erros} />
+        {ultima && erroGeral ? (
+          <p role="alert" className="rounded-2xl border-[1.5px] border-orange px-4 py-3 font-medium">
+            {erroGeral}
+          </p>
+        ) : null}
+      </StepShell>
     );
   } else if (tela.tipo === "gerando") {
     conteudo = <Generating />;

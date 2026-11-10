@@ -20,12 +20,12 @@ type Props = {
 export default function StepContato({ c, set, erros, erroGeral, enviando, onVoltar, onEnviar }: Props) {
   return (
     <StepShell
-      etapa={4}
+      etapa={0}
       titulo="Seu contato"
       emoji="📩"
       onVoltar={onVoltar}
       onAvancar={onEnviar}
-      cta={enviando ? "Gerando…" : COPY.contato.cta}
+      cta={enviando ? "Salvando…" : COPY.contato.cta}
       enviando={enviando}
     >
       <div className="-mt-4">

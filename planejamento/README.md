@@ -181,7 +181,8 @@ No projeto (Raio-X e/ou Planejamento), adicione a variável `FLUXO_FORM_SLUG` co
 - Cada envio vira uma nota no lead, com a origem e um resumo:
   - **Raio-X, no início:** "Iniciou o Raio-X" e a origem do link (UTM).
   - **Raio-X, no fim:** nota geral, nível, principal gargalo e a nota de cada área.
-  - **Planejamento do Mês:** cliente planejado, nicho, cidade, objetivo do mês e posts por semana.
+  - **Planejamento do Mês, no início:** "Começou o Planejamento do Mês" e a origem do link (UTM), assim que a pessoa deixa o contato.
+  - **Planejamento do Mês, no fim:** cliente planejado, nicho, cidade, objetivo do mês e posts por semana.
 - O Fluxo cria a tarefa "Analisar respostas e fazer contato" e roda as automações ligadas ao formulário.
 - Se o Fluxo não responder, o teste segue normal e o lead fica no Supabase do mesmo jeito (o erro aparece nos Logs da Vercel como `[fluxo]`).
 
@@ -190,7 +191,7 @@ No projeto (Raio-X e/ou Planejamento), adicione a variável `FLUXO_FORM_SLUG` co
 ## Telas
 
 - **Visual:** o mesmo da landing da UAU (fundo escuro, faixa clara no objetivo do mês, degradê roxo → magenta → laranja, botões em pílula e a logo real).
-- **Fluxo:** inicial → 4 etapas → contato → geração → planejamento.
+- **Fluxo:** inicial → contato (nome, WhatsApp e @, já grava o lead via `/api/contato`) → 4 perguntas sobre o cliente → geração → planejamento.
 - **Resultado:**
   - cards de objetivo, público e tom de voz
   - legenda das 6 fases e calendário de 4 semanas
