@@ -8,6 +8,8 @@ import { useSyncExternalStore } from "react";
 export interface GlobalUploadItem {
   id: string;
   taskId: string;
+  /** nome da tarefa (ou subtarefa) que está recebendo o arquivo */
+  taskTitle?: string;
   fileName: string;
   fileSize: number;
   progress: number;

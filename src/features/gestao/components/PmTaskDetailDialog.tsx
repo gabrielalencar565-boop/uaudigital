@@ -2524,7 +2524,6 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                       className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground hover:opacity-90"
                     >
                       {shown || "sem prazo"}
-                      {task.reference_month && <span className="opacity-80">· à mão</span>}
                       <ChevronDown className="h-3 w-3 opacity-80" />
                     </button>
                   </PopoverTrigger>
