@@ -209,7 +209,7 @@ Além do Supabase, cada lead pode entrar direto no CRM do Fluxo (Comercial → f
 | `Resumo` | Texto longo | não | Não salvar no lead |
 
    Não adicione o campo de consentimento: o aceite já é pedido no Raio-X e no Planejamento.
-3. Em **Destino**, marque para criar o lead, escolha a etapa do funil e, se quiser, uma tag (ex.: `Ferramentas`).
+3. Em **Destino**, marque para criar o lead, escolha a etapa **Produtos digitais · Novo lead** (assim ele cai no funil de produtos, separado dos clientes de serviço) e, se quiser, uma tag (ex.: `Ferramentas`).
 4. **Publique** o formulário e copie o identificador do endereço dele: em `appfluxo.app.br/f/leads-das-ferramentas`, o identificador é `leads-das-ferramentas`.
 
 **2. Ligar na Vercel**

@@ -35,7 +35,9 @@ function Lines({ value, onChange, rows = 4 }: { value: string[]; onChange: (v: s
 }
 
 export function AutomacaoEditor({ id, onBack, onOpen }: { id: string; onBack: () => void; onOpen: (id: string) => void }) {
-  const { stages, team } = useComercial();
+  const { allStages, stageLabel, team } = useComercial();
+  // etapas dos dois funis, com o nome do funil na frente ("Produtos digitais · Novo lead")
+  const stages = useMemo(() => [...allStages].sort((a, b) => a.position - b.position).map((s) => ({ ...s, name: stageLabel(s.id) })), [allStages, stageLabel]);
   const autosQ = useAutomations();
   const forms = useForms().data ?? [];
   const update = useUpdateAutomation();

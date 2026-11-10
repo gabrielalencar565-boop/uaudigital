@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { CONTACT_NOTE_KINDS, type Activity, type ClientTask, type ComercialClient, type Lead, type Stage } from "../lib/rules";
+import { CONTACT_NOTE_KINDS, type Activity, type ClientTask, type ComercialClient, type Lead, type Pipeline, type Stage } from "../lib/rules";
 
 // As tabelas comercial_* ainda não estão nos tipos gerados do Supabase.
 const sb = supabase as any;
@@ -32,7 +32,7 @@ export function useStages() {
     queryKey: ["comercial", "stages"],
     queryFn: async (): Promise<Stage[]> => {
       const read = async () => {
-        const { data, error } = await sb.from("comercial_stages").select("id, name, type, probability, position").order("position");
+        const { data, error } = await sb.from("comercial_stages").select("id, name, type, probability, position, pipeline_id").order("position");
         if (error) throw error;
         return (data ?? []) as Stage[];
       };
@@ -45,6 +45,20 @@ export function useStages() {
       return stages;
     },
     staleTime: 60_000,
+  });
+}
+
+/** Funis do Comercial (Serviços UAU e Produtos digitais). O banco cria os dois junto com as etapas padrão. */
+export function usePipelines(enabled = true) {
+  return useQuery({
+    queryKey: ["comercial", "pipelines"],
+    queryFn: async (): Promise<Pipeline[]> => {
+      const { data, error } = await sb.from("comercial_pipelines").select("id, key, name, position").order("position");
+      if (error) throw error;
+      return (data ?? []) as Pipeline[];
+    },
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -311,7 +325,7 @@ export function useCreateStage() {
   const inv = useInvalidate();
   return useMutation({
     /** A etapa nova entra logo antes de "Ganho"; as de baixo descem uma posição. */
-    mutationFn: async ({ name, stages }: { name: string; stages: Stage[] }) => {
+    mutationFn: async ({ name, stages, pipelineId }: { name: string; stages: Stage[]; pipelineId: string }) => {
       const firstClosed = [...stages].sort((a, b) => a.position - b.position).find((s) => s.type !== "open");
       const at = firstClosed ? firstClosed.position : stages.length;
       const prev = [...stages].filter((s) => s.type === "open").sort((a, b) => b.position - a.position)[0];
@@ -319,7 +333,7 @@ export function useCreateStage() {
         const { error } = await sb.from("comercial_stages").update({ position: s.position + 1 }).eq("id", s.id);
         if (error) throw error;
       }
-      const { error } = await sb.from("comercial_stages").insert({ name, type: "open", probability: Math.min(90, (prev?.probability ?? 0) + 10), position: at });
+      const { error } = await sb.from("comercial_stages").insert({ name, type: "open", probability: Math.min(90, (prev?.probability ?? 0) + 10), position: at, pipeline_id: pipelineId });
       if (error) throw error;
     },
     onSuccess: () => inv("stages"),

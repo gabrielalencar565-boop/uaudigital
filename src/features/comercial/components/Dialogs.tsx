@@ -40,7 +40,7 @@ const digits8 = (s: string | null | undefined) => String(s ?? "").replace(/\D/g,
 const handle = (s: string | null | undefined) => String(s ?? "").trim().toLowerCase().replace(/^@/, "");
 
 export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { stages, leads, team, today, openLead } = useComercial();
+  const { stages, allLeads: leads, team, today, openLead } = useComercial();
   const { user } = useSession();
   const create = useCreateLead();
   const firsts = useMemo(() => stages.filter((s) => s.type === "open").sort((a, b) => a.position - b.position).slice(0, 2), [stages]);
@@ -134,7 +134,7 @@ export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () =
 // ───────────── nova atividade ─────────────
 
 export function NovaAtividadeDialog({ open, leadId, onClose }: { open: boolean; leadId?: string; onClose: () => void }) {
-  const { leads, team, today, stageOf, leadOf } = useComercial();
+  const { allLeads: leads, team, today, stageOf, leadOf } = useComercial();
   const { user } = useSession();
   const create = useCreateActivity();
   const lead = leadId ? leadOf(leadId) : undefined;

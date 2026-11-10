@@ -51,7 +51,7 @@ function TextField({ label, value, onSave, type = "text", disabled }: { label: s
 // ───────────── gaveta do lead ─────────────
 
 export function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () => void }) {
-  const { leads, stages, acts, team, today, stageOf, leadOf, moveLead, newActivity, goto } = useComercial();
+  const { leads, allStages, acts, team, today, stageOf, leadOf, moveLead, newActivity, goto } = useComercial();
   const lead = leadId ? leadOf(leadId) : undefined;
   const update = useUpdateLead();
   const del = useDeleteLead();
@@ -67,6 +67,8 @@ export function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose
 
   const stage = lead ? stageOf(lead.stage_id) : undefined;
   const open = isOpenStage(stage);
+  // o lead só anda entre as etapas do próprio funil
+  const stages = stage ? allStages.filter((s) => s.pipeline_id === stage.pipeline_id) : allStages;
   const save = (patch: Partial<Lead>) => lead && update.mutate({ id: lead.id, patch });
   const allTags = [...new Set(["Prioritário", "Tráfego pago", "Indicação de cliente", ...leads.flatMap((l) => l.tags)])];
 

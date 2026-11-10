@@ -42,7 +42,7 @@ async function readFileAsText(file: File): Promise<string> {
 
 /** Importação em massa de contatos para a primeira coluna do funil: cola a lista, confere na tabela e cria um lead por contato. */
 export function ImportarContatosDialog({ open, onClose, stage }: { open: boolean; onClose: () => void; stage: Stage }) {
-  const { leads, team, today, stageOf } = useComercial();
+  const { allLeads: leads, team, today, stageOf } = useComercial();
   const { user } = useSession();
   const importLeads = useImportLeads();
   const fileRef = useRef<HTMLInputElement>(null);
