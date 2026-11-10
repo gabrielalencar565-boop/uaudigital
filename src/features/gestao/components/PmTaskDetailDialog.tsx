@@ -48,7 +48,8 @@ import { AlteracaoReviewPanel } from "./AlteracaoReviewPanel";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
-import { LinkOrDateDialog } from "./LinkOrDateDialog";
+import { LinkOrDateDialog, type LinkPane } from "./LinkOrDateDialog";
+import { nextStagePostTypeFilter } from "../lib/link-existing-task";
 import { SpellCheckText } from "./SpellCheckText";
 import { EditableTitleWithSpellCheck } from "./EditableTitleWithSpellCheck";
 import { supabase } from "@/integrations/supabase/client";
@@ -806,20 +807,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
 
   // Link existing task state
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [linkExistingTask, setLinkExistingTask] = useState<{ id: string; due_date: string; title: string } | null>(null);
+  const [linkPanes, setLinkPanes] = useState<LinkPane[]>([]);
   const [pendingAdvance, setPendingAdvance] = useState<{ completedStage: string; nextStage: string } | null>(null);
 
-  // Pending split state (for planejamento → design/video linking)
-  const [pendingSplit, setPendingSplit] = useState<{
-    stage: string;
-    stageLabel: string;
-    children: PmTask[];
-    postType: string;
+  // Planejamento aprovado → Vídeo + Design: as duas agendas abrem lado a lado e as duas escolhas saem juntas
+  const [splitBatch, setSplitBatch] = useState<{
+    splits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate: string }[];
     snapshotDueDate: string;
     nextDueDate: string;
     clientName: string;
     monthLabel: string | null;
-    remainingSplits: { stage: string; stageLabel: string; children: PmTask[]; postType: string; dueDate?: string }[];
     deferredCompletion?: { allIds: string[]; completedStage: string; snapshotDueDate: string };
   } | null>(null);
 
@@ -1199,6 +1196,24 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
   };
 
+  const inferNextStagePostType = (nextStage: string) => nextStagePostTypeFilter(task, nextStage);
+
+  const linkSearchFor = (nextStage: string, referenceDate: string) => ({
+    clientId: task.client_id,
+    stage: nextStage,
+    postType: inferNextStagePostType(nextStage),
+    referenceDate,
+    excludeId: task.id,
+  });
+  const stageNameFor = (st: string) => PM_ACTIVE_STAGES.find((x) => x.key === st)?.label ?? st;
+
+  // Abre a agenda de vínculo (avanço comum): destaca as tarefas da mesma cliente/etapa que dá para vincular
+  const openLinkAgenda = (existing: { id: string; due_date: string; title: string }, nextStage: string, referenceDueDate?: string) => {
+    const ref = existing.due_date ?? referenceDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd");
+    setLinkPanes([{ key: "advance", stageLabel: stageNameFor(nextStage), search: linkSearchFor(nextStage, ref), existingTask: existing, defaultDate: ref }]);
+    setLinkDialogOpen(true);
+  };
+
   const findExistingAgendaTaskForStage = async (nextStage: string, referenceDueDate?: string) => {
     if (nextStage === "entrega") return null;
 
@@ -1235,13 +1250,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     // the task being "muito bugada"). Matching on post_type: 'planejamento' (the sentinel
     // doAdvance itself stamps on that transition) finds that same isolated Revisão back,
     // without ever matching a Design/Vídeo materials Revisão.
-    const inferredNextStagePostType = task.stage_current === "edicao_videos"
-      ? "video"
-      : task.stage_current === "design"
-        ? "design"
-        : task.stage_current === "planejamento" && nextStage === "revisao"
-          ? "planejamento"
-          : task.post_type ?? undefined;
+    const inferredNextStagePostType = inferNextStagePostType(nextStage);
     if (inferredNextStagePostType) {
       query = query.eq("post_type", inferredNextStagePostType);
     }
@@ -1264,9 +1273,8 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     }
 
     if (existing) {
-      setLinkExistingTask(existing);
       setPendingAdvance({ completedStage, nextStage });
-      setLinkDialogOpen(true);
+      openLinkAgenda(existing, nextStage, newDueDate);
       return;
     }
 
@@ -1512,41 +1520,43 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         await finalizePlanejamentoCompletion(deferredCompletion);
       }
       setLinkDialogOpen(false);
-      setLinkExistingTask(null);
-      setPendingSplit(null);
+      setLinkPanes([]);
+      setSplitBatch(null);
       toast.success("Próximas tarefas prontas.");
       return;
     }
 
-    const [current, ...remaining] = splits;
-    // Cascata: each branch (Design / Vídeo) can have its own planned date.
-    const dueForCurrent = current.dueDate ?? nextDueDate;
-    const existing = await findExistingAgendaTaskForStage(current.stage, dueForCurrent);
+    // Cascata: cada ramo (Design / Vídeo) pode ter a sua data planejada.
+    const lookups = await Promise.all(splits.map(async (sp) => {
+      const due = sp.dueDate ?? nextDueDate;
+      return { sp, due, existing: await findExistingAgendaTaskForStage(sp.stage, due) };
+    }));
 
-    if (existing) {
-      setPendingSplit({
-        stage: current.stage,
-        stageLabel: current.stageLabel,
-        children: current.children,
-        postType: current.postType,
-        snapshotDueDate,
-        nextDueDate: dueForCurrent,
-        clientName,
-        monthLabel,
-        remainingSplits: remaining,
-        deferredCompletion,
+    // Já existe tarefa da mesma cliente em algum dos ramos: abre as agendas lado a lado para escolher
+    if (lookups.some((l) => l.existing)) {
+      setSplitBatch({
+        splits: lookups.map((l) => ({ stage: l.sp.stage, stageLabel: l.sp.stageLabel, children: l.sp.children, postType: l.sp.postType, dueDate: l.due })),
+        snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion,
       });
-      setLinkExistingTask(existing);
+      setLinkPanes(lookups.map((l) => ({
+        key: l.sp.stage,
+        stageLabel: l.sp.stageLabel,
+        search: linkSearchFor(l.sp.stage, l.existing?.due_date ?? l.due),
+        existingTask: l.existing,
+        defaultDate: l.due,
+      })));
       setLinkDialogOpen(true);
       return;
     }
 
-    try {
-      await executeSplitTask(current.stage, current.stageLabel, current.children, current.postType, dueForCurrent, clientName, monthLabel);
-    } catch (err) {
-      console.error("bg split error:", err);
+    for (const l of lookups) {
+      try {
+        await executeSplitTask(l.sp.stage, l.sp.stageLabel, l.sp.children, l.sp.postType, l.due, clientName, monthLabel);
+      } catch (err) {
+        console.error("bg split error:", err);
+      }
     }
-    await processSplitQueue(remaining, snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
+    await processSplitQueue([], snapshotDueDate, nextDueDate, clientName, monthLabel, deferredCompletion);
   };
 
   // The PDF stage is when the trigger links a task to a calendar_publications row
@@ -1825,9 +1835,8 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     if (resolvedNextStages.length === 1) {
       const existing = await findExistingAgendaTaskForStage(resolvedNextStages[0], newDueDate ?? task.due_date ?? format(new Date(), "yyyy-MM-dd"));
       if (existing) {
-        setLinkExistingTask(existing);
         setPendingAdvance({ completedStage, nextStage: resolvedNextStages[0] });
-        setLinkDialogOpen(true);
+        openLinkAgenda(existing, resolvedNextStages[0], newDueDate ?? task.due_date ?? undefined);
         return;
       }
     }
@@ -3055,28 +3064,32 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         {/* Link or Date dialog for existing agenda tasks — rendered outside conditional to survive task status changes */}
         <LinkOrDateDialog
           open={linkDialogOpen}
-          onClose={() => { setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null); setPendingSplit(null); }}
-          existingTask={linkExistingTask}
-          onLink={async (dueDate) => {
-            if (pendingSplit) {
-              const s = pendingSplit;
-              void executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel, linkExistingTask?.id)
-                .catch((err) => console.error("bg split error:", err));
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
+          onClose={() => { setLinkDialogOpen(false); setLinkPanes([]); setPendingAdvance(null); setSplitBatch(null); }}
+          panes={linkPanes}
+          clientName={clientsMap[task.client_id]}
+          clientsMap={clientsMap}
+          membersMap={membersMap}
+          onConfirm={async (picks) => {
+            if (splitBatch) {
+              const b = splitBatch;
+              // Cria/vincula cada ramo em sequência (mantém a ordem de criação) sem travar a tela
+              void (async () => {
+                for (const sp of b.splits) {
+                  const pick = picks[sp.stage];
+                  if (!pick) continue;
+                  try {
+                    await executeSplitTask(sp.stage, sp.stageLabel, sp.children, sp.postType, pick.date, b.clientName, b.monthLabel, pick.kind === "link" ? pick.taskId : undefined);
+                  } catch (err) {
+                    console.error("bg split error:", err);
+                  }
+                }
+              })();
+              await processSplitQueue([], b.snapshotDueDate, b.nextDueDate, b.clientName, b.monthLabel, b.deferredCompletion);
             } else if (pendingAdvance) {
-              doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate, linkExistingTask?.id);
-              setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
-            }
-          }}
-          onSelectDate={async (dueDate) => {
-            if (pendingSplit) {
-              const s = pendingSplit;
-              void executeSplitTask(s.stage, s.stageLabel, s.children, s.postType, dueDate, s.clientName, s.monthLabel)
-                .catch((err) => console.error("bg split error:", err));
-              await processSplitQueue(s.remainingSplits, s.snapshotDueDate, s.nextDueDate, s.clientName, s.monthLabel, s.deferredCompletion);
-            } else if (pendingAdvance) {
-              doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, dueDate);
-              setLinkDialogOpen(false); setLinkExistingTask(null); setPendingAdvance(null);
+              const pick = picks.advance;
+              if (!pick) return;
+              doAdvance(pendingAdvance.completedStage, pendingAdvance.nextStage, pick.date, pick.kind === "link" ? pick.taskId : undefined);
+              setLinkDialogOpen(false); setLinkPanes([]); setPendingAdvance(null);
             }
           }}
         />
