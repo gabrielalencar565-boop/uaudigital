@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock, Plus, Pencil } from "lucide-react";
+import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock, Plus, Pencil, ChevronDown } from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -31,6 +31,8 @@ export function FinReceitasDespesasTab() {
   const freelasQ = useFinFreelas(year, month);
   const membersQ = useTeamMembers();
   const saveFreela = useSaveFinFreela();
+  const [freelasAbertos, setFreelasAbertos] = useState<Set<string>>(new Set());
+  const toggleFreelaAberto = (id: string) => setFreelasAbertos((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [freelaDialog, setFreelaDialog] = useState<{ open: boolean; freela: FinFreela | null }>({ open: false, freela: null });
 
   // Status timeline: cliente aparece neste mês apenas se estava 'ativo' naquele período.
@@ -254,49 +256,47 @@ export function FinReceitasDespesasTab() {
                         const m = (membersQ.data ?? []).find((x) => x.user_id === o.user_id);
                         return { nome: o.nome ?? m?.display_name ?? "—", avatar: m?.avatar_url ?? undefined };
                       });
+                    const aberto = freelasAbertos.has(f.id);
                     return (
-                      <div key={f.id} className="space-y-2.5 rounded-xl border border-border/50 bg-muted/20 p-3.5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-sm font-semibold ${paid ? "opacity-60" : ""}`}>{f.servico}</span>
-                              <button type="button" onClick={() => setFreelaDialog({ open: true, freela: f })} className="text-muted-foreground hover:text-foreground" aria-label="Editar freela" title="Editar freela"><Pencil className="h-3 w-3" /></button>
+                      <div key={f.id} className="rounded-xl border border-border/50 bg-muted/20">
+                        <div className="flex items-center gap-3 p-3.5">
+                          <button type="button" onClick={() => toggleFreelaAberto(f.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={aberto} aria-label={aberto ? "Minimizar freela" : "Ver detalhes do freela"}>
+                            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${aberto ? "" : "-rotate-90"}`} />
+                            <span className="min-w-0">
+                              <span className={`block truncate text-sm font-semibold ${paid ? "line-through opacity-50" : ""}`}>{f.servico}</span>
+                              <span className="block truncate text-xs text-muted-foreground">{f.contratante} · {f.date.slice(8, 10)}/{f.date.slice(5, 7)}</span>
+                            </span>
+                          </button>
+                          <p className={`shrink-0 text-right text-base font-semibold text-success ${paid ? "line-through opacity-50" : ""}`}>R$ {uau.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                          <button onClick={() => toggleFreelaStatus(f)} className="inline-flex shrink-0 items-center justify-center transition-transform hover:scale-110" aria-label={paid ? "Marcar como a receber" : "Marcar como recebido"}>
+                            {paid ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
+                          </button>
+                        </div>
+                        {aberto && (
+                          <div className="space-y-2.5 border-t border-border/40 px-3.5 pb-3.5 pt-3">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Valor total R$ {f.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                              <button type="button" onClick={() => setFreelaDialog({ open: true, freela: f })} className="inline-flex items-center gap-1 hover:text-foreground" aria-label="Editar freela"><Pencil className="h-3 w-3" /> Editar</button>
                             </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground">{f.contratante} · {f.date.slice(8, 10)}/{f.date.slice(5, 7)}</p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-lg font-semibold leading-tight text-success">R$ {uau.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                            <p className="text-[10px] text-muted-foreground">parte da Uau · de R$ {f.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                          </div>
-                        </div>
-                        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div className="bg-violet-500" style={{ width: `${opPct}%` }} />
-                          <div className="bg-emerald-500" style={{ width: `${100 - opPct}%` }} />
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-2">
-                            {pessoas.length > 0 && (
-                              <div className="flex -space-x-1.5">
-                                {pessoas.slice(0, 4).map((p, i) => (
-                                  <UserAvatar key={i} avatarUrl={p.avatar} name={p.nome} className="h-6 w-6 ring-2 ring-background" fallbackClassName="text-[9px] font-bold bg-primary/10 text-primary" />
-                                ))}
+                            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+                              <div className="bg-violet-500" style={{ width: `${opPct}%` }} />
+                              <div className="bg-emerald-500" style={{ width: `${100 - opPct}%` }} />
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex min-w-0 items-center gap-2">
+                                {pessoas.length > 0 && (
+                                  <div className="flex -space-x-1.5">
+                                    {pessoas.slice(0, 4).map((p, i) => (
+                                      <UserAvatar key={i} avatarUrl={p.avatar} name={p.nome} className="h-6 w-6 ring-2 ring-background" fallbackClassName="text-[9px] font-bold bg-primary/10 text-primary" />
+                                    ))}
+                                  </div>
+                                )}
+                                <span className="truncate text-xs text-muted-foreground">{pessoas.map((p) => p.nome).join(", ") || "Sem operacional"}</span>
                               </div>
-                            )}
-                            <span className="truncate text-xs text-muted-foreground">{pessoas.map((p) => p.nome).join(", ") || "Sem operacional"}</span>
+                              <span className="flex items-center gap-1 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-violet-500" />Operacional R$ {f.operacional_valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-violet-500" />Operacional R$ {f.operacional_valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                            <button
-                              type="button"
-                              onClick={() => toggleFreelaStatus(f)}
-                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition ${paid ? "bg-success/15 text-success" : "bg-warning/15 text-warning hover:bg-warning/25"}`}
-                              aria-label={paid ? "Marcar como a receber" : "Marcar como recebido"}
-                            >
-                              {paid ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-                              {paid ? "recebido" : "a receber"}
-                            </button>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
