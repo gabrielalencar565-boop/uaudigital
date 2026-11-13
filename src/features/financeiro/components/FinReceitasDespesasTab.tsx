@@ -267,7 +267,7 @@ export function FinReceitasDespesasTab() {
                               <span className="block truncate text-xs text-muted-foreground">{f.contratante} · {f.date.slice(8, 10)}/{f.date.slice(5, 7)}</span>
                             </span>
                           </button>
-                          <p className={`shrink-0 text-right text-base font-semibold text-success ${paid ? "line-through opacity-50" : ""}`}>R$ {uau.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                          <p className={`shrink-0 text-right text-base font-semibold ${paid ? "line-through opacity-50" : ""}`}>R$ {uau.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                           <button onClick={() => toggleFreelaStatus(f)} className="inline-flex shrink-0 items-center justify-center transition-transform hover:scale-110" aria-label={paid ? "Marcar como a receber" : "Marcar como recebido"}>
                             {paid ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
                           </button>
