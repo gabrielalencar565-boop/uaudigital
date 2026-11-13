@@ -241,7 +241,9 @@ export function FinReceitasDespesasTab() {
                 )}
                 {freelas.map((f) => {
                   const paid = f.status === "pago";
-                  const quem = f.operacional_nome ?? (membersQ.data ?? []).find((m) => m.user_id === f.operacional_user_id)?.display_name ?? null;
+                  const nomeDe = (o: { user_id: string | null; nome: string | null }) => o.nome ?? (membersQ.data ?? []).find((m) => m.user_id === o.user_id)?.display_name ?? null;
+                  const lista = f.operacionais.length > 0 ? f.operacionais : [{ user_id: f.operacional_user_id, nome: f.operacional_nome, valor: f.operacional_valor }];
+                  const quem = lista.map(nomeDe).filter(Boolean).join(", ");
                   return (
                     <tr key={f.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
                       <td className={`px-4 py-2.5 ${paid ? "line-through opacity-50" : ""}`}>

@@ -31,6 +31,9 @@ export type FinRevenue = {
   notes: string | null;
 };
 
+/** Uma pessoa que fez parte do freela (da equipe: user_id; de fora: nome) e o quanto ela recebe. */
+export type FinOperacional = { user_id: string | null; nome: string | null; valor: number };
+
 /** Freela lançado em Receitas. A parte da Uau é sempre total - operacional (não é guardada). */
 export type FinFreela = {
   id: string;
@@ -40,6 +43,8 @@ export type FinFreela = {
   operacional_valor: number;
   operacional_user_id: string | null;
   operacional_nome: string | null;
+  /** todas as pessoas do freela; operacional_valor é a soma dos valores */
+  operacionais: FinOperacional[];
   date: string;
   year: number;
   month: number;
@@ -289,7 +294,7 @@ export function useFinFreelas(year: number, month: number) {
         .eq("month", month)
         .order("date", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as any[]).map((r) => ({ ...r, total: Number(r.total), operacional_valor: Number(r.operacional_valor) })) as FinFreela[];
+      return ((data ?? []) as any[]).map((r) => ({ ...r, total: Number(r.total), operacional_valor: Number(r.operacional_valor), operacionais: Array.isArray(r.operacionais) ? r.operacionais.map((o: any) => ({ user_id: o.user_id ?? null, nome: o.nome ?? null, valor: Number(o.valor) || 0 })) : [] })) as FinFreela[];
     },
   });
 }

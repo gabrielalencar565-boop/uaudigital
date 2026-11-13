@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTeamMembers } from "@/features/data/queries";
-import { freelaUau, useDeleteFinFreela, useSaveFinFreela, type FinFreela } from "../hooks/use-financial-data";
+import { Plus, X } from "lucide-react";
+import { freelaUau, useDeleteFinFreela, useSaveFinFreela, type FinFreela, type FinOperacional } from "../hooks/use-financial-data";
 
 const OUTRO = "__outro__";
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -26,9 +27,9 @@ export function FinFreelaDialog({ open, onClose, freela, defaultDate }: { open: 
   const [contratante, setContratante] = useState("");
   const [servico, setServico] = useState("");
   const [total, setTotal] = useState("");
-  const [operacional, setOperacional] = useState("");
-  const [quem, setQuem] = useState<string>("");
-  const [nomeFora, setNomeFora] = useState("");
+  type Linha = { key: number; quem: string; nome: string; valor: string };
+  const novaLinha = (key: number): Linha => ({ key, quem: "", nome: "", valor: "" });
+  const [linhas, setLinhas] = useState<Linha[]>([novaLinha(1)]);
   const [date, setDate] = useState(defaultDate);
   const [pago, setPago] = useState(false);
   const [erro, setErro] = useState("");
@@ -40,19 +41,25 @@ export function FinFreelaDialog({ open, onClose, freela, defaultDate }: { open: 
       setContratante(freela.contratante);
       setServico(freela.servico);
       setTotal(String(freela.total).replace(".", ","));
-      setOperacional(String(freela.operacional_valor).replace(".", ","));
-      setQuem(freela.operacional_user_id ?? (freela.operacional_nome ? OUTRO : ""));
-      setNomeFora(freela.operacional_nome ?? "");
+      const lista: FinOperacional[] = freela.operacionais.length > 0
+        ? freela.operacionais
+        : (freela.operacional_user_id || freela.operacional_nome || freela.operacional_valor > 0)
+          ? [{ user_id: freela.operacional_user_id, nome: freela.operacional_nome, valor: freela.operacional_valor }]
+          : [];
+      setLinhas(lista.length > 0
+        ? lista.map((o, i) => ({ key: i + 1, quem: o.user_id ?? (o.nome ? OUTRO : ""), nome: o.nome ?? "", valor: o.valor ? String(o.valor).replace(".", ",") : "" }))
+        : [novaLinha(1)]);
       setDate(freela.date);
       setPago(freela.status === "pago");
     } else {
-      setContratante(""); setServico(""); setTotal(""); setOperacional(""); setQuem(""); setNomeFora("");
+      setContratante(""); setServico(""); setTotal(""); setLinhas([novaLinha(1)]);
       setDate(defaultDate); setPago(false);
     }
   }, [open, freela, defaultDate]);
 
   const totalN = num(total);
-  const opN = num(operacional);
+  const opN = linhas.reduce((sum, l) => sum + num(l.valor), 0);
+  const setLinha = (key: number, patch: Partial<Linha>) => { setLinhas((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l))); setErro(""); };
   const uau = Math.max(0, totalN - opN);
   const pct = totalN > 0 ? Math.round((uau / totalN) * 100) : 0;
 
@@ -62,8 +69,11 @@ export function FinFreelaDialog({ open, onClose, freela, defaultDate }: { open: 
     if (!(totalN > 0)) return setErro("Informe o valor total.");
     if (opN < 0 || opN > totalN) return setErro("A parte do operacional não pode passar do valor total.");
     if (!date) return setErro("Informe a data.");
-    if (quem === OUTRO && !nomeFora.trim()) return setErro("Escreva o nome de quem fez.");
-    const member = (membersQ.data ?? []).find((m) => m.user_id === quem);
+    if (linhas.some((l) => l.quem === OUTRO && !l.nome.trim())) return setErro("Escreva o nome de quem fez (de fora).");
+    const pessoas: FinOperacional[] = linhas
+      .filter((l) => l.quem || num(l.valor) > 0)
+      .map((l) => ({ user_id: l.quem && l.quem !== OUTRO ? l.quem : null, nome: l.quem === OUTRO ? l.nome.trim() : null, valor: num(l.valor) }));
+    const primeira = pessoas[0];
     save.mutate(
       {
         ...(freela ? { id: freela.id } : {}),
@@ -71,8 +81,9 @@ export function FinFreelaDialog({ open, onClose, freela, defaultDate }: { open: 
         servico: servico.trim(),
         total: totalN,
         operacional_valor: opN,
-        operacional_user_id: member ? member.user_id : null,
-        operacional_nome: quem === OUTRO ? nomeFora.trim() : null,
+        operacional_user_id: primeira?.user_id ?? null,
+        operacional_nome: primeira?.nome ?? null,
+        operacionais: pessoas,
         date,
         status: pago ? "pago" : "pendente",
         paid_at: pago ? (freela?.paid_at ?? format(new Date(), "yyyy-MM-dd")) : null,
@@ -113,25 +124,35 @@ export function FinFreelaDialog({ open, onClose, freela, defaultDate }: { open: 
               <div className="bg-violet-500" style={{ width: `${totalN > 0 ? Math.min(100, (opN / totalN) * 100) : 0}%` }} />
               <div className="bg-emerald-500" style={{ width: `${totalN > 0 ? pct : 0}%` }} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5 text-xs"><span className="h-2 w-2 rounded-full bg-violet-500" />Quem fez</Label>
-                <Select value={quem || undefined} onValueChange={(v) => { setQuem(v); setErro(""); }}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Escolher…" /></SelectTrigger>
-                  <SelectContent className="z-[150]">
-                    {(membersQ.data ?? []).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>)}
-                    <SelectItem value={OUTRO}>Outra pessoa (de fora)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Parte do operacional (R$)</Label>
-                <Input inputMode="decimal" value={operacional} onChange={(e) => { setOperacional(e.target.value); setErro(""); }} placeholder="0,00" className="h-9" />
-              </div>
+            <Label className="flex items-center gap-1.5 text-xs"><span className="h-2 w-2 rounded-full bg-violet-500" />Quem fez e quanto cada um recebe</Label>
+            <div className="space-y-2">
+              {linhas.map((l) => (
+                <div key={l.key} className="space-y-1.5 rounded-lg border border-border/40 p-2">
+                  <div className="flex items-center gap-2">
+                    <Select value={l.quem || undefined} onValueChange={(v) => setLinha(l.key, { quem: v })}>
+                      <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Escolher pessoa…" /></SelectTrigger>
+                      <SelectContent className="z-[150]">
+                        {(membersQ.data ?? []).map((m) => <SelectItem key={m.user_id} value={m.user_id}>{m.display_name}</SelectItem>)}
+                        <SelectItem value={OUTRO}>Outra pessoa (de fora)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input inputMode="decimal" value={l.valor} onChange={(e) => setLinha(l.key, { valor: e.target.value })} placeholder="R$ 0,00" className="h-9 w-28 text-right" aria-label="Valor desta pessoa" />
+                    {linhas.length > 1 && (
+                      <button type="button" onClick={() => setLinhas((prev) => prev.filter((x) => x.key !== l.key))} className="text-muted-foreground hover:text-destructive" aria-label="Remover pessoa" title="Remover pessoa"><X className="h-4 w-4" /></button>
+                    )}
+                  </div>
+                  {l.quem === OUTRO && (
+                    <Input value={l.nome} onChange={(e) => setLinha(l.key, { nome: e.target.value })} placeholder="Nome de quem fez (de fora)" className="h-9" />
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" onClick={() => setLinhas((prev) => [...prev, novaLinha(Math.max(...prev.map((x) => x.key)) + 1)])}>
+                <Plus className="h-3.5 w-3.5" /> Adicionar pessoa
+              </Button>
             </div>
-            {quem === OUTRO && (
-              <Input value={nomeFora} onChange={(e) => { setNomeFora(e.target.value); setErro(""); }} placeholder="Nome de quem fez (de fora)" className="h-9" />
-            )}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Total do operacional</span><span>{brl(opN)}</span>
+            </div>
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Uau (calculado)</span>
               <b className="font-semibold">{brl(uau)} · {pct}%</b>
