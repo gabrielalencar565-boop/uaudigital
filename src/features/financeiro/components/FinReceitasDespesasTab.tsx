@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
-import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle2, Circle, DollarSign, TrendingDown, TrendingUp, Receipt, CreditCard, AlertCircle, Clock, Plus, Pencil } from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ProgressRing } from "@/components/metrics/ProgressRing";
-import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards, useFinAllExpenses, useSaveRecurringExpense } from "../hooks/use-financial-data";
+import { useFinClients, useFinRevenues, useUpsertFinRevenue, useFinExpenses, useUpsertFinExpense, useFinCreditCards, useFinAllExpenses, useSaveRecurringExpense, useFinFreelas, useSaveFinFreela, freelaUau, type FinFreela } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
+import { FinFreelaDialog } from "./FinFreelaDialog";
+import { Button } from "@/components/ui/button";
 import { FinMetricCard } from "./FinMetricCard";
 import { buildEffectiveExpenses } from "../utils/build-effective-expenses";
 import { isClientActiveAt } from "@/lib/client-status";
+import { useTeamMembers } from "@/features/data/queries";
 
 export function FinReceitasDespesasTab() {
   const now = new Date();
@@ -24,6 +27,10 @@ export function FinReceitasDespesasTab() {
   const upsertRev = useUpsertFinRevenue();
   const upsertExp = useUpsertFinExpense();
   const saveRecurring = useSaveRecurringExpense();
+  const freelasQ = useFinFreelas(year, month);
+  const membersQ = useTeamMembers();
+  const saveFreela = useSaveFinFreela();
+  const [freelaDialog, setFreelaDialog] = useState<{ open: boolean; freela: FinFreela | null }>({ open: false, freela: null });
 
   // Status timeline: cliente aparece neste mês apenas se estava 'ativo' naquele período.
   const clients = (clientsQ.data?.filter((c) => isClientActiveAt(c, year, month)) ?? []).sort((a, b) => (a.due_day ?? 10) - (b.due_day ?? 10));
@@ -49,9 +56,14 @@ export function FinReceitasDespesasTab() {
 
   const totalDespesas = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const revByClient = useMemo(() => new Map(revenues.map((r) => [r.client_id, r])), [revenues]);
-  const totalFaturamento = clients.reduce((s, c) => s + Number(c.monthly_value), 0);
+  const totalFixo = clients.reduce((s, c) => s + Number(c.monthly_value), 0);
+  // Freelas: só a parte da Uau conta como receita (a do operacional é repasse)
+  const freelas = freelasQ.data ?? [];
+  const totalFreelas = freelas.reduce((s, f) => s + freelaUau(f), 0);
+  const totalFreelasPagos = freelas.filter((f) => f.status === "pago").reduce((s, f) => s + freelaUau(f), 0);
+  const totalFaturamento = totalFixo + totalFreelas;
   const lucro = totalFaturamento - totalDespesas;
-  const ticketMedio = clients.length > 0 ? totalFaturamento / clients.length : 0;
+  const ticketMedio = clients.length > 0 ? totalFixo / clients.length : 0;
   const margemLucro = totalFaturamento > 0 ? (lucro / totalFaturamento) * 100 : 0;
 
   const revPaid = clients.filter(c => revByClient.get(c.id)?.status === "pago").length;
@@ -63,7 +75,7 @@ export function FinReceitasDespesasTab() {
   }).length : 0;
   const revProgress = revTotal > 0 ? (revPaid / revTotal) * 100 : 0;
   const totalPaidRevenue = clients.filter(c => revByClient.get(c.id)?.status === "pago").reduce((s, c) => s + Number(c.monthly_value), 0);
-  const remainingToReceive = totalFaturamento - totalPaidRevenue;
+  const remainingToReceive = totalFaturamento - totalPaidRevenue - totalFreelasPagos;
 
   type ExpenseDisplayItem = { dueDay: number; paid: boolean; isCard: boolean; cardId?: string; expId?: string; description: string; amount: number };
   const allExpenseItems = useMemo<ExpenseDisplayItem[]>(() => {
@@ -119,6 +131,11 @@ export function FinReceitasDespesasTab() {
     upsertExp.mutate({ id: exp.id, description: exp.description, category: exp.category, year, month, amount: Number(exp.amount), status: newStatus, paid_at } as any);
   };
 
+  const toggleFreelaStatus = (f: FinFreela) => {
+    const pago = f.status !== "pago";
+    saveFreela.mutate({ id: f.id, contratante: f.contratante, servico: f.servico, total: f.total, date: f.date, status: pago ? "pago" : "pendente", paid_at: pago ? new Date().toISOString().slice(0, 10) : null });
+  };
+
   const toggleExpStatus = (exp: typeof allExpenses[0]) => setExpStatus(exp, exp.status === "pago" ? "pendente" : "pago");
 
   const toggleCardStatus = (cardId: string) => {
@@ -172,7 +189,12 @@ export function FinReceitasDespesasTab() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-bold uppercase tracking-wider">Receita Fixa Mensal</CardTitle>
-              <Badge variant="outline" className="font-mono">{revPaid}/{revTotal}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono">{revPaid}/{revTotal}</Badge>
+                <Button type="button" size="sm" className="h-7 gap-1 rounded-full px-3 text-xs" onClick={() => setFreelaDialog({ open: true, freela: null })}>
+                  <Plus className="h-3.5 w-3.5" /> Adicionar freela
+                </Button>
+              </div>
             </div>
             <div className="flex gap-3 mt-1.5">
               <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Pendentes: {revPending}</span>
@@ -212,6 +234,36 @@ export function FinReceitasDespesasTab() {
                   );
                 })}
                 {clients.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Nenhum cliente ativo</td></tr>}
+                {freelas.length > 0 && (
+                  <tr className="border-b bg-muted/30">
+                    <td colSpan={4} className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Freelas · {freelas.length}</td>
+                  </tr>
+                )}
+                {freelas.map((f) => {
+                  const paid = f.status === "pago";
+                  const quem = f.operacional_nome ?? (membersQ.data ?? []).find((m) => m.user_id === f.operacional_user_id)?.display_name ?? null;
+                  return (
+                    <tr key={f.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
+                      <td className={`px-4 py-2.5 ${paid ? "line-through opacity-50" : ""}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{f.servico}</span>
+                          <button type="button" onClick={() => setFreelaDialog({ open: true, freela: f })} className="text-muted-foreground hover:text-foreground" aria-label="Editar freela" title="Editar freela"><Pencil className="h-3 w-3" /></button>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">{f.contratante}{quem ? ` · feito por ${quem}` : ""}</div>
+                      </td>
+                      <td className={`px-4 py-2.5 text-center text-muted-foreground ${paid ? "line-through opacity-50" : ""}`}>{f.date.slice(8, 10)}/{f.date.slice(5, 7)}</td>
+                      <td className={`px-4 py-2.5 text-right ${paid ? "line-through opacity-50" : ""}`}>
+                        <div className="font-medium">R$ {freelaUau(f).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                        <div className="text-[10px] text-muted-foreground">de R$ {f.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · operacional R$ {f.operacional_valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <button onClick={() => toggleFreelaStatus(f)} className="inline-flex items-center justify-center transition-transform hover:scale-110" aria-label={paid ? "Marcar como a receber" : "Marcar como recebido"}>
+                          {paid ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardContent>
@@ -285,6 +337,12 @@ export function FinReceitasDespesasTab() {
           </CardContent>
         </Card>
       </div>
+      <FinFreelaDialog
+        open={freelaDialog.open}
+        onClose={() => setFreelaDialog({ open: false, freela: null })}
+        freela={freelaDialog.freela}
+        defaultDate={`${year}-${String(month).padStart(2, "0")}-${String(isCurrentMonth ? now.getDate() : 1).padStart(2, "0")}`}
+      />
     </div>
   );
 }

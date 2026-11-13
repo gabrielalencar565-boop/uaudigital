@@ -31,6 +31,25 @@ export type FinRevenue = {
   notes: string | null;
 };
 
+/** Freela lançado em Receitas. A parte da Uau é sempre total - operacional (não é guardada). */
+export type FinFreela = {
+  id: string;
+  contratante: string;
+  servico: string;
+  total: number;
+  operacional_valor: number;
+  operacional_user_id: string | null;
+  operacional_nome: string | null;
+  date: string;
+  year: number;
+  month: number;
+  status: string;
+  paid_at: string | null;
+  notes: string | null;
+};
+
+export const freelaUau = (f: Pick<FinFreela, "total" | "operacional_valor">) => Math.max(0, Number(f.total) - Number(f.operacional_valor));
+
 export type FinExpense = {
   id: string;
   description: string;
@@ -94,6 +113,7 @@ const FK = {
   cards: ["fin-cards"] as const,
   transactions: (y: number, m: number) => ["fin-transactions", y, m] as const,
   goals: (y: number) => ["fin-goals", y] as const,
+  freelas: (y: number, m: number) => ["fin-freelas", y, m] as const,
 };
 
 // ── Clients ──
@@ -252,6 +272,61 @@ export function useUpsertFinRevenue() {
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: FK.revenues(v.year, v.month) });
       toast.success("Receita salva");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+// ── Freelas (receita variável: só a parte da Uau conta como receita) ──
+export function useFinFreelas(year: number, month: number) {
+  return useQuery({
+    queryKey: FK.freelas(year, month),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("financial_freelas" as any)
+        .select("*")
+        .eq("year", year)
+        .eq("month", month)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r) => ({ ...r, total: Number(r.total), operacional_valor: Number(r.operacional_valor) })) as FinFreela[];
+    },
+  });
+}
+
+export type FinFreelaInput = Partial<Omit<FinFreela, "year" | "month">> & { contratante: string; servico: string; total: number; date: string };
+
+export function useSaveFinFreela() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (f: FinFreelaInput) => {
+      if (f.id) {
+        const { id, ...rest } = f;
+        const { error } = await supabase.from("financial_freelas" as any).update(rest as any).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("financial_freelas" as any).insert(f as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-freelas"] });
+      toast.success("Freela salvo");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+export function useDeleteFinFreela() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("financial_freelas" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-freelas"] });
+      toast.success("Freela removido");
     },
     onError: (e: any) => toast.error(e.message),
   });

@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown, Play, FileVideo, RefreshCw } from "lucide-react";
+import { Upload, FileText, Download, MoreHorizontal, Link2, ImagePlus, GripVertical, Trash2, Loader2, Pencil, ArrowRightLeft, Target, Rocket, ChevronDown, Play, FileVideo, RefreshCw, Check, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -725,6 +726,22 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
     if (poster) await handleDeleteAttachment(poster, true);
   };
 
+  // Excluir vários de uma vez (seleção): um aviso só no fim, e a miniatura de cada vídeo vai junto
+  const deleteManyWithPoster = async (atts: PmAttachment[]) => {
+    let ok = 0;
+    for (const att of atts) {
+      const posterName = `${att.file_name.replace(/\.[^.]+$/, "")}-poster.jpg`;
+      const poster = att.file_type?.startsWith("video/")
+        ? attachments.find(a => a.id !== att.id && a.category === att.category && a.file_name === posterName && a.file_type?.startsWith("image/"))
+        : undefined;
+      if (await handleDeleteAttachment(att, true)) {
+        ok += 1;
+        if (poster) await handleDeleteAttachment(poster, true);
+      }
+    }
+    if (ok > 0) toast.success(ok === 1 ? "Anexo excluído!" : `${ok} anexos excluídos!`);
+  };
+
   // "Substituir arquivo": sobe o novo (qualquer nome), só depois apaga o antigo e coloca o novo na mesma posição.
   const replaceAttachment = async (att: PmAttachment, file: File) => {
     const category = (att.category ?? "material") as AttachmentCategory;
@@ -778,8 +795,10 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
           if (driveErr) console.warn("Drive delete error:", driveErr);
         });
       }
+      return true;
     } catch (err: any) {
       toast.error(err?.message ?? "Erro ao excluir anexo");
+      return false;
     }
   };
 
@@ -966,6 +985,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
         uploadingFiles={uploadingFiles.filter(u => u.taskId === taskId && u.category === "material")}
         onUpload={(file) => doUpload(file, "material")}
         onDelete={deleteWithPoster}
+        onDeleteMany={deleteManyWithPoster}
         onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
         onRenameStart={handleRenameStart}
         onRenameCommit={handleRenameCommit}
@@ -999,6 +1019,7 @@ export function PmAttachmentsSection({ taskId, taskTitle, attachments, membersMa
         uploadingFiles={uploadingFiles.filter(u => u.taskId === taskId && u.category === "final")}
         onUpload={(file) => doUpload(file, "final")}
         onDelete={deleteWithPoster}
+        onDeleteMany={deleteManyWithPoster}
         onReplace={(att) => { replaceTarget.current = att; replaceInputRef.current?.click(); }}
         onRenameStart={handleRenameStart}
         onRenameCommit={handleRenameCommit}
@@ -1086,6 +1107,7 @@ interface CategorySectionProps {
   uploadingFiles: UploadingFile[];
   onUpload: (file: File) => void | Promise<void>;
   onDelete: (att: PmAttachment) => void;
+  onDeleteMany: (atts: PmAttachment[]) => Promise<void>;
   onReplace: (att: PmAttachment) => void;
   onRenameStart: (att: PmAttachment) => void;
   onRenameCommit: (id: string) => void;
@@ -1114,7 +1136,7 @@ interface CategorySectionProps {
 
 function CategorySection(props: CategorySectionProps) {
   const {
-    category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete, onReplace,
+    category, title, subtitle, icon, accentClass, list, posterMap, uploadingFiles, onUpload, onDelete, onDeleteMany, onReplace,
     onRenameStart, onRenameCommit, renamingId, renameDraft, setRenameDraft, setRenamingId,
     onCopyUrl, onDownload, onSetCover, currentCoverUrl, membersMap, onMove, moveLabel, onOpenViewer, onDownloadAll, downloadingAll, downloadAllDisabled, allAttachments, onMoveCategory,
   } = props;
@@ -1122,6 +1144,71 @@ function CategorySection(props: CategorySectionProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
+
+  // Seleção de vários anexos (para excluir de uma vez)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deletingMany, setDeletingMany] = useState(false);
+  useEffect(() => {
+    // tira da seleção o que já não está na lista (foi excluído ou movido)
+    setSelected((prev) => {
+      const ids = new Set(list.map((a) => a.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [list]);
+  const toggleSelected = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const deleteSelected = async () => {
+    const atts = list.filter((a) => selected.has(a.id));
+    if (atts.length === 0) return;
+    if (!window.confirm(`Excluir ${atts.length} anexo${atts.length > 1 ? "s" : ""}? Não dá para desfazer.`)) return;
+    setDeletingMany(true);
+    try { await onDeleteMany(atts); } finally { setDeletingMany(false); setSelected(new Set()); }
+  };
+
+  // Colar imagem (Ctrl+V com o mouse sobre a seção, ou botão direito → Colar)
+  const hoverRef = useRef(false);
+  const pasteFiles = useCallback(async (files: File[]) => {
+    const d = new Date();
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}.${p2(d.getMinutes())}.${p2(d.getSeconds())}`;
+    let i = 0;
+    for (const f of files) {
+      i += 1;
+      const ext = (f.type.split("/")[1] || "png").replace("jpeg", "jpg").split("+")[0];
+      await onUpload(new File([f], `Colado ${stamp}${files.length > 1 ? ` (${i})` : ""}.${ext}`, { type: f.type }));
+    }
+  }, [onUpload]);
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (!hoverRef.current) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (files.length === 0) return;
+      e.preventDefault();
+      void pasteFiles(files);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [pasteFiles]);
+  const pasteFromClipboard = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      const files: File[] = [];
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (type) { const blob = await item.getType(type); files.push(new File([blob], "imagem", { type })); }
+      }
+      if (files.length === 0) { toast.info("Não há imagem copiada. Copie uma imagem e tente de novo."); return; }
+      await pasteFiles(files);
+    } catch {
+      toast.error("Não consegui ler a área de transferência. Permita o acesso ou use Ctrl+V.");
+    }
+  };
 
   const isImage = (type: string | null) => type?.startsWith("image/");
   const isHeic = (name: string) => /\.heic$/i.test(name);
@@ -1151,9 +1238,13 @@ function CategorySection(props: CategorySectionProps) {
   };
 
   return (
+    <ContextMenu>
+    <ContextMenuTrigger asChild>
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
+      onMouseEnter={() => { hoverRef.current = true; }}
+      onMouseLeave={() => { hoverRef.current = false; }}
       className={cn("relative", dragging && "rounded-xl ring-1 ring-primary/40")}
       onDrop={handleDrop}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -1182,6 +1273,20 @@ function CategorySection(props: CategorySectionProps) {
         </Button>
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleSelect} />
       </div>
+
+      {selected.size > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-xs">
+          <span className="font-medium">{selected.size} selecionado{selected.size > 1 ? "s" : ""}</span>
+          {selected.size < list.length && (
+            <button type="button" className="text-primary underline underline-offset-2" onClick={() => setSelected(new Set(list.map((a) => a.id)))}>Selecionar todos</button>
+          )}
+          <span className="flex-1" />
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setSelected(new Set())} disabled={deletingMany}>Cancelar</Button>
+          <Button type="button" size="sm" variant="destructive" className="h-7 gap-1 px-2 text-xs" onClick={deleteSelected} disabled={deletingMany}>
+            {deletingMany ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir
+          </Button>
+        </div>
+      )}
 
       <CollapsibleContent className="space-y-3 data-[state=open]:mt-3">
         {uploadingFiles.length > 0 && (
@@ -1217,7 +1322,7 @@ function CategorySection(props: CategorySectionProps) {
             onClick={() => fileRef.current?.click()}
           >
             <Upload className="h-4 w-4" />
-            <p className="text-xs">Arraste ou clique para anexar</p>
+            <p className="text-xs">Arraste, clique ou cole (Ctrl+V) para anexar</p>
           </div>
         )}
 
@@ -1241,8 +1346,21 @@ function CategorySection(props: CategorySectionProps) {
                   className={cn(
                     "group relative aspect-square overflow-hidden rounded-xl bg-muted/40 transition-all",
                     isCover && "ring-2 ring-primary/60",
+                    selected.has(att.id) && "ring-2 ring-primary",
                   )}
                 >
+                  <button
+                    type="button"
+                    aria-label={selected.has(att.id) ? "Desmarcar anexo" : "Selecionar anexo"}
+                    onClick={(e) => { e.stopPropagation(); toggleSelected(att.id); }}
+                    className={cn(
+                      "absolute left-1.5 top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-md border backdrop-blur-sm transition-opacity",
+                      selected.has(att.id) ? "border-primary bg-primary text-primary-foreground opacity-100" : "border-white/60 bg-background/70 opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
+                      selected.size > 0 && "sm:opacity-100",
+                    )}
+                  >
+                    {selected.has(att.id) && <Check className="h-3.5 w-3.5" />}
+                  </button>
                   {/* a miniatura preenche o quadrado inteiro */}
                   <div className="h-full w-full [&>*]:!aspect-auto [&>*]:!h-full [&>*]:!rounded-none">
                     {att.public_url ? (
@@ -1263,7 +1381,7 @@ function CategorySection(props: CategorySectionProps) {
                   </div>
 
                   {isCover && (
-                    <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-primary-foreground">Capa</span>
+                    <span className="pointer-events-none absolute left-8 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-primary-foreground">Capa</span>
                   )}
 
                   <div className="absolute right-1.5 top-1.5 z-20">
@@ -1352,5 +1470,12 @@ function CategorySection(props: CategorySectionProps) {
         )}
       </CollapsibleContent>
     </Collapsible>
+    </ContextMenuTrigger>
+    <ContextMenuContent className="z-[150]">
+      <ContextMenuItem className="gap-2 text-xs" onSelect={() => void pasteFromClipboard()}>
+        <ClipboardPaste className="h-3.5 w-3.5" /> Colar imagem
+      </ContextMenuItem>
+    </ContextMenuContent>
+    </ContextMenu>
   );
 }
