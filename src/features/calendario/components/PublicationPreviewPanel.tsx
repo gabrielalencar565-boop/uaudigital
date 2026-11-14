@@ -108,6 +108,8 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   // real pixel size of the attached video, to warn when it isn't 9:16
   const [videoDims, setVideoDims] = useState<{ w: number; h: number } | null>(null);
+  // vídeo que este navegador não consegue tocar (ex.: iPhone em HEVC em computador antigo): em vez de tela preta, avisa e deixa baixar
+  const [videoErroUrl, setVideoErroUrl] = useState<string | null>(null);
   const frameVideoRef = useRef<HTMLVideoElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
   const timeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -586,9 +588,17 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       src={videos[0].url}
                       controls
                       onLoadedMetadata={(e) => setVideoDims({ w: e.currentTarget.videoWidth, h: e.currentTarget.videoHeight })}
+                      onError={() => setVideoErroUrl(videos[0].url)}
+                      playsInline
                       className="mx-auto block rounded-xl bg-black object-contain"
                       style={{ aspectRatio: "9 / 16", width: "min(100%, 38.25vh)" }}
                     />
+                    {videoErroUrl === videos[0].url && (
+                      <div className="mx-auto mt-2 max-w-[38.25vh] space-y-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-center text-[11px] text-amber-600 dark:text-amber-400">
+                        <p>Este computador não conseguiu tocar o vídeo (vídeos de iPhone em formato HEVC não abrem em alguns computadores mais antigos). O vídeo está certo, é só a reprodução neste aparelho.</p>
+                        <a href={videos[0].url} download className="inline-block underline underline-offset-2">Baixar o vídeo</a>
+                      </div>
+                    )}
                     {videoDims && Math.abs(videoDims.w / videoDims.h - 9 / 16) > 0.02 && (
                       <div className="mx-auto mt-2 max-w-[38.25vh] space-y-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-center text-[11px] text-amber-600 dark:text-amber-400">
                         <p>Vídeo em {videoDims.w}x{videoDims.h}: fora do padrão 1080x1920 (9:16) — sairia com tarjas no Instagram.</p>
