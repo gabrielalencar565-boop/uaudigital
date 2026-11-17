@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { tabPath } from "@/lib/app-routes";
 
 type PageOption = { facebook_page_id: string; facebook_page_name: string; instagram_username: string | null };
 
 type Outcome =
   | { status: "loading" }
   | { status: "select"; state: string; clientName: string | null; options: PageOption[] }
-  | { status: "success"; message: string }
+  | { status: "success"; message: string; clientId?: string; held?: number }
   | { status: "error"; message: string };
 
 // supabase-js doesn't surface the response body for non-2xx invokes by default — the
@@ -83,7 +84,7 @@ async function exchangeCode(code: string, state: string): Promise<Outcome> {
     };
   }
   await syncPhotoAfterConnect(data.client_name);
-  return { status: "success", message: successMessage(data) };
+  return { status: "success", message: successMessage(data), clientId: data.client_id, held: data.held_posts ?? 0 };
 }
 
 export default function InstagramCallback() {
@@ -125,7 +126,7 @@ export default function InstagramCallback() {
       return;
     }
     await syncPhotoAfterConnect(data.client_name);
-    setOutcome({ status: "success", message: successMessage(data) });
+    setOutcome({ status: "success", message: successMessage(data), clientId: data.client_id, held: data.held_posts ?? 0 });
   }
 
   return (
@@ -143,6 +144,11 @@ export default function InstagramCallback() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             {(outcome.status === "success" || outcome.status === "error") && <p>{outcome.message}</p>}
+            {outcome.status === "success" && (outcome.held ?? 0) > 0 && (
+              <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-400">
+                {outcome.held === 1 ? "1 post ficou atrasado" : `${outcome.held} posts ficaram atrasados`} enquanto a conta estava desconectada. Nada será publicado até você escolher o que fazer.
+              </p>
+            )}
             {outcome.status === "select" && (
               <>
                 <p className="mb-3">
@@ -168,9 +174,16 @@ export default function InstagramCallback() {
                 {confirming ? "Conectando..." : "Confirmar"}
               </Button>
             ) : (
-              <Button type="button" disabled={outcome.status === "loading"} onClick={() => navigate("/", { replace: true })}>
-                Voltar para o painel
-              </Button>
+              <>
+                {outcome.status === "success" && (outcome.held ?? 0) > 0 && outcome.clientId && (
+                  <Button type="button" onClick={() => navigate(tabPath("clientes", { clienteId: outcome.clientId }), { replace: true })}>
+                    Ver posts em espera
+                  </Button>
+                )}
+                <Button type="button" variant={outcome.status === "success" && (outcome.held ?? 0) > 0 ? "outline" : "default"} disabled={outcome.status === "loading"} onClick={() => navigate("/", { replace: true })}>
+                  Voltar para o painel
+                </Button>
+              </>
             )}
           </CardFooter>
         </Card>

@@ -64,6 +64,8 @@ export interface CalendarPublication {
   // Team explicitly confirmed this is cleared for the auto-publish cron to pick up — set via
   // the per-publication "Agendar" action or the cycle-wide "Agendar publicações" bulk action.
   instagram_scheduled: boolean;
+  // Atrasado quando o Instagram foi reconectado: o cron não publica até alguém escolher (publicar, reagendar ou cancelar).
+  instagram_hold?: boolean;
   // Etiqueta "Reels Teste": vai para o Cronograma, mas é postada à mão (fora do agendamento em lote e do aviso de "sem agendar").
   manual_post: boolean;
   instagram_media_id: string | null;

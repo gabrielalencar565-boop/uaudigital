@@ -343,6 +343,7 @@ async function handleRunSchedules(admin: ReturnType<typeof createClient>) {
     .not("publish_date", "is", null)
     .not("publish_time", "is", null)
     .eq("instagram_scheduled", true)
+    .eq("instagram_hold", false) // em espera (atrasado quando o Instagram foi reconectado): só sai depois que alguém decide
     .in("instagram_status", ["not_published", "failed", "publishing"])
     .is("deleted_at", null) // removida do calendário (lixeira) não é publicada
     .lte("publish_date", todayIso);

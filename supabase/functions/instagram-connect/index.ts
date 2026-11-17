@@ -157,7 +157,40 @@ async function getClientName(admin: ReturnType<typeof createClient>, clientId: s
   return data?.name ?? null;
 }
 
+// Posts agendados que já deveriam ter saído há mais de 1h (ficaram parados com a conta desconectada) entram "em espera": o cron não os publica
+// até alguém escolher publicar, reagendar ou cancelar. Os atrasados há menos de 1h saem normalmente. Roda ANTES de a conexão voltar a ficar ativa.
+const HOLD_AFTER_MS = 60 * 60 * 1000;
+async function holdOverduePosts(admin: ReturnType<typeof createClient>, clientId: string): Promise<number> {
+  try {
+    const { data: calendars } = await admin.from("publication_calendars").select("id").eq("client_id", clientId);
+    const calendarIds = (calendars ?? []).map((c: { id: string }) => c.id);
+    if (calendarIds.length === 0) return 0;
+    const { data: posts } = await admin
+      .from("calendar_publications")
+      .select("id, publish_date, publish_time")
+      .in("calendar_id", calendarIds)
+      .eq("instagram_scheduled", true)
+      .in("instagram_status", ["not_published", "failed", "publishing"])
+      .is("deleted_at", null)
+      .not("publish_date", "is", null)
+      .not("publish_time", "is", null);
+    const limit = Date.now() - HOLD_AFTER_MS;
+    // publish_date/publish_time são horário de Brasília (sem fuso), igual ao instagram-publish
+    const ids = (posts ?? [])
+      .filter((p: { publish_date: string; publish_time: string }) => new Date(`${p.publish_date}T${p.publish_time}-03:00`).getTime() <= limit)
+      .map((p: { id: string }) => p.id);
+    if (ids.length === 0) return 0;
+    const { error } = await admin.from("calendar_publications").update({ instagram_hold: true }).in("id", ids);
+    if (error) throw error;
+    return ids.length;
+  } catch (e) {
+    console.error("holdOverduePosts:", e instanceof Error ? e.message : e);
+    return 0;
+  }
+}
+
 async function finalizeConnection(admin: ReturnType<typeof createClient>, clientId: string, candidate: Candidate) {
+  const held = await holdOverduePosts(admin, clientId);
   const { error: upsertError } = await admin.from("instagram_connections").upsert(
     {
       client_id: clientId,
@@ -176,6 +209,8 @@ async function finalizeConnection(admin: ReturnType<typeof createClient>, client
   if (upsertError) throw upsertError;
   return json({
     success: true,
+    client_id: clientId,
+    held_posts: held,
     client_name: await getClientName(admin, clientId),
     facebook_page_name: candidate.facebook_page_name,
     instagram_username: candidate.instagram_username,
