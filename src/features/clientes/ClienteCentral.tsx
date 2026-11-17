@@ -10,6 +10,7 @@ import { CalendarioPublicacaoPanel, toGridThumbUrl } from "@/features/calendario
 import { ClientResults } from "@/features/resultados/components/ClientResults";
 import { ClienteDocumentos } from "./components/ClienteDocumentos";
 import { ClienteConfiguracoes } from "./components/ClienteConfiguracoes";
+import { InstagramHeldPostsDialog } from "./components/InstagramHeldPostsDialog";
 import { getPendingCalendarioFocus, setPendingCalendarioFocus, subscribePendingCalendarioFocus, type CalendarioFocusRequest } from "@/lib/pending-calendario-focus-store";
 
 const SECTIONS = [
@@ -162,6 +163,7 @@ export function ClienteCentral({ clientId, onBack }: { clientId: string; onBack:
         {section === "documentos" && <ClienteDocumentos clientId={clientId} />}
         {section === "configuracoes" && <ClienteConfiguracoes clientId={clientId} />}
       </main>
+      <InstagramHeldPostsDialog clientId={clientId} clientName={client.name} />
     </div>
   );
 }
