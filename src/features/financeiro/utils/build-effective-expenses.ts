@@ -14,6 +14,8 @@ import type { FinExpense } from "../hooks/use-financial-data";
  *    - Appears in months S through S+(N-C), counting months straight through year ends (Dec → Jan)
  *    - Displayed installment_current = C + (months between S and the target month)
  *
+ * A recurring expense with `ends_at_month` stops appearing from that month on (same year).
+ *
  * `allExpenses` may include installment rows from earlier years (see useFinAllExpenses); recurring ones from other years are ignored.
  * Calculated copies carry `anchor_year`/`anchor_month`: where the row that really applies is stored.
  */
@@ -70,5 +72,18 @@ export function buildEffectiveExpenses(
     result.push({ ...applying, month: targetMonth, year: targetYear, status: "pendente", paid_at: null, anchor_year: applying.year, anchor_month: applying.month } as FinExpense);
   });
 
-  return result;
+  // Recorrente encerrada: some a partir do mês de fim (vale o menor fim entre as versões dela); os meses antes seguem como estavam.
+  const endOf = new Map<string, number>();
+  [...storedExpenses, ...allExpenses].forEach((e) => {
+    if (!e.is_recurring || e.installment_total || !e.ends_at_month || e.year !== targetYear) return;
+    const key = e.series_id ?? e.id;
+    endOf.set(key, Math.min(endOf.get(key) ?? 13, e.ends_at_month));
+  });
+  if (endOf.size === 0) return result;
+  return result.flatMap((e) => {
+    if (!e.is_recurring || e.installment_total) return [e];
+    const end = endOf.get(e.series_id ?? e.id);
+    if (end === undefined) return [e];
+    return targetMonth < end ? [{ ...e, ends_at_month: end } as FinExpense] : [];
+  });
 }

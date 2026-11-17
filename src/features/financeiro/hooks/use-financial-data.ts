@@ -74,6 +74,8 @@ export type FinExpense = {
   series_id?: string | null;
   /** recorrente cadastrada com "vale a partir de": não aparece nos meses antes do mês dela */
   starts_at_month?: boolean;
+  /** recorrente encerrada: deixa de valer a partir deste mês (1-12) do ano; null/ausente = sem fim */
+  ends_at_month?: number | null;
   /** só nas cópias calculadas: ano/mês da linha que de fato vale naquele mês (onde ela está gravada) */
   anchor_year?: number;
   anchor_month?: number;
@@ -424,6 +426,27 @@ export function useSaveRecurringExpense() {
         const { error } = await db.from(T).update({ ...changes, series_id: seriesId, year, month }).eq("id", original.id);
         if (error) throw error;
       }
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+      qc.invalidateQueries({ queryKey: ["fin-expenses-year", v.year] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+/** Encerra (endMonth = 1-12) ou reativa (endMonth = null) uma despesa recorrente: vale para todas as versões dela no ano. */
+export function useEndRecurringExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ original, endMonth, year }: { original: FinExpense; endMonth: number | null; year: number }) => {
+      const seriesId = original.series_id ?? original.id;
+      const { error } = await (supabase as any)
+        .from("financial_expenses")
+        .update({ ends_at_month: endMonth })
+        .eq("year", year)
+        .or(`series_id.eq.${seriesId},id.eq.${seriesId}`);
+      if (error) throw error;
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["fin-expenses"] });

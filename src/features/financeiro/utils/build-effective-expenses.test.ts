@@ -72,4 +72,18 @@ describe("buildEffectiveExpenses", () => {
     expect(buildEffectiveExpenses([], [e], 11, 2026)).toHaveLength(1);
     expect(buildEffectiveExpenses([], [e], 12, 2026)).toHaveLength(1);
   });
+
+  it("recorrente encerrada some a partir do mês de fim e os meses antes seguem como estavam", () => {
+    const e = exp({ id: "r", is_recurring: true, month: 1, year: 2026, amount: 810, ends_at_month: 11 });
+    expect(buildEffectiveExpenses([], [e], 10, 2026)).toHaveLength(1);
+    expect(buildEffectiveExpenses([], [e], 11, 2026)).toHaveLength(0);
+    expect(buildEffectiveExpenses([], [e], 12, 2026)).toHaveLength(0);
+  });
+
+  it("encerrar vale também quando a versão do mês está gravada no próprio mês", () => {
+    const antigo = exp({ id: "v1", is_recurring: true, month: 1, year: 2026, amount: 2000, ends_at_month: 11 });
+    const novo = exp({ id: "v2", is_recurring: true, month: 11, year: 2026, amount: 2200, series_id: "v1", ends_at_month: 11 });
+    expect(buildEffectiveExpenses([novo], [antigo, novo], 11, 2026)).toHaveLength(0);
+    expect(buildEffectiveExpenses([], [antigo, novo], 10, 2026)).toHaveLength(1);
+  });
 });
