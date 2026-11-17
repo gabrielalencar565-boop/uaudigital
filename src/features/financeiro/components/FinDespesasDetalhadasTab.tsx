@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, CreditCard, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarX2, CreditCard, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   useFinExpenses, useUpsertFinExpense, useDeleteFinExpense,
-  useFinCreditCards, useUpsertFinCreditCard, useFinAllExpenses, useSaveRecurringExpense,
+  useFinCreditCards, useUpsertFinCreditCard, useFinAllExpenses, useSaveRecurringExpense, useEndRecurringExpense,
   type FinExpense, type FinCreditCard
 } from "../hooks/use-financial-data";
 import { FinMonthYearSelector } from "./FinMonthYearSelector";
@@ -118,6 +118,10 @@ export function FinDespesasDetalhadasTab() {
   const cardsQ = useFinCreditCards();
   const upsertExp = useUpsertFinExpense();
   const saveRecurring = useSaveRecurringExpense();
+  const endRecurring = useEndRecurringExpense();
+  const [endTarget, setEndTarget] = useState<FinExpense | null>(null);
+  const [endMonthSel, setEndMonthSel] = useState(String(month));
+  const openEnd = (e: FinExpense) => { setEndTarget(e); setEndMonthSel(String(e.ends_at_month ?? month)); };
   const deleteExp = useDeleteFinExpense();
   const upsertCard = useUpsertFinCreditCard();
 
@@ -319,6 +323,7 @@ export function FinDespesasDetalhadasTab() {
                       <div className="h-2 w-2 rounded-full bg-primary/60" />
                       <span className="font-medium text-sm">{e.description}</span>
                       {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                      {e.is_recurring && !e.installment_total && e.ends_at_month && <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-500/40">Encerra em {MONTH_NAMES[e.ends_at_month - 1]}</Badge>}
                       {e.installment_total && (
                         <Badge variant="outline" className="text-[9px] font-mono">{e.installment_current}/{e.installment_total}</Badge>
                       )}
@@ -327,6 +332,7 @@ export function FinDespesasDetalhadasTab() {
                       <span className="font-semibold text-sm tabular-nums">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                        {e.is_recurring && !e.installment_total && <Button size="icon" variant="ghost" className="h-6 w-6" title="Encerrar a partir de um mês" onClick={() => openEnd(e)}><CalendarX2 className="h-3 w-3" /></Button>}
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                       </div>
                     </div>
@@ -362,6 +368,7 @@ export function FinDespesasDetalhadasTab() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">{e.description}</span>
                       {e.is_recurring && !e.installment_total && <Badge variant="secondary" className="text-[9px]">Recorrente</Badge>}
+                      {e.is_recurring && !e.installment_total && e.ends_at_month && <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-500/40">Encerra em {MONTH_NAMES[e.ends_at_month - 1]}</Badge>}
                       {e.installment_total && <span className="text-[10px] text-muted-foreground">{e.installment_current}/{e.installment_total}</span>}
                     </div>
                     <div className="flex items-center gap-2">
@@ -369,6 +376,7 @@ export function FinDespesasDetalhadasTab() {
                       <span className="font-semibold text-sm">R$ {Number(e.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(e)}><Pencil className="h-3 w-3" /></Button>
+                        {e.is_recurring && !e.installment_total && <Button size="icon" variant="ghost" className="h-6 w-6" title="Encerrar a partir de um mês" onClick={() => openEnd(e)}><CalendarX2 className="h-3 w-3" /></Button>}
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteExp.mutate({ id: e.id, year, month })}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                       </div>
                     </div>
@@ -468,6 +476,38 @@ export function FinDespesasDetalhadasTab() {
             )}
           </div>
           <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={save} disabled={!form.description || upsertExp.isPending || saveRecurring.isPending || (form.kind === "parcelada" && (!installmentPlan || installmentPlan.ended))}>Salvar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Encerrar recorrente */}
+      <Dialog open={!!endTarget} onOpenChange={(o) => { if (!o) setEndTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Encerrar {endTarget?.description}</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Deixa de valer a partir de</Label>
+            <Select value={endMonthSel} onValueChange={setEndMonthSel}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{MONTH_NAMES.map((n, i) => <SelectItem key={n} value={String(i + 1)}>{n}/{year}</SelectItem>)}</SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {MONTH_NAMES[parseInt(endMonthSel) - 1]} e os meses seguintes deixam de contar essa despesa. Os meses anteriores continuam como estão.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {endTarget?.ends_at_month ? (
+              <Button type="button" variant="ghost" disabled={endRecurring.isPending}
+                onClick={() => endTarget && endRecurring.mutate({ original: endTarget, endMonth: null, year }, { onSuccess: () => { setEndTarget(null); toast.success("Encerramento removido"); } })}>
+                Remover encerramento
+              </Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setEndTarget(null)}>Cancelar</Button>
+              <Button type="button" disabled={endRecurring.isPending}
+                onClick={() => endTarget && endRecurring.mutate({ original: endTarget, endMonth: parseInt(endMonthSel), year }, { onSuccess: () => { setEndTarget(null); toast.success(`Encerrada a partir de ${MONTH_NAMES[parseInt(endMonthSel) - 1]}`); } })}>
+                Encerrar
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
