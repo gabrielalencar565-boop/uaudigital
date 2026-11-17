@@ -53,11 +53,16 @@ function json(body: unknown, status = 200) {
 
 // Mirrors the frontend's profiles → team_members fallback (see useMyProfile) so this check
 // stays true to whatever cargo the person actually has set, wherever it lives.
-async function getRoleTitle(admin: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data: profile } = await admin.from("profiles").select("role_title").eq("user_id", userId).maybeSingle();
-  if (profile?.role_title != null) return profile.role_title as string;
-  const { data: member } = await admin.from("team_members").select("role_title").eq("user_id", userId).maybeSingle();
-  return (member?.role_title as string | undefined) ?? null;
+async function getRoleTitles(admin: ReturnType<typeof createClient>, userId: string): Promise<string[]> {
+  // A pessoa pode ter mais de um cargo (role_titles). Antes só o texto role_title era lido, e "Head de Conteúdo, Social Media"
+  // não batia com nenhum cargo liberado — quem tem dois cargos levava "sem permissão". Igual à regra do front (usePermission).
+  const clean = (v: unknown): string[] => (Array.isArray(v) ? v : []).map((x) => String(x).trim()).filter(Boolean);
+  const { data: profile } = await admin.from("profiles").select("role_title, role_titles").eq("user_id", userId).maybeSingle();
+  if (clean(profile?.role_titles).length > 0) return clean(profile?.role_titles);
+  const { data: member } = await admin.from("team_members").select("role_title, role_titles").eq("user_id", userId).maybeSingle();
+  if (clean(member?.role_titles).length > 0) return clean(member?.role_titles);
+  const single = (profile?.role_title ?? member?.role_title) as string | null | undefined;
+  return single ? single.split(",").map((x) => x.trim()).filter(Boolean) : [];
 }
 
 // Same rule as the frontend's usePermission() (src/hooks/use-permission.ts): admin always
@@ -89,8 +94,8 @@ async function requireFeaturePermission(req: Request, key: string) {
     const roleMatch = (perm?.allowed_roles ?? []).some((r: string) => roleSet.has(r));
     let cargoMatch = false;
     if (!roleMatch && perm?.allowed_cargos?.length) {
-      const roleTitle = ((await getRoleTitle(admin, userId)) ?? "").trim().toLowerCase();
-      cargoMatch = !!roleTitle && perm.allowed_cargos.some((c: string) => c.trim().toLowerCase() === roleTitle);
+      const roleTitles = (await getRoleTitles(admin, userId)).map((t) => t.toLowerCase());
+      cargoMatch = roleTitles.length > 0 && perm.allowed_cargos.some((c: string) => roleTitles.includes(c.trim().toLowerCase()));
     }
     if (!roleMatch && !cargoMatch) {
       throw json({ error: "sem permissão para esta ação" }, 403);
