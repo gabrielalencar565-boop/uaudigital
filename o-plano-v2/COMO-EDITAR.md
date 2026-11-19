@@ -116,8 +116,8 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 | `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo e o "P" atrás são feitos no código. | 1400 × 841 |
 | `capa-pessoas-mobile.webp` | Mesma foto, menor, para o celular | 900 × 541 |
 | `gabriel.webp` | Quem ensina | 800 × 1000 (vertical 4:5) |
-| `bruna.webp` | Quem ensina (Bruna) | 800 × 1000 (vertical 4:5) |
-| `ayrton.webp` | Quem ensina (Ayrton) | 800 × 1000 (vertical 4:5) |
+| `bruna.webp` | Quem ensina (Bruna, já incluída) | 800 × 1000 (vertical 4:5) |
+| `ayrton.webp` | Quem ensina (Ayrton, já incluída) | 800 × 1000 (vertical 4:5) |
 | `mockup-aula.webp` | Print da aula no painel dos módulos | 1440 × 900 (16:10) |
 | `bonus-briefing.webp` | Bônus 1 (Briefing Estratégico) | 600 × 680 |
 | `bonus-guia.webp` | Bônus 2 (O Guia do Social Media Estratégico) | 600 × 680 |
