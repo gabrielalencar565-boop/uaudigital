@@ -68,16 +68,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn--xl { min-height: 64px; font-size: 20px; width: 100%; }
 .play { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--white); color: var(--r2); }
 
-/* ---------- Topbar ---------- */
-.topbar { position: absolute; inset: 0 0 auto; z-index: 20; padding: 18px 0; }
-.topbar__in { display: flex; align-items: center; gap: 28px; }
-.logo { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.045em; line-height: 1; text-decoration: none; color: var(--t-light); }
-.logo span { color: var(--lilas); }
-.topbar__nav { display: none; gap: 24px; font-size: 14px; color: var(--t-light-2); }
-.topbar__nav a { text-decoration: none; }
-.topbar__nav a:hover { color: var(--white); }
-.topbar__cta { display: none; }
-
 /* ---------- Hero (capa) ---------- */
 .hero { position: relative; color: var(--t-light); background: #0E0E0E; overflow: hidden; isolation: isolate; padding: 0 0 56px; }
 .hero__bg { display: block; position: relative; z-index: -1; margin-bottom: -16%; }
@@ -290,6 +280,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .footer { background: var(--ink); color: var(--t-light-2); padding: 40px 0 120px; font-size: 15px; }
 .footer__in { display: grid; gap: 6px; justify-items: center; text-align: center; }
 .footer p { margin: 0; }
+.logo { font-size: 24px; font-weight: 800; letter-spacing: -.045em; line-height: 1; color: var(--t-light); }
+.logo span { color: var(--lilas); }
 .footer a { color: var(--lilas); font-weight: 600; text-decoration: none; }
 .footer__copy { font-size: 13px; opacity: .8; }
 
@@ -349,11 +341,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
    ≥ 1080px
    ========================================================================= */
 @media (min-width: 1080px) {
-  .topbar { padding: 24px 0; }
-  .topbar__nav { display: flex; margin-left: auto; }
-  .topbar__cta { display: inline-flex; }
 
-  .hero { min-height: min(100svh, 920px); display: flex; align-items: center; padding: 110px 0 90px; }
+  .hero { min-height: min(100svh, 920px); display: flex; align-items: center; padding: 90px 0 90px; }
   .hero__bg { position: absolute; right: 0; top: 50%; transform: translateY(-46%); width: min(68%, 1240px); margin: 0; }
   .hero__bg img { aspect-ratio: 1400 / 1000; }
   .hero__bg::after { background: linear-gradient(90deg, #0E0E0E 0%, rgba(14,14,14,.5) 12%, rgba(14,14,14,0) 30%), linear-gradient(180deg, #0E0E0E 0%, rgba(14,14,14,0) 14%, rgba(14,14,14,0) 80%, #0E0E0E 100%); }
