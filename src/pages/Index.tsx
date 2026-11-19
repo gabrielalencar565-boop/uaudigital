@@ -1,4 +1,5 @@
 import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMagic2StagesSync } from "@/features/magic2/hooks/use-magic2-stages-sync";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,6 +80,7 @@ const Index = () => {
   );
   const { user } = useSession();
   const { isAdmin } = useRole(user?.id);
+  useMagic2StagesSync();
   // Quem além de admin pode ver Financeiro/Comercial é configurável em Configurações →
   // Permissões — a leitura dos dados em si (RLS) continua restrita a admin, então liberar
   // aqui só abre a aba; sem dado extra liberado no banco.

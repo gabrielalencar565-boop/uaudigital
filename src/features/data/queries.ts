@@ -213,6 +213,8 @@ export type AppSettingsRow = {
   whats_new_published_at: string | null;
   magic_number_day: number;
   magic_number_label: string;
+  /** etapas do Magic Number que a agência deixou de contar (ex.: "alteracoes") */
+  magic_number_disabled_stages: string[];
   /** meses de antecedência do conteúdo: o trabalho feito em um mês conta no mês +N (0 = mesmo mês) */
   content_month_offset: number;
   slogan: string | null;
@@ -236,7 +238,7 @@ export function useAppSettings() {
       const { data: agencyId } = await (supabase as any).rpc("current_agency_id");
       let query = supabase
         .from("app_settings")
-        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, magic_number_day, magic_number_label, content_month_offset, slogan, sidebar_color, chart_accent_color, header_gradient_from, header_gradient_to, favicon_url, link_preview_title, link_preview_description, updated_at, updated_by")
+        .select("id, sidebar_logo_url, sidebar_logo_dark_url, sidebar_symbol_url, brand_color, workspace_name, login_bg_images, link_preview_image_url, whats_new_enabled, whats_new_title, whats_new_description, whats_new_target_tab, whats_new_target_action, whats_new_target_selector, whats_new_published_at, magic_number_day, magic_number_label, magic_number_disabled_stages, content_month_offset, slogan, sidebar_color, chart_accent_color, header_gradient_from, header_gradient_to, favicon_url, link_preview_title, link_preview_description, updated_at, updated_by")
         ;
       query = agencyId ? (query as any).eq("agency_id", agencyId) : (query as any).eq("id", 1);
       const { data, error } = await (query as any).maybeSingle();
@@ -259,6 +261,7 @@ export function useAppSettings() {
         whats_new_published_at: d?.whats_new_published_at ?? null,
         magic_number_day: d?.magic_number_day ?? 27,
         magic_number_label: d?.magic_number_label ?? "Magic Number",
+        magic_number_disabled_stages: Array.isArray(d?.magic_number_disabled_stages) ? d.magic_number_disabled_stages : [],
         slogan: d?.slogan ?? null,
         sidebar_color: d?.sidebar_color ?? null,
         chart_accent_color: d?.chart_accent_color ?? null,
@@ -292,6 +295,7 @@ export function useUpdateAppSettings() {
       whats_new_published_at?: string | null;
       magic_number_day?: number;
       magic_number_label?: string;
+      magic_number_disabled_stages?: string[];
       content_month_offset?: number;
       slogan?: string | null;
       sidebar_color?: string | null;

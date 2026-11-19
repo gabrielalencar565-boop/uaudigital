@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { isMagic2StageActive } from "@/features/magic2/magic2-stages";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,10 +192,11 @@ export function VisaoGeralTab() {
       const prevCycles = allCycles.filter(c => c.year === prevYear && c.month === prevMonth);
 
       const allCycleIds = allCycles.map(c => c.id);
-      const { data: allStages } = await supabase
+      const { data: allStagesRaw } = await supabase
         .from("magic2_cycle_stages")
         .select("id, cycle_id, stage, completed, completed_at")
         .in("cycle_id", allCycleIds);
+      const allStages = (allStagesRaw ?? []).filter((s: any) => isMagic2StageActive(s.stage));
 
       // Get magic2_client_links
       const magic2ClientIds = [...new Set(allCycles.map(c => c.client_id))];
@@ -308,7 +310,7 @@ export function VisaoGeralTab() {
   }, [magic2StagesQ.data?.prevStages, activeClientIds]);
   const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
 
-  const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
+  const STAGE_ORDER = (["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const).filter((k) => isMagic2StageActive(k));
   const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 
   const computeSpeed = (stages: any[]) => {

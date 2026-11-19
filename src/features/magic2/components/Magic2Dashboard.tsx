@@ -126,7 +126,7 @@ export function Magic2Dashboard({ dashboard, year, month, fullscreen, showCloseC
   const stagesForDashboard: { key: Magic2StageKey; label: string }[] = (() => {
     const order: Magic2StageKey[] = [
       "planejamento", "captacao", "edicao_videos", "design",
-      "alteracoes", "pdf", "agendamento",
+      "alteracoes", "pdf", "agendamento", // as desligadas saem no filtro abaixo (MAGIC2_STAGES só tem as que contam)
     ];
     const byKey = new Map(MAGIC2_STAGES.map((s) => [s.key, s] as const));
     return order.map((k) => byKey.get(k)).filter(Boolean) as { key: Magic2StageKey; label: string }[];

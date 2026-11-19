@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import type { Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { isMagic2StageActive, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { useMagicNumberConfig } from "@/features/data/queries";
 
 function dateOnly(year: number, month: number, day: number) {
@@ -54,7 +54,7 @@ export function useMagic2Month(year: number, month: number) {
         : { data: [] as any[], error: null as any };
       if ((stagesRes as any).error) throw (stagesRes as any).error;
 
-      const stages = ((stagesRes as any).data ?? []) as Magic2StageRow[];
+      const stages = (((stagesRes as any).data ?? []) as Magic2StageRow[]).filter((s) => isMagic2StageActive(s.stage));
       return { cycles: activeCycles, stages };
     },
   });
@@ -90,8 +90,8 @@ export function useCreateMagic2Client() {
       if (insCycles.error) throw insCycles.error;
       const cycles = insCycles.data ?? [];
 
-      // Inicializa as 7 etapas em todos os ciclos
-      const { MAGIC2_STAGES } = await import("@/features/magic2/magic2-stages");
+      // Inicializa todas as etapas em todos os ciclos (as desligadas ficam guardadas para quando voltarem)
+      const { ALL_MAGIC2_STAGES: MAGIC2_STAGES } = await import("@/features/magic2/magic2-stages");
       const stagesPayload = cycles.flatMap((c: any) =>
         MAGIC2_STAGES.map((s) => ({
           cycle_id: c.id as string,
