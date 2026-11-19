@@ -1,11 +1,15 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check } from "lucide-react";
+import { Check, Columns3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import type { Magic2CycleRow, Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+const HIDDEN_STAGES_KEY = "magic2-checklist-hidden-stages";
 
 type Props = {
   year: number;
@@ -22,6 +26,23 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [selectedStageIdx, setSelectedStageIdx] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Etapas escondidas só na tela deste Checklist (por navegador). Os percentuais do painel, das metas e da análise continuam contando todas.
+  const [hiddenStages, setHiddenStages] = useState<Magic2StageKey[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(HIDDEN_STAGES_KEY) ?? "[]");
+      return Array.isArray(raw) ? raw.filter((k): k is Magic2StageKey => MAGIC2_STAGES.some((s) => s.key === k)) : [];
+    } catch { return []; }
+  });
+  const visibleStages = useMemo(() => MAGIC2_STAGES.filter((s) => !hiddenStages.includes(s.key)), [hiddenStages]);
+  const toggleStageVisible = (key: Magic2StageKey) => {
+    setSelectedStageIdx(-1);
+    setHiddenStages((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : MAGIC2_STAGES.length - prev.length > 1 ? [...prev, key] : prev; // sempre sobra ao menos uma
+      try { localStorage.setItem(HIDDEN_STAGES_KEY, JSON.stringify(next)); } catch { /* sem armazenamento: vale só nesta sessão */ }
+      return next;
+    });
+  };
 
   const sortedCycles = useMemo(() => {
     const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
@@ -45,11 +66,11 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
   const clientProgress = useMemo(() => {
     return sortedCycles.map((c) => {
       const stageMap = byCycleStage.get(c.id) ?? new Map();
-      const total = MAGIC2_STAGES.length;
-      const done = Array.from(stageMap.values()).filter((s) => s.completed).length;
+      const total = visibleStages.length;
+      const done = visibleStages.filter((st) => stageMap.get(st.key)?.completed).length;
       return { cycleId: c.id, name: c.magic2_clients?.name ?? "—", total, done, pct: Math.round((done / total) * 100) };
     });
-  }, [byCycleStage, sortedCycles]);
+  }, [byCycleStage, sortedCycles, visibleStages]);
 
   const selectCycle = useCallback((cycleId: string | null) => {
     setSelectedCycleId(cycleId);
@@ -57,8 +78,8 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
   }, []);
 
   const toggleCurrentStage = useCallback(() => {
-    if (!selectedCycleId || selectedStageIdx < 0 || selectedStageIdx >= MAGIC2_STAGES.length) return;
-    const st = MAGIC2_STAGES[selectedStageIdx];
+    if (!selectedCycleId || selectedStageIdx < 0 || selectedStageIdx >= visibleStages.length) return;
+    const st = visibleStages[selectedStageIdx];
     const cell = byCycleStage.get(selectedCycleId)?.get(st.key);
     if (cell) {
       onToggleStage(cell.id, cell.completed);
@@ -79,7 +100,7 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
       switch (e.key) {
         case "ArrowRight":
           e.preventDefault();
-          setSelectedStageIdx((prev) => Math.min(prev + 1, MAGIC2_STAGES.length - 1));
+          setSelectedStageIdx((prev) => Math.min(prev + 1, visibleStages.length - 1));
           break;
         case "ArrowLeft":
           e.preventDefault();
@@ -112,9 +133,28 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
 
   return (
     <Card>
-      <CardHeader className={cn(isMobile && "px-4 pb-3")}>
-        <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Checklist</CardTitle>
-        <CardDescription>{isMobile ? "Toque numa etapa para marcar ou desmarcar." : "Clique no cliente e use ← → para navegar entre etapas. Enter para marcar/desmarcar."}</CardDescription>
+      <CardHeader className={cn("flex-row items-start justify-between gap-3 space-y-0", isMobile && "px-4 pb-3")}>
+        <div className="space-y-1.5">
+          <CardTitle className={cn(isMobile ? "text-base" : "text-lg")}>Checklist</CardTitle>
+          <CardDescription>{isMobile ? "Toque numa etapa para marcar ou desmarcar." : "Clique no cliente e use ← → para navegar entre etapas. Enter para marcar/desmarcar."}</CardDescription>
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+              <Columns3 className="h-3.5 w-3.5" /> Colunas{hiddenStages.length > 0 ? ` (${hiddenStages.length} oculta${hiddenStages.length > 1 ? "s" : ""})` : ""}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-56 space-y-1 p-2">
+            <p className="px-2 pb-1 text-xs text-muted-foreground">Mostrar no Checklist</p>
+            {MAGIC2_STAGES.map((st) => (
+              <label key={st.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/50">
+                <Checkbox checked={!hiddenStages.includes(st.key)} onCheckedChange={() => toggleStageVisible(st.key)} />
+                {st.label}
+              </label>
+            ))}
+            <p className="px-2 pt-1 text-[11px] leading-snug text-muted-foreground">Só esconde aqui. O painel, as metas e a análise mensal continuam contando todas as etapas.</p>
+          </PopoverContent>
+        </Popover>
       </CardHeader>
 
       <CardContent className={cn("space-y-4", isMobile && "px-3 pb-3")}>
@@ -144,7 +184,7 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
-                    {MAGIC2_STAGES.map((st) => {
+                    {visibleStages.map((st) => {
                       const cell = stageMap.get(st.key);
                       const completed = !!cell?.completed;
                       return (
@@ -182,7 +222,7 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                 <th className="sticky left-0 z-10 w-[220px] bg-background px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
                   Cliente
                 </th>
-                {MAGIC2_STAGES.map((st) => (
+                {visibleStages.map((st) => (
                   <th key={st.key} className="w-[120px] px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
                     {st.label}
                   </th>
@@ -205,7 +245,7 @@ export function Magic2Checklist({ year, month, cycles, stages, isBusy, onToggleS
                       </span>
                     </button>
                   </td>
-                  {MAGIC2_STAGES.map((st, stIdx) => {
+                  {visibleStages.map((st, stIdx) => {
                     const cell = byCycleStage.get(c.id)?.get(st.key);
                     const completed = !!cell?.completed;
                     const isFocused = isSelected && selectedStageIdx === stIdx;
