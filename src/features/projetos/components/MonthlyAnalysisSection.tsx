@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 import { useMagic2Month, type Magic2CycleRow, type Magic2StageRow } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Year } from "@/features/magic2/hooks/use-magic2-year";
-import { MAGIC2_STAGES } from "@/features/magic2/magic2-stages";
+import { MAGIC2_STAGES, isMagic2StageActive } from "@/features/magic2/magic2-stages";
 import { getCycleMonthYear } from "@/features/magic2/Magic2Panel";
 import { useMagicNumberConfig } from "@/features/data/queries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,7 +52,7 @@ const STAGE_SHORT: Record<string, string> = {
   planejamento: "Planej.", captacao: "Captação", design: "Design", edicao_videos: "Vídeo", pdf: "Cronog.", agendamento: "Agend.", alteracoes: "Alter.",
 };
 // Ordem em que as etapas costumam acontecer ao longo do mês.
-const STAGE_ORDER = ["planejamento", "captacao", "design", "edicao_videos", "pdf", "agendamento", "alteracoes"] as const;
+const STAGE_ORDER = (["planejamento", "captacao", "design", "edicao_videos", "pdf", "agendamento", "alteracoes"] as const).filter((k) => isMagic2StageActive(k));
 const EARLY_DAY = 20;
 
 type GridCell = { label: string; done: boolean; late: boolean; early: boolean; rel: number | null };

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isMagic2StageActive } from "@/features/magic2/magic2-stages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { useMagicNumberConfig } from "@/features/data/queries";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 import { stageLabel } from "@/features/gestao/pm-constants";
 
-const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
+const STAGE_ORDER = (["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const).filter((k) => isMagic2StageActive(k));
 const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 const STAGE_COLORS: Record<string, string> = Object.fromEntries(
   STAGE_ORDER.map((k, i) => [k, brandSeriesColor(i)]),

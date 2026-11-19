@@ -6,6 +6,8 @@ import { Target } from "lucide-react";
 import { useToggleMagic2Stage, useCreateAndToggleMagic2Stage, useMagic2Closure } from "@/features/magic2/hooks/use-magic2";
 import { useMagic2Dashboard } from "@/features/magic2/hooks/use-magic2-dashboard";
 import { useSession } from "@/hooks/use-session";
+import { useRole } from "@/hooks/use-role";
+import { Magic2StagesConfig } from "@/features/magic2/components/Magic2StagesConfig";
 import { MonthYearNav } from "@/features/magic2/components/MonthYearNav";
 import { Magic2Checklist } from "@/features/magic2/components/Magic2Checklist";
 import { Magic2Dashboard } from "@/features/magic2/components/Magic2Dashboard";
@@ -21,6 +23,7 @@ export function getCycleMonthYear(now: Date, day: DiaDInput) {
 
 export function Magic2Panel() {
   const { user } = useSession();
+  const { isAdmin } = useRole(user?.id);
   const now = new Date();
   const { dayFor } = useMagicNumberConfig();
   const initial = getCycleMonthYear(now, dayFor);
@@ -67,6 +70,7 @@ export function Magic2Panel() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          {isAdmin && <Magic2StagesConfig />}
           <MonthYearNav month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
         </div>
       </div>

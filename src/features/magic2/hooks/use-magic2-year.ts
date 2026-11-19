@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { MAGIC2_STAGES, type Magic2StageKey } from "@/features/magic2/magic2-stages";
+import { MAGIC2_STAGES, isMagic2StageActive, type Magic2StageKey } from "@/features/magic2/magic2-stages";
 import { getBrazilDay } from "@/features/projetos/utils/score-utils";
 import { useMagicNumberConfig } from "@/features/data/queries";
 
@@ -48,7 +48,7 @@ export function useMagic2Year(year: number) {
         : { data: [] as any[], error: null };
       if ((stagesRes as any).error) throw (stagesRes as any).error;
 
-      const stages = ((stagesRes as any).data ?? []) as Magic2YearStageRow[];
+      const stages = (((stagesRes as any).data ?? []) as Magic2YearStageRow[]).filter((s) => isMagic2StageActive(s.stage));
 
       const monthlyMap = new Map<
         number,
