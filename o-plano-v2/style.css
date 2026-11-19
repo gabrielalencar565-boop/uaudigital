@@ -400,6 +400,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .ed-panel { position: fixed; z-index: 96; right: 16px; bottom: 16px; width: min(360px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; padding: 18px; border-radius: 16px; background: #111; color: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.12); }
 .ed-panel[hidden] { display: none; }
 .ed-panel__title { margin: 0 0 12px; font-weight: 800; font-size: 17px; }
+.ed-panel__sub { margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); font-weight: 700; font-size: 14px; }
 .ed-field { display: grid; gap: 6px; margin: 0 0 14px; font-size: 13px; color: #d9d3e5; }
 .ed-field output { float: right; font-weight: 700; color: #fff; }
 .ed-field input[type=text] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: #1c1923; color: #fff; font: inherit; font-size: 14px; }
@@ -407,6 +408,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .ed-row { display: flex; gap: 8px; margin: 0 0 14px; }
 .ed-hint { margin: 0; font-size: 12px; color: #9c95ab; }
 .ed-x { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #222; color: #fff; }
+.ed-side { position: absolute; right: 46px; top: 10px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #222; color: #fff; }
+.ed-panel--left { right: auto; left: 16px; }
 body.ed-on { padding-top: 64px; }
 body.ed-on .sticky-buy { display: none; }
 body.ed-on [data-ed-t] { outline: 1px dashed rgba(139,85,224,.55); outline-offset: 3px; cursor: text; }

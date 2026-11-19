@@ -13,6 +13,10 @@ No modo de edição:
 | **Mudar o tamanho de um texto** | Clique no texto e use a barra **Tamanho do texto** no painel da direita. |
 | **Trocar uma imagem** | Clique na imagem e em **Trocar imagem**. Ela é reduzida e otimizada sozinha. |
 | **Mudar o tamanho de uma imagem** | Clique na imagem e use a barra **Tamanho da imagem**. Nas fotos dos cards, a barra funciona como **Zoom**. |
+| **Largura de um texto ou imagem** | Clique nele e use a barra **Largura** (100% = original). |
+| **Mover para os lados ou para cima/baixo** | Barras **Mover para os lados (X)** e **Mover para cima/baixo (Y)**, em pixels. |
+| **Afastar ou aproximar** | Barras **Espaço acima** e **Espaço abaixo** (valores negativos aproximam). |
+| **Painel cobrindo o que você edita** | Clique em **⇆** no painel para mudá-lo de lado. |
 | **Mudar a descrição de uma imagem** | Clique na imagem e edite o campo **Descrição** (é lida por leitores de tela e pelo Google). |
 | **Preço, parcelamento, data, garantia, link da Kiwify e vídeo** | Clique em **Preço e link** na barra de cima. |
 | **Desfazer** | Clique no texto ou na imagem e em **Voltar ao original**. |

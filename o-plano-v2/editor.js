@@ -36,12 +36,12 @@
   let caps = { db: null, assets: null, downloads: null, canWrite: false, inArtifact: false };
   let selected = null, dirty = false;
 
-  function blank() { return { texts: {}, textScale: {}, images: {}, config: {} }; }
+  function blank() { return { texts: {}, textScale: {}, images: {}, config: {}, layout: {} }; }
   function merge(base, extra) {
     const out = blank();
     [base, extra].forEach((src) => {
       if (!src) return;
-      ["texts", "textScale", "images", "config"].forEach((k) => Object.assign(out[k], src[k] || {}));
+      ["texts", "textScale", "images", "config", "layout"].forEach((k) => Object.assign(out[k], src[k] || {}));
     });
     return out;
   }
@@ -78,6 +78,47 @@
   function scaleTarget(img) {
     return img.closest(".hero__art") || img.closest(".teacher__media") || null;
   }
+  // elemento que se move/estica quando você ajusta largura, X, Y e espaços
+  function boxOf(el) {
+    if (el.dataset.edT) return el;
+    return scaleTarget(el) || el.closest(".card") || el.closest(".quote__av, .sheet__screen, .ph") || el;
+  }
+  const LAYOUT = [
+    ["w", "Largura", 30, 160, 1, "%", 100],
+    ["x", "Mover para os lados (X)", -300, 300, 2, "px", 0],
+    ["y", "Mover para cima/baixo (Y)", -300, 300, 2, "px", 0],
+    ["mt", "Espaço acima", -120, 240, 2, "px", 0],
+    ["mb", "Espaço abaixo", -120, 240, 2, "px", 0],
+  ];
+  function applyLayout(box, l) {
+    l = l || {};
+    const flexChild = box.parentElement && getComputedStyle(box.parentElement).display.includes("flex");
+    if (l.w != null && l.w !== 100) {
+      box.style.width = l.w + "%"; box.style.maxWidth = "none";
+      if (flexChild) box.style.flex = "0 0 " + l.w + "%";
+    } else { box.style.width = ""; box.style.maxWidth = ""; box.style.flex = ""; }
+    box.style.translate = (l.x || l.y) ? (l.x || 0) + "px " + (l.y || 0) + "px" : "";
+    box.style.marginTop = l.mt ? l.mt + "px" : "";
+    box.style.marginBottom = l.mb ? l.mb + "px" : "";
+  }
+  function layoutControls(k) {
+    const l = state.layout[k] || {};
+    return '<p class="ed-panel__sub">Largura, posição e espaço</p>' + LAYOUT.map(([f, label, min, max, step, unit, def]) => {
+      const v = l[f] != null ? l[f] : def;
+      return `<label class="ed-field">${label} <output>${v}${unit}</output>
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-lay="${f}" data-unit="${unit}" data-def="${def}"></label>`;
+    }).join("");
+  }
+  function bindLayout(k, box) {
+    $$("[data-lay]", ui.panel).forEach((r) => r.addEventListener("input", () => {
+      const f = r.dataset.lay, v = parseFloat(r.value), def = parseFloat(r.dataset.def);
+      r.previousElementSibling.textContent = v + r.dataset.unit;
+      const l = Object.assign({}, state.layout[k]);
+      if (v === def) delete l[f]; else l[f] = v;
+      if (Object.keys(l).length) state.layout[k] = l; else delete state.layout[k];
+      applyLayout(box, state.layout[k]); markDirty();
+    }));
+  }
 
   /* ---------- Aplicar alterações ---------- */
   function apply() {
@@ -86,8 +127,10 @@
       if (k in state.texts) el.innerHTML = clean(state.texts[k]);
       el.style.fontSize = state.textScale[k] ? state.textScale[k] + "em" : "";
       if (el.matches(".step h3")) { const li = el.closest(".step"); if (li) li.dataset.title = el.textContent.trim(); }
+      if (state.layout[k]) applyLayout(el, state.layout[k]);
     });
     images.forEach((img) => {
+      if (state.layout[img.dataset.edI]) applyLayout(boxOf(img), state.layout[img.dataset.edI]);
       const d = state.images[img.dataset.edI];
       if (!d) return;
       if (d.src) {
@@ -195,8 +238,10 @@
       <p class="ed-panel__title">Texto</p>
       <label class="ed-field">Tamanho do texto <output>${Math.round(val * 100)}%</output>
         <input type="range" min="0.6" max="1.8" step="0.05" value="${val}" data-ed="tscale"></label>
+      ${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="treset">Voltar ao original</button></div>
       <p class="ed-hint">Escreva direto no texto da página. Para negrito: selecione e aperte Ctrl+B (Cmd+B no Mac).</p>`);
+    bindLayout(k, el);
     const r = $("[data-ed=tscale]", ui.panel), out = $("output", ui.panel);
     r.addEventListener("input", () => {
       const v = parseFloat(r.value); out.textContent = Math.round(v * 100) + "%";
@@ -204,7 +249,7 @@
       el.style.fontSize = v === 1 ? "" : v + "em"; markDirty();
     });
     $("[data-ed=treset]", ui.panel).addEventListener("click", () => {
-      delete state.texts[k]; delete state.textScale[k]; markDirty();
+      delete state.texts[k]; delete state.textScale[k]; delete state.layout[k]; applyLayout(el, null); el.style.fontSize = ""; markDirty();
       setStatus("Texto restaurado. Recarregue a página para ver o original.");
     });
   }
@@ -220,7 +265,9 @@
         <input type="range" min="0.5" max="2" step="0.05" value="${val}" data-ed="iscale"></label>
       <label class="ed-field">Descrição da imagem (para acessibilidade e Google)
         <input type="text" value="${(img.alt || "").replace(/"/g, "&quot;")}" data-ed="alt"></label>
+      ${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="ireset">Voltar ao original</button></div>`);
+    bindLayout(k, boxOf(img));
     $("[data-ed=pick]", ui.panel).addEventListener("click", () => ui.file.click());
     const r = $("[data-ed=iscale]", ui.panel), out = $("output", ui.panel);
     r.addEventListener("input", () => {
@@ -231,7 +278,7 @@
       state.images[k] = Object.assign({}, state.images[k], { alt: e.target.value }); img.alt = e.target.value; markDirty();
     });
     $("[data-ed=ireset]", ui.panel).addEventListener("click", () => {
-      delete state.images[k]; markDirty(); setStatus("Imagem restaurada. Recarregue a página para ver a original.");
+      delete state.images[k]; delete state.layout[k]; applyLayout(boxOf(img), null); markDirty(); setStatus("Imagem restaurada. Recarregue a página para ver a original.");
     });
   }
 
@@ -292,9 +339,10 @@
   }
 
   function panel(html) {
-    ui.panel.innerHTML = `<button type="button" class="ed-x" aria-label="Fechar">✕</button>` + html;
+    ui.panel.innerHTML = `<button type="button" class="ed-x" aria-label="Fechar">✕</button><button type="button" class="ed-side" aria-label="Mudar o painel de lado" title="Mudar o painel de lado">⇆</button>` + html;
     ui.panel.hidden = false;
     $(".ed-x", ui.panel).addEventListener("click", closePanel);
+    $(".ed-side", ui.panel).addEventListener("click", () => ui.panel.classList.toggle("ed-panel--left"));
   }
   function closePanel() { ui.panel.hidden = true; clearSel(); selected = null; }
 
