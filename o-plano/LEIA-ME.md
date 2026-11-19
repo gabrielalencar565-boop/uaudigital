@@ -12,7 +12,7 @@ Organização inspirada no site da UAU (títulos finos com palavra-chave em negr
    `bonus-raio-x.webp`, `bonus-5-minutos.webp`, `bonus-1-pagina.webp`, `bonus-ebook.webp` (3:4),
    `depoimento-1/2/3.webp` (9:16), `og-o-plano.jpg` (1200x630, prévia do link).
    Enquanto o arquivo não existir, aparece o espaço reservado com rótulo.
-   Já incluídas: `gabriel.webp` (hero), `gabriel-time.webp` (quem ensina) e `dor-*.webp` (fotos de bastidores da UAU em P&B).
+   Já incluídas: `gabriel-time.webp` (hero, foto dos 3), `gabriel.webp` (quem ensina) e `dor-*.webp` (fotos de bastidores da UAU em P&B).
 4. **Textos entre colchetes** no `index.html` (Ctrl+F por `[`): `[BIO]`, `[TEMPO DE ACESSO…]`, depoimentos, formas de pagamento, `[sua cliente]` no calendário ilustrativo.
 5. **Módulos**: os nomes atuais são uma SUGESTÃO, ajuste ao conteúdo real.
 
