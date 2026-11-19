@@ -28,7 +28,7 @@ No modo de edição:
 
 Depois de subir o novo `edicoes.js`, se a página ainda mostrar a versão antiga, recarregue com Ctrl+Shift+R (no Mac, Cmd+Shift+R) para limpar o cache.
 
-> As palavras do calendário "No improviso × Com o plano." e a faixa "o plano." gigante do final não entram no modo de edição. Para mudá-las, veja a seção 2 abaixo ou peça ao Claude.
+> As palavras do calendário "No improviso × Com o plano." não entram no modo de edição. Para mudá-las, veja a seção 2 abaixo ou peça ao Claude.
 
 ---
 
