@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Magic2StagesConfig } from "@/features/magic2/components/Magic2StagesConfig";
 import {
   AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Clock, DollarSign, Eye, ImagePlus, Link2, ListChecks, LogIn, Palette, RotateCcw, Sparkles, Store, Moon, Sun, Target, Trash2, Trophy, UserRound, Users,
 } from "lucide-react";
@@ -521,6 +522,7 @@ function DiaDSection() {
         </p>
       </div>
       <Button className="rounded-full" disabled={!dirty || update.isPending} onClick={save}>Salvar</Button>
+      <Magic2StagesConfig label={label.trim() || "Magic Number"} />
       <DiaDYearGrid />
     </div>
   );
