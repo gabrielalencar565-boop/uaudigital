@@ -85,9 +85,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   width: 1.04em; height: 1.04em; font-size: 34px; border-radius: 44%;
   background: radial-gradient(circle, var(--r1) 0 12%, #0E0E0E 13% 33%, transparent 34%), linear-gradient(135deg, var(--r1), var(--r2) 60%, var(--r3));
 }
-.brand--img { display: block; width: auto; height: 40px; margin: 0 0 24px; }
+.brand--img { display: block; width: auto; height: 32px; margin: 0 0 22px; }
 .ticket__brand.brand--img { height: 34px; margin: 0 auto 18px; }
-@media (min-width: 1080px) { .hero .brand--img { height: 50px; } }
+@media (min-width: 1080px) { .hero .brand--img { height: 40px; } }
 .brand__txt { font-size: 38px; font-weight: 800; letter-spacing: -.04em; color: var(--white); font-stretch: 112%; }
 .hero__title { font-size: clamp(36px, 10vw, 64px); font-weight: 800; line-height: 1.04; letter-spacing: -.035em; margin-bottom: 22px; max-width: 640px; }
 .hero__title em { font-style: normal; background: none; -webkit-text-fill-color: currentColor; color: #9B5CF0; }
