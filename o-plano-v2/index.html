@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
-  <link rel="preload" as="image" href="img/capa-mobile.webp" media="(max-width: 1079px)">
-  <link rel="preload" as="image" href="img/capa.webp" media="(min-width: 1080px)">
+  <link rel="preload" as="image" href="img/capa-pessoas-mobile.webp" media="(max-width: 1079px)">
+  <link rel="preload" as="image" href="img/capa-pessoas.webp" media="(min-width: 1080px)">
   <link rel="stylesheet" href="style.css">
 
   <!-- =====================================================================
@@ -39,10 +39,15 @@
     <!-- 1. HERO (capa) ===================================================== -->
     <section class="hero" id="topo" aria-labelledby="hero-title">
       <div class="hero__grid">
-      <picture class="hero__bg">
-        <source media="(min-width: 1080px)" srcset="img/capa.webp" width="1400" height="1000">
-        <img src="img/capa-mobile.webp" alt="Gabriel Alencar ao centro, com parte do time da UAU Digital" width="900" height="741" fetchpriority="high">
-      </picture>
+      <!-- Foto da capa: img/capa-pessoas.webp (computador) e img/capa-pessoas-mobile.webp (celular), PNG/WebP com fundo transparente -->
+      <div class="hero__art">
+        <span class="hero__ring" aria-hidden="true"></span>
+        <span class="hero__p" aria-hidden="true">P</span>
+        <picture>
+          <source media="(min-width: 1080px)" srcset="img/capa-pessoas.webp" width="1400" height="841">
+          <img src="img/capa-pessoas-mobile.webp" alt="Gabriel Alencar ao centro, com parte do time da UAU Digital" width="900" height="541" fetchpriority="high">
+        </picture>
+      </div>
 
         <div class="hero__copy">
           <p class="brand" aria-label="o plano.">

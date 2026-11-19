@@ -70,9 +70,14 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ---------- Hero (capa) ---------- */
 .hero { position: relative; color: var(--t-light); background: #0E0E0E; overflow: hidden; isolation: isolate; padding: 0 0 56px; }
-.hero__bg { display: block; position: relative; margin-bottom: 8px; }
-.hero__bg img { width: 100%; height: auto; aspect-ratio: 900 / 741; object-fit: cover; }
-.hero__bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,14,14,.5) 0%, rgba(14,14,14,0) 15%, rgba(14,14,14,0) 82%, #0E0E0E 100%); }
+.hero__art { position: relative; isolation: isolate; container-type: inline-size; padding-top: 12%; margin-bottom: 8px; }
+.hero__ring {
+  position: absolute; z-index: -2; left: 20%; top: 4%; width: 46%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, #0E0E0E 0 27%, transparent 28%), linear-gradient(135deg, var(--r1), var(--r2) 60%, var(--r3));
+  box-shadow: 0 0 120px -10px rgba(139,85,224,.55);
+}
+.hero__p { position: absolute; z-index: -1; right: -3%; top: -6%; font-size: 58cqw; font-weight: 800; line-height: 1; letter-spacing: -.06em; color: #fff; }
+.hero__art img { width: 100%; height: auto; -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%); mask-image: linear-gradient(180deg, #000 70%, transparent 100%); }
 .hero__grid { position: relative; }
 .hero__copy { position: relative; z-index: 1; padding: 0 var(--gut); }
 .brand { display: inline-flex; align-items: center; gap: 2px; margin: 0 0 22px; line-height: 1; }
@@ -347,9 +352,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   /* duas colunas: texto à esquerda, foto à direita — a foto nunca fica atrás do texto */
   .hero__grid { width: 100%; display: grid; grid-template-columns: min(600px, 46%) minmax(0, 1fr); align-items: center; gap: 24px; padding-left: max(var(--gut), calc((100vw - var(--max)) / 2 + var(--gut))); }
   .hero__copy { grid-column: 1; grid-row: 1; padding: 0; max-width: 600px; }
-  .hero__bg { grid-column: 2; grid-row: 1; position: relative; margin: 0; max-width: 1150px; }
-  .hero__bg img { aspect-ratio: 1400 / 1000; }
-  .hero__bg::after { background: linear-gradient(90deg, #0E0E0E 0%, rgba(14,14,14,0) 18%), linear-gradient(180deg, #0E0E0E 0%, rgba(14,14,14,0) 14%, rgba(14,14,14,0) 80%, #0E0E0E 100%); }
+  .hero__art { grid-column: 2; grid-row: 1; margin: 0; max-width: 1150px; padding-top: 10%; }
   .hero__title { font-size: clamp(38px, 4.3vw, 64px); }
   .hero__lead { font-size: clamp(16px, 1.3vw, 18px); }
   .hero__actions { display: flex; flex-wrap: wrap; }

@@ -79,8 +79,8 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 
 | Arquivo em `img/` | Onde aparece | Formato ideal |
 | --- | --- | --- |
-| `capa.webp` | Capa no computador (pessoas à direita, fundo preto) | 1400 × 1000 |
-| `capa-mobile.webp` | Capa no celular | 900 × 741 |
+| `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo e o "P" atrás são feitos no código. | 1400 × 841 |
+| `capa-pessoas-mobile.webp` | Mesma foto, menor, para o celular | 900 × 541 |
 | `gabriel.webp` | Quem ensina | 800 × 1000 (vertical 4:5) |
 | `mockup-aula.webp` | Print da aula no painel dos módulos | 1440 × 900 (16:10) |
 | `bonus-raio-x.webp` | Bônus 1 | 600 × 680 |
