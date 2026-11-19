@@ -197,7 +197,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .fan { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--gut)); padding: 10px var(--gut) 20px; scroll-padding-inline: var(--gut); scrollbar-width: none; }
 .fan::-webkit-scrollbar { display: none; }
 .card { flex: 0 0 76%; max-width: 320px; scroll-snap-align: start; border-radius: var(--rad); overflow: hidden; background: var(--ink-2); border: 1px solid var(--line-d); box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); transition: transform .45s cubic-bezier(.3,.8,.3,1), box-shadow .45s; }
-.card__media { aspect-ratio: 3 / 3.4; }
+.card__media { aspect-ratio: 3 / 4; }
 .card__body { padding: 18px 20px 22px; }
 .card__tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); background: var(--lilas); padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
 .card h3 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
