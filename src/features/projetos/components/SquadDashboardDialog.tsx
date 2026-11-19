@@ -18,7 +18,7 @@ import { useMagicNumberConfig } from "@/features/data/queries";
 import { brandGradientCss, brandSeriesColor } from "@/lib/brand-gradient";
 import { stageLabel } from "@/features/gestao/pm-constants";
 
-const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
+const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "agendamento"] as const;
 const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 const STAGE_COLORS: Record<string, string> = Object.fromEntries(
   STAGE_ORDER.map((k, i) => [k, brandSeriesColor(i)]),
@@ -95,7 +95,7 @@ export function SquadDashboardDialog({
     return worst.percent < 100 ? worst : null;
   }, [stagePerf]);
 
-  // ── Client performance based on Magic Number 7 stages ──
+  // ── Client performance based on Magic Number stages ──
   const clientPerformance = useMemo(() => {
     // For each squad client, count completed stages out of 7
     const clientMap = new Map<string, { name: string; completed: number; total: number }>();
@@ -407,7 +407,7 @@ export function SquadDashboardDialog({
         </div>
         <div className="text-left flex-1">
           <p className="text-sm font-bold text-foreground">Desempenho por Cliente</p>
-          <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • 7 etapas do {magicLabel}</p>
+          <p className="text-xs text-muted-foreground">{clientPerformance.length} clientes • {STAGE_ORDER.length} etapas do {magicLabel}</p>
         </div>
         <button
           onClick={() => setClientsCollapsed(!clientsCollapsed)}

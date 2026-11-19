@@ -90,7 +90,7 @@ export function useCreateMagic2Client() {
       if (insCycles.error) throw insCycles.error;
       const cycles = insCycles.data ?? [];
 
-      // Inicializa as 7 etapas em todos os ciclos
+      // Inicializa as etapas em todos os ciclos
       const { MAGIC2_STAGES } = await import("@/features/magic2/magic2-stages");
       const stagesPayload = cycles.flatMap((c: any) =>
         MAGIC2_STAGES.map((s) => ({

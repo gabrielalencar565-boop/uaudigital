@@ -939,7 +939,6 @@ export function useSetTaskStatus() {
         "planejamento",
         "design",
         "pdf",
-        "alteracoes",
         "agendamento",
       ]);
       const taskStage = String(task.stage);

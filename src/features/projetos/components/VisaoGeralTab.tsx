@@ -308,7 +308,7 @@ export function VisaoGeralTab() {
   }, [magic2StagesQ.data?.prevStages, activeClientIds]);
   const magic2Stages = magic2AllStages.filter((s: any) => s.completed);
 
-  const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "alteracoes", "agendamento"] as const;
+  const STAGE_ORDER = ["planejamento", "captacao", "edicao_videos", "design", "pdf", "agendamento"] as const;
   const STAGE_LABELS: Record<string, string> = new Proxy({}, { get: (_t, k) => stageLabel(String(k)) });
 
   const computeSpeed = (stages: any[]) => {

@@ -49,10 +49,10 @@ const SCORE_RANGES = [
 // ───────── cliente por etapa (usado na tela e no relatório) ─────────
 
 const STAGE_SHORT: Record<string, string> = {
-  planejamento: "Planej.", captacao: "Captação", design: "Design", edicao_videos: "Vídeo", pdf: "Cronog.", agendamento: "Agend.", alteracoes: "Alter.",
+  planejamento: "Planej.", captacao: "Captação", design: "Design", edicao_videos: "Vídeo", pdf: "Cronog.", agendamento: "Agend.",
 };
 // Ordem em que as etapas costumam acontecer ao longo do mês.
-const STAGE_ORDER = ["planejamento", "captacao", "design", "edicao_videos", "pdf", "agendamento", "alteracoes"] as const;
+const STAGE_ORDER = ["planejamento", "captacao", "design", "edicao_videos", "pdf", "agendamento"] as const;
 const EARLY_DAY = 20;
 
 type GridCell = { label: string; done: boolean; late: boolean; early: boolean; rel: number | null };
