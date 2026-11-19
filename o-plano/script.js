@@ -75,12 +75,14 @@ const CONFIG = {
     else img.addEventListener("error", markMissing, { once: true });
   });
 
-  /* ---------- Vídeo (carrega só no clique) ---------- */
-  document.querySelectorAll("[data-video]").forEach((box) => {
+  /* ---------- Vídeo de apresentação (abre numa janela, carrega só no clique) ---------- */
+  const openBtn = document.querySelector("[data-video-open]");
+  const modal = document.querySelector("[data-video-modal]");
+  const box = document.querySelector("[data-video-box]");
+  if (CONFIG.videoEmbedUrl && openBtn && modal && box && typeof modal.showModal === "function") {
+    openBtn.hidden = false;
     const src = CONFIG.videoEmbedUrl;
-    if (!src) return;
-    box.addEventListener("click", () => {
-      if (box.classList.contains("is-playing")) return;
+    openBtn.addEventListener("click", () => {
       let media;
       if (/\.(mp4|webm)(\?|$)/i.test(src)) {
         media = document.createElement("video");
@@ -98,9 +100,52 @@ const CONFIG = {
         media.allowFullscreen = true;
       }
       box.replaceChildren(media);
-      box.classList.add("is-playing");
-      box.removeAttribute("aria-label");
+      modal.showModal();
     });
+    const close = () => modal.close();
+    modal.querySelector("[data-video-close]").addEventListener("click", close);
+    modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+    modal.addEventListener("close", () => box.replaceChildren()); // para o vídeo ao fechar
+  }
+
+  /* ---------- Palavra que alterna (bento) ---------- */
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("[data-rotator]").forEach((el) => {
+    const words = el.dataset.rotator.split("|");
+    if (reduceMotion || words.length < 2) return;
+    let i = 0;
+    setInterval(() => {
+      el.classList.add("is-out");
+      setTimeout(() => {
+        i = (i + 1) % words.length;
+        el.textContent = words[i];
+        el.classList.remove("is-out");
+      }, 350);
+    }, 2200);
+  });
+
+  /* ---------- Carrossel de bônus (bolinhas) ---------- */
+  document.querySelectorAll("[data-carousel]").forEach((track) => {
+    const dotsWrap = track.parentElement.querySelector("[data-dots]");
+    const cards = [...track.children];
+    if (!dotsWrap || cards.length < 2) return;
+    const dots = cards.map((card, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.tabIndex = -1;
+      b.addEventListener("click", () => track.scrollTo({ left: card.offsetLeft - track.offsetLeft - parseFloat(getComputedStyle(track).paddingLeft), behavior: "smooth" }));
+      dotsWrap.appendChild(b);
+      return b;
+    });
+    const setActive = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      const idx = max <= 0 ? 0 : Math.round((track.scrollLeft / max) * (cards.length - 1));
+      dots.forEach((d, k) => d.setAttribute("aria-current", k === idx ? "true" : "false"));
+      dotsWrap.hidden = max <= 0;
+    };
+    track.addEventListener("scroll", () => requestAnimationFrame(setActive), { passive: true });
+    addEventListener("resize", setActive);
+    setActive();
   });
 
   /* ---------- Barra de compra fixa (mobile) ----------
@@ -133,7 +178,7 @@ const CONFIG = {
 
   /* ---------- Animação de entrada ---------- */
   const reveals = document.querySelectorAll(".reveal");
-  if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if ("IntersectionObserver" in window && !reduceMotion) {
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }

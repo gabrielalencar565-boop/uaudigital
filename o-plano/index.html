@@ -18,7 +18,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
+  <link rel="preload" as="image" href="img/gabriel.webp">
   <link rel="stylesheet" href="style.css">
 
   <!-- =====================================================================
@@ -39,7 +40,8 @@
   <header class="topbar">
     <div class="container topbar__inner">
       <a class="logo" href="#topo" aria-label="o plano. — voltar ao topo">o plano<span>.</span></a>
-      <a class="btn btn--sm btn--primary topbar__cta" href="[LINK KIWIFY]" data-checkout>Quero o plano.</a>
+      <span class="topbar__by">por UAU Digital</span>
+      <a class="btn btn--sm btn--primary topbar__cta" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
     </div>
   </header>
 
@@ -49,28 +51,12 @@
     <section class="sec sec--dark hero" id="topo" aria-labelledby="hero-title">
       <div class="container hero__grid">
         <div class="hero__copy">
-          <p class="eyebrow">Curso online · para social medias</p>
-          <h1 id="hero-title" class="hero__title">Pare de postar no improviso. Planeje o mês do seu cliente <span class="grad">com estratégia.</span></h1>
+          <p class="eyebrow">Curso online para social medias</p>
+          <h1 id="hero-title" class="hero__title">Pare de postar no improviso. Planeje o mês do seu cliente <b class="grad">com estratégia.</b></h1>
           <p class="lead">No <strong>o plano.</strong> você aprende a montar o planejamento de conteúdo do mês com um objetivo para cada post, dentro da jornada do público. Você para de perder um dia inteiro por cliente e passa a ter um plano que dá para apresentar e defender.</p>
-        </div>
-
-        <div class="hero__video">
-          <!-- VÍDEO DE APRESENTAÇÃO: defina CONFIG.videoEmbedUrl no script.js.
-               A capa abaixo (img/capa-video.webp) aparece até a pessoa clicar. -->
-          <button class="video" type="button" data-video aria-label="Assistir ao vídeo de apresentação do o plano.">
-            <img class="video__poster" src="img/capa-video.webp" alt="" width="1280" height="720" data-ph>
-            <span class="ph-label">[ESPAÇO PARA VÍDEO DE APRESENTAÇÃO]</span>
-            <span class="video__play" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-            </span>
-          </button>
-        </div>
-
-        <div class="hero__buy">
-          <a class="btn btn--primary btn--lg" href="[LINK KIWIFY]" data-checkout>Quero o plano.</a>
-          <div class="price-pill">
-            <span class="price-pill__main"><span data-cfg="installments">[12x de R$ X]</span></span>
-            <span class="price-pill__sub">ou <span data-cfg="cashPrice">[PREÇO DE ABERTURA]</span> à vista · preço de abertura até <span data-cfg="deadline">[DATA]</span></span>
+          <div class="hero__buy">
+            <a class="btn btn--primary btn--lg" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
+            <p class="hero__price"><strong data-cfg="installments">[12x de R$ X]</strong> <span>ou <span data-cfg="cashPrice">[PREÇO DE ABERTURA]</span> à vista · até <span data-cfg="deadline">[DATA]</span></span></p>
           </div>
           <ul class="trust">
             <li>Acesso imediato</li>
@@ -78,118 +64,181 @@
             <li>Pagamento seguro via Kiwify</li>
           </ul>
         </div>
+
+        <div class="hero__visual">
+          <div class="hero__ring" aria-hidden="true"></div>
+          <figure class="hero__photo">
+            <img src="img/gabriel.webp" alt="Gabriel Alencar, criador do o plano., sentado à mesa no estúdio da UAU Digital" width="800" height="1000" fetchpriority="high">
+          </figure>
+
+          <!-- Card ilustrativo: mostra a ideia do método (cada post com um objetivo) -->
+          <div class="plan-card" aria-hidden="true">
+            <p class="plan-card__head"><span class="plan-card__dot"></span>Planejamento do mês <em>Semana 1</em></p>
+            <ul>
+              <li><span class="day">Seg</span><span class="fmt">Reels</span><span class="obj obj--a">Atração</span></li>
+              <li><span class="day">Qua</span><span class="fmt">Carrossel</span><span class="obj obj--b">Autoridade</span></li>
+              <li><span class="day">Sex</span><span class="fmt">Stories</span><span class="obj obj--c">Conversão</span></li>
+            </ul>
+          </div>
+
+          <!-- VÍDEO DE APRESENTAÇÃO: defina CONFIG.videoEmbedUrl no script.js.
+               Sem vídeo configurado, este botão fica escondido. -->
+          <button class="watch" type="button" data-video-open hidden>
+            <span class="watch__play" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
+            Assistir à apresentação
+          </button>
+        </div>
       </div>
     </section>
 
-    <!-- 2. DOR ============================================================== -->
-    <section class="sec sec--light" id="dor" aria-labelledby="dor-title">
+    <!-- FAIXA DE DORES (marquee) ========================================== -->
+    <div class="band-wrap" aria-hidden="true"><div class="band">
+      <div class="band__track">
+        <span>Não sabe o que postar</span><i>✦</i>
+        <span>Um dia inteiro para planejar 1 cliente</span><i>✦</i>
+        <span>Cliente acha que você “só posta”</span><i>✦</i>
+        <span>Trend sem saber por quê</span><i>✦</i>
+        <span>Nada para apresentar na reunião</span><i>✦</i>
+        <span>Cliente cancelando sem entender o seu trabalho</span><i>✦</i>
+        <span>Não sabe o que postar</span><i>✦</i>
+        <span>Um dia inteiro para planejar 1 cliente</span><i>✦</i>
+        <span>Cliente acha que você “só posta”</span><i>✦</i>
+        <span>Trend sem saber por quê</span><i>✦</i>
+        <span>Nada para apresentar na reunião</span><i>✦</i>
+        <span>Cliente cancelando sem entender o seu trabalho</span><i>✦</i>
+      </div>
+    </div></div>
+
+    <!-- 2. A VERDADE (virada) =============================================== -->
+    <section class="sec sec--light" id="virada" aria-labelledby="virada-title">
+      <div class="container truth">
+        <div class="truth__visual reveal" aria-hidden="true">
+          <div class="mini-cal">
+            <p class="mini-cal__title">Novembro <span>Cliente: [sua cliente]</span></p>
+            <div class="mini-cal__grid">
+              <span class="h">S</span><span class="h">T</span><span class="h">Q</span><span class="h">Q</span><span class="h">S</span><span class="h">S</span><span class="h">D</span>
+              <span class="a"></span><span></span><span class="b"></span><span></span><span class="c"></span><span class="a"></span><span></span>
+              <span class="b"></span><span></span><span class="a"></span><span></span><span class="b"></span><span></span><span class="c"></span>
+              <span class="a"></span><span></span><span class="b"></span><span></span><span class="c"></span><span class="a"></span><span></span>
+            </div>
+            <p class="mini-cal__legend"><i class="a"></i>Atração <i class="b"></i>Autoridade <i class="c"></i>Conversão</p>
+          </div>
+          <div class="quote-card">
+            <span class="quote-card__mark">“</span>
+            <p>Não falta ideia. Falta <b>planejamento.</b></p>
+          </div>
+        </div>
+
+        <div class="truth__text">
+          <p class="eyebrow eyebrow--dark reveal">Pode ser difícil ouvir isso</p>
+          <h2 id="virada-title" class="title reveal">O problema não é falta de ideia. É falta de <b class="grad">planejamento com objetivo.</b></h2>
+          <p class="lead reveal">Ideia você tem, até demais. O que falta é um método para decidir <strong>o que</strong> postar, <strong>por que</strong> postar e <strong>em que momento</strong> da jornada do seu público.</p>
+          <p class="reveal">Quando cada post tem uma função, o mês fica fácil de montar, o cliente entende o que está pagando e você para de depender da inspiração. É isso que faz ele deixar de achar que você “só posta” e parar de cancelar sem entender o seu trabalho.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. DOR ============================================================== -->
+    <section class="sec sec--light sec--tight-top" id="dor" aria-labelledby="dor-title">
       <div class="container">
-        <h2 id="dor-title" class="title reveal">Isso parece com a <span class="grad">sua rotina?</span></h2>
-        <ul class="cards cards--3">
-          <li class="card reveal">
-            <span class="card__num">01</span>
-            <h3>Um dia inteiro para planejar 1 cliente.</h3>
-            <p>Você abre o calendário, encara a tela em branco e, quando vê, já é noite.</p>
+        <div class="head head--center reveal">
+          <p class="eyebrow eyebrow--dark">Você passa por isso</p>
+          <h2 id="dor-title" class="title">Se você chegou até aqui, <b class="grad">provavelmente:</b></h2>
+        </div>
+        <ul class="pains">
+          <li class="pain reveal">
+            <img src="img/dor-camera.webp" alt="" width="640" height="853" loading="lazy" decoding="async">
+            <p>Leva <b>um dia inteiro</b> para planejar 1 cliente</p>
           </li>
-          <li class="card reveal">
-            <span class="card__num">02</span>
-            <h3>“O que eu posto essa semana?”</h3>
-            <p>A pergunta volta toda segunda-feira, e a resposta quase sempre é um chute.</p>
+          <li class="pain reveal">
+            <img src="img/dor-bastidores.webp" alt="" width="640" height="481" loading="lazy" decoding="async">
+            <p>Não sabe <b>o que postar</b> essa semana</p>
           </li>
-          <li class="card reveal">
-            <span class="card__num">03</span>
-            <h3>O cliente acha que você “só posta”.</h3>
-            <p>Ele não vê o pensamento por trás do trabalho, e por isso não valoriza.</p>
+          <li class="pain reveal">
+            <img src="img/dor-camiseta.webp" alt="" width="640" height="853" loading="lazy" decoding="async">
+            <p>Posta <b>trend</b> sem saber por quê</p>
           </li>
-          <li class="card reveal">
-            <span class="card__num">04</span>
-            <h3>Cliente cancelando sem aviso.</h3>
-            <p>Quem não entende o que você entrega também não entende por que continuar pagando.</p>
-          </li>
-          <li class="card reveal">
-            <span class="card__num">05</span>
-            <h3>Trend pela trend.</h3>
-            <p>Você posta porque todo mundo está postando, sem saber que resultado aquilo deveria trazer.</p>
-          </li>
-          <li class="card reveal">
-            <span class="card__num">06</span>
-            <h3>Nada para apresentar.</h3>
-            <p>Na reunião, falta um planejamento para mostrar, e você improvisa ali também.</p>
+          <li class="pain reveal">
+            <img src="img/dor-gravacao-1.webp" alt="" width="640" height="853" loading="lazy" decoding="async">
+            <p>Não tem <b>planejamento</b> para apresentar</p>
           </li>
         </ul>
-        <p class="closing reveal">Se você se viu em pelo menos dois desses cards, continua lendo.</p>
+        <div class="bridge reveal">
+          <p>Isso não é falta de capacidade.<br><b>É falta de método.</b></p>
+          <a class="btn btn--primary" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
+        </div>
       </div>
     </section>
 
-    <!-- 3. VIRADA =========================================================== -->
-    <section class="sec sec--dark" id="virada" aria-labelledby="virada-title">
-      <div class="container narrow">
-        <h2 id="virada-title" class="title reveal">O problema não é falta de ideia. É falta de <span class="grad">planejamento com objetivo.</span></h2>
-        <p class="lead reveal">Ideia você tem, até demais. O que falta é um método para decidir <strong>o que</strong> postar, <strong>por que</strong> postar e <strong>em que momento</strong> da jornada do seu público. Quando cada post tem uma função, o mês fica fácil de montar, o cliente entende o que está pagando e você para de depender da inspiração.</p>
-      </div>
+    <!-- 4. O QUE É (bento) ================================================== -->
+    <section class="sec sec--dark" id="o-que-e" aria-labelledby="oque-title">
       <div class="container">
-        <div class="compare reveal">
-          <div class="compare__col compare__col--bad">
-            <h3>No improviso</h3>
-            <ul>
-              <li>Post solto, sem função</li>
-              <li>Trend sem motivo</li>
-              <li>Cliente sem entender o trabalho</li>
-              <li>Horas perdidas todo mês</li>
-            </ul>
+        <div class="head reveal">
+          <p class="eyebrow">O que é o plano.</p>
+          <h2 id="oque-title" class="title">Um método para planejar o mês inteiro <b class="grad">em menos tempo.</b></h2>
+          <p class="lead">Um curso online, direto ao ponto, com o processo de planejamento estratégico de conteúdo para Instagram que usamos na agência UAU Digital, do diagnóstico do cliente ao calendário pronto.</p>
+        </div>
+
+        <div class="bento">
+          <div class="tile tile--rotator reveal">
+            <p>No o plano. você não só assiste.</p>
+            <p class="rotator" aria-live="off"><span class="rotator__word" data-rotator="Você planeja.|Você aplica.|Você apresenta.">Você planeja.</span></p>
           </div>
-          <div class="compare__col compare__col--good">
-            <h3>Com o plano<span class="dot">.</span></h3>
-            <ul>
-              <li>Cada post com um objetivo</li>
-              <li>Conteúdo conectado à jornada</li>
-              <li>Planejamento para apresentar</li>
-              <li>Processo que se repete todo mês</li>
-            </ul>
+
+          <!-- MOCKUP: troque img/mockup-notebook.webp (16:10) -->
+          <div class="tile tile--media reveal">
+            <div class="laptop">
+              <div class="laptop__screen ph">
+                <span class="ph-label">[PRINT DA FERRAMENTA / AULA — 16:10]</span>
+                <img src="img/mockup-notebook.webp" alt="Tela do curso o plano. aberta no notebook" width="1440" height="900" loading="lazy" decoding="async" data-ph>
+              </div>
+              <div class="laptop__base" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- MOCKUP: troque img/mockup-celular.webp (9:19,5) -->
+          <div class="tile tile--phone reveal">
+            <div class="phone">
+              <div class="phone__screen ph">
+                <span class="ph-label">[PRINT NO CELULAR]</span>
+                <img src="img/mockup-celular.webp" alt="Aula do o plano. aberta no celular" width="390" height="844" loading="lazy" decoding="async" data-ph>
+              </div>
+            </div>
+          </div>
+
+          <div class="tile tile--statement reveal">
+            <p class="tile__big">Sem fórmula mágica.<br>Sem promessa de viralizar.</p>
+            <p>Só o método que a gente usa todo mês com os clientes da agência.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 4. O QUE É ========================================================== -->
-    <section class="sec sec--light" id="o-que-e" aria-labelledby="oque-title">
-      <div class="container split">
-        <div class="split__text">
-          <h2 id="oque-title" class="title reveal">Um método para planejar o mês inteiro <span class="grad">em menos tempo.</span></h2>
-          <p class="lead reveal">O <strong>o plano.</strong> é um curso online, direto ao ponto, que ensina o processo de planejamento estratégico de conteúdo para Instagram que usamos na agência UAU Digital, do diagnóstico do cliente ao calendário pronto.</p>
-          <h3 class="subtitle reveal">Ao terminar, você vai conseguir:</h3>
-          <ul class="checks reveal">
-            <li>Entender o momento do cliente e definir o objetivo do mês</li>
-            <li>Distribuir os conteúdos pela jornada do público, de quem ainda não conhece até quem já está pronto para comprar</li>
-            <li>Dar um objetivo claro para cada post antes de criar</li>
-            <li>Montar o calendário do mês com um processo que se repete</li>
-            <li>Apresentar o planejamento ao cliente e mostrar o valor do seu trabalho</li>
-          </ul>
+    <!-- 5. VOCÊ VAI SAIR SABENDO ============================================ -->
+    <section class="sec sec--light learn" id="aprender" aria-labelledby="learn-title">
+      <p class="learn__word" aria-hidden="true">o plano.</p>
+      <div class="container">
+        <div class="head head--center reveal">
+          <p class="eyebrow eyebrow--dark">Ao terminar o curso</p>
+          <h2 id="learn-title" class="title">O que você vai <b class="grad">sair sabendo.</b></h2>
         </div>
-
-        <!-- MOCKUPS: troque os arquivos em img/ mantendo os nomes (ou altere o src) -->
-        <div class="devices reveal" aria-label="Prévia do curso no notebook e no celular">
-          <div class="laptop">
-            <div class="laptop__screen ph">
-              <span class="ph-label">[PRINT DA FERRAMENTA / AULA — notebook 16:10]</span>
-              <img src="img/mockup-notebook.webp" alt="Tela do curso o plano. aberta no notebook" width="1440" height="900" loading="lazy" decoding="async" data-ph>
-            </div>
-            <div class="laptop__base" aria-hidden="true"></div>
-          </div>
-          <div class="phone">
-            <div class="phone__screen ph">
-              <span class="ph-label">[PRINT NO CELULAR 9:19]</span>
-              <img src="img/mockup-celular.webp" alt="Aula do o plano. aberta no celular" width="390" height="844" loading="lazy" decoding="async" data-ph>
-            </div>
-          </div>
-        </div>
+        <ul class="skills">
+          <li class="skill reveal"><span class="skill__tag">Você vai aprender</span><p>Entender o momento do cliente e <b>definir o objetivo do mês</b></p></li>
+          <li class="skill reveal"><span class="skill__tag">Você vai aprender</span><p>Distribuir os conteúdos pela <b>jornada do público</b></p></li>
+          <li class="skill reveal"><span class="skill__tag">Você vai aprender</span><p>Dar <b>um objetivo claro</b> para cada post antes de criar</p></li>
+          <li class="skill reveal"><span class="skill__tag">Você vai aprender</span><p>Montar o calendário com <b>um processo que se repete</b></p></li>
+          <li class="skill reveal"><span class="skill__tag">Você vai aprender</span><p><b>Apresentar o planejamento</b> e mostrar o valor do seu trabalho</p></li>
+        </ul>
       </div>
     </section>
 
-    <!-- 5. PARA QUEM É ====================================================== -->
+    <!-- 6. PARA QUEM É ====================================================== -->
     <section class="sec sec--dark" id="para-quem" aria-labelledby="quem-title">
       <div class="container">
-        <h2 id="quem-title" class="title reveal">O plano. é <span class="grad">para você</span> se…</h2>
+        <div class="head reveal">
+          <p class="eyebrow">Para quem é</p>
+          <h2 id="quem-title" class="title">O plano. é <b class="grad">para você</b> se…</h2>
+        </div>
         <div class="fit">
           <div class="fit__col fit__col--yes reveal">
             <h3>É para você</h3>
@@ -212,16 +261,21 @@
       </div>
     </section>
 
-    <!-- 6. CONTEÚDO DO CURSO ================================================ -->
+    <!-- 7. CONTEÚDO DO CURSO (cronograma) =================================== -->
     <section class="sec sec--light" id="conteudo-curso" aria-labelledby="modulos-title">
-      <div class="container split split--top">
-        <div class="split__text">
-          <h2 id="modulos-title" class="title reveal">O que você vai <span class="grad">aprender.</span></h2>
-          <p class="lead reveal">Aulas objetivas, em sequência, para você sair do diagnóstico com o calendário pronto.</p>
+      <div class="container">
+        <div class="panel reveal">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow eyebrow--dark">Cronograma</p>
+              <h2 id="modulos-title" class="title">O que você vai <b class="grad">aprender.</b></h2>
+            </div>
+            <p class="panel__note">Aulas objetivas, em sequência, para você sair do diagnóstico com o calendário pronto.</p>
+          </div>
 
           <!-- MÓDULOS: SUGESTÃO DE SEQUÊNCIA — validar nomes e descrições com o conteúdo real.
                Para adicionar um módulo, copie um bloco <details> inteiro. -->
-          <div class="accordion reveal">
+          <div class="accordion">
             <details class="acc">
               <summary><span class="acc__tag">Módulo 01</span><span class="acc__title">Diagnóstico do cliente</span></summary>
               <div class="acc__body"><p>Como entender o momento do negócio, o público e o que já foi feito antes de planejar qualquer post.</p></div>
@@ -244,69 +298,81 @@
             </details>
           </div>
         </div>
-
-        <div class="frame reveal">
-          <div class="frame__screen ph">
-            <span class="ph-label">[PRINT DA ÁREA DE AULAS 16:10]</span>
-            <img src="img/mockup-aula.webp" alt="Área de membros do o plano. com a lista de aulas" width="1440" height="900" loading="lazy" decoding="async" data-ph>
-          </div>
-        </div>
       </div>
     </section>
 
-    <!-- 7. BÔNUS ============================================================ -->
+    <!-- 8. BÔNUS (carrossel) ================================================ -->
     <section class="sec sec--dark" id="bonus" aria-labelledby="bonus-title">
       <div class="container">
-        <h2 id="bonus-title" class="title reveal">E ainda leva <span class="grad">4 bônus.</span></h2>
-        <ul class="cards cards--2 bonus">
-          <li class="card card--bonus reveal">
-            <div class="bonus__media ph">
-              <span class="ph-label">[PRINT DO RAIO-X]</span>
-              <img src="img/bonus-raio-x.webp" alt="Tela do Raio-X do Social Media" width="800" height="500" loading="lazy" decoding="async" data-ph>
-            </div>
+        <div class="head head--center reveal">
+          <p class="eyebrow">Bônus</p>
+          <h2 id="bonus-title" class="title">E ainda leva <b class="grad">4 bônus.</b></h2>
+        </div>
+      </div>
+
+      <!-- Troque as imagens em img/ (proporção 3:4). Arraste para o lado no celular. -->
+      <ul class="carousel" data-carousel aria-label="Bônus inclusos">
+        <li class="bcard">
+          <div class="bcard__media ph">
+            <span class="ph-label">[PRINT DO RAIO-X 3:4]</span>
+            <img src="img/bonus-raio-x.webp" alt="Tela do Raio-X do Social Media" width="600" height="800" loading="lazy" decoding="async" data-ph>
+          </div>
+          <div class="bcard__body">
             <span class="badge">Bônus 1</span>
             <h3>Raio-X do Social Media</h3>
             <p>Um diagnóstico de onde você está hoje e quais são os próximos passos para evoluir.</p>
-          </li>
-          <li class="card card--bonus reveal">
-            <div class="bonus__media ph">
-              <span class="ph-label">[PRINT DA FERRAMENTA]</span>
-              <img src="img/bonus-5-minutos.webp" alt="Tela da ferramenta Planejamento do Mês em 5 Minutos" width="800" height="500" loading="lazy" decoding="async" data-ph>
-            </div>
+          </div>
+        </li>
+        <li class="bcard">
+          <div class="bcard__media ph">
+            <span class="ph-label">[PRINT DA FERRAMENTA 3:4]</span>
+            <img src="img/bonus-5-minutos.webp" alt="Tela da ferramenta Planejamento do Mês em 5 Minutos" width="600" height="800" loading="lazy" decoding="async" data-ph>
+          </div>
+          <div class="bcard__body">
             <span class="badge">Bônus 2</span>
             <h3>Planejamento do Mês em 5 Minutos</h3>
             <p>Uma ferramenta para estruturar o mês do cliente de forma rápida.</p>
-          </li>
-          <li class="card card--bonus reveal">
-            <div class="bonus__media ph">
-              <span class="ph-label">[PRINT DO MODELO]</span>
-              <img src="img/bonus-1-pagina.webp" alt="Modelo editável Planejamento em 1 Página" width="800" height="500" loading="lazy" decoding="async" data-ph>
-            </div>
+          </div>
+        </li>
+        <li class="bcard">
+          <div class="bcard__media ph">
+            <span class="ph-label">[PRINT DO MODELO 3:4]</span>
+            <img src="img/bonus-1-pagina.webp" alt="Modelo editável Planejamento em 1 Página" width="600" height="800" loading="lazy" decoding="async" data-ph>
+          </div>
+          <div class="bcard__body">
             <span class="badge">Bônus 3</span>
             <h3>Planejamento em 1 Página</h3>
             <p>Um modelo editável para organizar a estratégia e apresentar ao cliente.</p>
-          </li>
-          <li class="card card--bonus reveal">
-            <div class="bonus__media ph">
-              <span class="ph-label">[CAPA DO EBOOK]</span>
-              <img src="img/bonus-ebook.webp" alt="Capa do ebook O Guia do Social Media Estrategista" width="800" height="500" loading="lazy" decoding="async" data-ph>
-            </div>
+          </div>
+        </li>
+        <li class="bcard">
+          <div class="bcard__media ph">
+            <span class="ph-label">[CAPA DO EBOOK 3:4]</span>
+            <img src="img/bonus-ebook.webp" alt="Capa do ebook O Guia do Social Media Estrategista" width="600" height="800" loading="lazy" decoding="async" data-ph>
+          </div>
+          <div class="bcard__body">
             <span class="badge">Bônus 4</span>
-            <h3>Ebook “O Guia do Social Media Estrategista”</h3>
-            <p>Material de apoio para consultar sempre que precisar.</p>
-          </li>
-        </ul>
+            <h3>O Guia do Social Media Estrategista</h3>
+            <p>Ebook de apoio para consultar sempre que precisar.</p>
+          </div>
+        </li>
+      </ul>
+      <div class="container carousel__foot">
+        <div class="dots" data-dots aria-hidden="true"></div>
+        <a class="btn btn--primary" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
       </div>
     </section>
 
-    <!-- 8. QUEM ENSINA ====================================================== -->
+    <!-- 9. QUEM ENSINA ====================================================== -->
     <section class="sec sec--light" id="quem-ensina" aria-labelledby="prof-title">
       <div class="container teacher">
         <figure class="teacher__photo reveal">
-          <img src="img/gabriel.webp" alt="Gabriel Alencar sorrindo, sentado à mesa no estúdio da UAU Digital" width="800" height="1000" loading="lazy" decoding="async">
+          <img src="img/gabriel-time.webp" alt="Gabriel Alencar ao centro, sentado, com parte do time da UAU Digital no estúdio" width="800" height="1000" loading="lazy" decoding="async">
+          <figcaption>Gabriel (ao centro) com o time da UAU</figcaption>
         </figure>
         <div class="teacher__text">
-          <h2 id="prof-title" class="title reveal">Quem vai te <span class="grad">ensinar.</span></h2>
+          <p class="eyebrow eyebrow--dark reveal">Quem ensina</p>
+          <h2 id="prof-title" class="title reveal">Quem vai te <b class="grad">ensinar.</b></h2>
           <p class="teacher__name reveal">Gabriel Alencar</p>
           <p class="teacher__role reveal">Diretor da agência UAU Digital</p>
           <p class="reveal">Gabriel é diretor da agência UAU Digital, onde planeja e coordena o conteúdo de clientes todos os meses. No <strong>o plano.</strong>, ele reúne o processo usado no dia a dia da agência num método que você consegue aplicar.</p>
@@ -315,65 +381,68 @@
       </div>
     </section>
 
-    <!-- 9. DEPOIMENTOS ======================================================
+    <!-- 10. DEPOIMENTOS =====================================================
          Use SOMENTE depoimentos reais, com autorização de quem escreveu. -->
     <section class="sec sec--dark" id="depoimentos" aria-labelledby="dep-title">
       <div class="container">
-        <h2 id="dep-title" class="title reveal">O que dizem <span class="grad">os alunos.</span></h2>
-        <ul class="cards cards--3">
-          <li class="card card--testimonial reveal">
+        <div class="head reveal">
+          <p class="eyebrow">Depoimentos</p>
+          <h2 id="dep-title" class="title">O que dizem <b class="grad">os alunos.</b></h2>
+        </div>
+        <ul class="testimonials">
+          <li class="testimonial reveal">
             <div class="testimonial__media ph">
-              <span class="ph-label">[PRINT OU FOTO]</span>
-              <img src="img/depoimento-1.webp" alt="[Descreva o print do depoimento]" width="600" height="600" loading="lazy" decoding="async" data-ph>
+              <span class="ph-label">[VÍDEO OU PRINT 9:16]</span>
+              <img src="img/depoimento-1.webp" alt="[Descreva o depoimento]" width="540" height="960" loading="lazy" decoding="async" data-ph>
             </div>
-            <blockquote>[DEPOIMENTO REAL AQUI]</blockquote>
-            <p class="testimonial__who"><strong>[Nome]</strong><span>[@ ou profissão]</span></p>
+            <div class="testimonial__who"><q>[DEPOIMENTO REAL AQUI]</q><b>[Nome]</b><span>[@ ou profissão]</span></div>
           </li>
-          <li class="card card--testimonial reveal">
+          <li class="testimonial reveal">
             <div class="testimonial__media ph">
-              <span class="ph-label">[PRINT OU FOTO]</span>
-              <img src="img/depoimento-2.webp" alt="[Descreva o print do depoimento]" width="600" height="600" loading="lazy" decoding="async" data-ph>
+              <span class="ph-label">[VÍDEO OU PRINT 9:16]</span>
+              <img src="img/depoimento-2.webp" alt="[Descreva o depoimento]" width="540" height="960" loading="lazy" decoding="async" data-ph>
             </div>
-            <blockquote>[DEPOIMENTO REAL AQUI]</blockquote>
-            <p class="testimonial__who"><strong>[Nome]</strong><span>[@ ou profissão]</span></p>
+            <div class="testimonial__who"><q>[DEPOIMENTO REAL AQUI]</q><b>[Nome]</b><span>[@ ou profissão]</span></div>
           </li>
-          <li class="card card--testimonial reveal">
+          <li class="testimonial reveal">
             <div class="testimonial__media ph">
-              <span class="ph-label">[PRINT OU FOTO]</span>
-              <img src="img/depoimento-3.webp" alt="[Descreva o print do depoimento]" width="600" height="600" loading="lazy" decoding="async" data-ph>
+              <span class="ph-label">[VÍDEO OU PRINT 9:16]</span>
+              <img src="img/depoimento-3.webp" alt="[Descreva o depoimento]" width="540" height="960" loading="lazy" decoding="async" data-ph>
             </div>
-            <blockquote>[DEPOIMENTO REAL AQUI]</blockquote>
-            <p class="testimonial__who"><strong>[Nome]</strong><span>[@ ou profissão]</span></p>
+            <div class="testimonial__who"><q>[DEPOIMENTO REAL AQUI]</q><b>[Nome]</b><span>[@ ou profissão]</span></div>
           </li>
         </ul>
       </div>
     </section>
 
-    <!-- 10. OFERTA ========================================================== -->
+    <!-- 11. OFERTA ========================================================== -->
     <section class="sec sec--light" id="oferta" aria-labelledby="oferta-title">
-      <div class="container narrow">
-        <h2 id="oferta-title" class="title title--center reveal">Tudo o que você <span class="grad">recebe hoje.</span></h2>
+      <div class="container">
         <div class="offer reveal">
-          <ul class="offer__list">
-            <li><span>Curso completo <strong>o plano.</strong></span></li>
-            <li><span><em>Bônus 1</em> Raio-X do Social Media</span></li>
-            <li><span><em>Bônus 2</em> Planejamento do Mês em 5 Minutos</span></li>
-            <li><span><em>Bônus 3</em> Planejamento em 1 Página</span></li>
-            <li><span><em>Bônus 4</em> Ebook O Guia do Social Media Estrategista</span></li>
-          </ul>
+          <div class="offer__left">
+            <p class="eyebrow eyebrow--dark">Investimento</p>
+            <h2 id="oferta-title" class="title">Tudo o que você <b class="grad">recebe hoje.</b></h2>
+            <ul class="offer__list">
+              <li>Curso completo <strong>o plano.</strong></li>
+              <li><em>Bônus 1</em> Raio-X do Social Media</li>
+              <li><em>Bônus 2</em> Planejamento do Mês em 5 Minutos</li>
+              <li><em>Bônus 3</em> Planejamento em 1 Página</li>
+              <li><em>Bônus 4</em> Ebook O Guia do Social Media Estrategista</li>
+            </ul>
+          </div>
 
-          <div class="offer__price">
+          <div class="offer__right">
+            <p class="offer__logo">o plano<span>.</span></p>
             <p class="offer__from">de <s data-cfg="normalPrice">[PREÇO NORMAL]</s> por</p>
             <p class="offer__installments" data-cfg="installments">[12x de R$ X]</p>
             <p class="offer__cash">ou <strong data-cfg="cashPrice">[PREÇO DE ABERTURA]</strong> à vista</p>
+            <a class="btn btn--primary btn--xl" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
             <p class="offer__deadline">Preço de abertura válido até <strong data-cfg="deadline">[DATA]</strong>.</p>
+            <p class="offer__secure">Pagamento seguro via Kiwify · Cartão, Pix e boleto</p>
           </div>
 
-          <a class="btn btn--primary btn--xl" href="[LINK KIWIFY]" data-checkout>Quero o plano.</a>
-          <p class="offer__secure">Pagamento seguro via Kiwify · Cartão, Pix e boleto</p>
-
           <div class="guarantee">
-            <svg class="guarantee__icon" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M24 4l16 6v12c0 10-7 18-16 22C15 40 8 32 8 22V10z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M17 24l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="guarantee__icon" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><path d="M24 4l16 6v12c0 10-7 18-16 22C15 40 8 32 8 22V10z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M17 24l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <h3>Garantia de <span data-cfg="guarantee">[7 DIAS]</span>.</h3>
               <p>Entre, assista e aplique. Se em até <span data-cfg="guarantee">[7 DIAS]</span> você sentir que o curso não é para você, é só pedir o reembolso pela Kiwify e devolvemos 100% do valor.</p>
@@ -383,10 +452,13 @@
       </div>
     </section>
 
-    <!-- 11. FAQ ============================================================= -->
+    <!-- 12. FAQ ============================================================= -->
     <section class="sec sec--dark" id="faq" aria-labelledby="faq-title">
       <div class="container narrow">
-        <h2 id="faq-title" class="title reveal">Perguntas <span class="grad">frequentes.</span></h2>
+        <div class="head head--center reveal">
+          <p class="eyebrow">Dúvidas</p>
+          <h2 id="faq-title" class="title">Perguntas <b class="grad">frequentes.</b></h2>
+        </div>
         <div class="accordion accordion--dark reveal">
           <details class="acc">
             <summary><span class="acc__title">Como vou acessar o curso?</span></summary>
@@ -416,12 +488,12 @@
       </div>
     </section>
 
-    <!-- 12. CTA FINAL ======================================================= -->
+    <!-- 13. CTA FINAL ======================================================= -->
     <section class="sec sec--gradient" id="cta-final" aria-labelledby="cta-title">
       <div class="container narrow cta">
-        <h2 id="cta-title" class="title title--center reveal">O próximo mês do seu cliente pode começar com um plano.</h2>
+        <h2 id="cta-title" class="title reveal">O próximo mês do seu cliente pode começar <b>com um plano.</b></h2>
         <p class="lead reveal">Chega de improviso. Aprenda a planejar com estratégia e mostre o valor do seu trabalho.</p>
-        <a class="btn btn--light btn--xl reveal" href="[LINK KIWIFY]" data-checkout>Quero o plano.</a>
+        <a class="btn btn--light btn--xl reveal" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
         <p class="cta__price reveal"><span data-cfg="installments">[12x de R$ X]</span> · ou <span data-cfg="cashPrice">[PREÇO DE ABERTURA]</span> à vista</p>
       </div>
     </section>
@@ -443,5 +515,11 @@
     </div>
     <a class="btn btn--primary" href="[LINK KIWIFY]" data-checkout tabindex="-1">Quero o plano.</a>
   </div>
+
+  <!-- Janela do vídeo de apresentação -->
+  <dialog class="video-modal" data-video-modal aria-label="Vídeo de apresentação do o plano.">
+    <div class="video-modal__box" data-video-box></div>
+    <button class="video-modal__close" type="button" data-video-close aria-label="Fechar vídeo">✕</button>
+  </dialog>
 </body>
 </html>
