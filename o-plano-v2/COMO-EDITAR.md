@@ -94,8 +94,8 @@ A página é dividida em blocos com comentários, para você se localizar:
 | `FAIXA` | Faixa com palavras passando |
 | `2. DOR` | "Você trabalha o mês inteiro…", lista de dores e conversa ilustrativa |
 | `3. ANTES × DEPOIS` | Calendário "No improviso × Com o plano." (cada post tem `data-m` = texto no improviso e `data-p` = texto com o plano) |
-| `4. A JORNADA + O QUE É` | Atração, Autoridade, Conversão e "Ao terminar, você vai conseguir" |
-| `5. MÓDULOS` | Módulos do curso (cada `<li class="step">`; troque também `data-title`, que aparece no painel) |
+| `4. O MÉTODO` | As 6 etapas do método e "Ao terminar, você vai conseguir" |
+| `5. MÓDULOS` | Módulos e aulas do curso (cada `<details class="mod">`) |
 | `6. PARA QUEM É` | É para você / Não é para você |
 | `7. BÔNUS` | Os 4 bônus |
 | `8. QUEM ENSINA` | Seu texto e `[BIO]` |
@@ -116,6 +116,8 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 | `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo e o "P" atrás são feitos no código. | 1400 × 841 |
 | `capa-pessoas-mobile.webp` | Mesma foto, menor, para o celular | 900 × 541 |
 | `gabriel.webp` | Quem ensina | 800 × 1000 (vertical 4:5) |
+| `bruna.webp` | Quem ensina (Bruna) | 800 × 1000 (vertical 4:5) |
+| `ayrton.webp` | Quem ensina (Ayrton) | 800 × 1000 (vertical 4:5) |
 | `mockup-aula.webp` | Print da aula no painel dos módulos | 1440 × 900 (16:10) |
 | `bonus-raio-x.webp` | Bônus 1 | 600 × 680 |
 | `bonus-5-minutos.webp` | Bônus 2 | 600 × 680 |
