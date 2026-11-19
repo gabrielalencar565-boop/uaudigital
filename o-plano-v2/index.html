@@ -16,7 +16,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
-  <link rel="preload" as="image" href="img/hero-trio.webp">
+  <link rel="preload" as="image" href="img/capa-mobile.webp" media="(max-width: 1079px)">
+  <link rel="preload" as="image" href="img/capa.webp" media="(min-width: 1080px)">
   <link rel="stylesheet" href="style.css">
 
   <!-- =====================================================================
@@ -34,7 +35,6 @@
 
   <header class="topbar">
     <div class="wrap topbar__in">
-      <a class="logo" href="#topo" aria-label="o plano. — voltar ao topo">o plano<span>.</span></a>
       <nav class="topbar__nav" aria-label="Seções">
         <a href="#antes-depois">O método</a><a href="#modulos">Conteúdo</a><a href="#bonus">Bônus</a><a href="#oferta">Investimento</a>
       </nav>
@@ -44,41 +44,31 @@
 
   <main id="conteudo">
 
-    <!-- 1. HERO ============================================================ -->
+    <!-- 1. HERO (capa) ===================================================== -->
     <section class="hero" id="topo" aria-labelledby="hero-title">
-      <div class="hero__bg" aria-hidden="true">
-        <img src="img/hero-trio.webp" alt="" width="1100" height="1264" fetchpriority="high">
-      </div>
-      <div class="hero__glow" aria-hidden="true"></div>
+      <picture class="hero__bg">
+        <source media="(min-width: 1080px)" srcset="img/capa.webp" width="1400" height="1000">
+        <img src="img/capa-mobile.webp" alt="Gabriel Alencar ao centro, com parte do time da UAU Digital" width="900" height="741" fetchpriority="high">
+      </picture>
 
       <div class="wrap hero__in">
         <div class="hero__copy">
-          <p class="kicker"><span class="kicker__dot"></span>Curso online · por Gabriel Alencar, diretor da UAU Digital</p>
+          <p class="brand" aria-label="o plano.">
+            <span class="brand__o" aria-hidden="true"></span><span class="brand__txt" aria-hidden="true">PLANO</span>
+          </p>
           <h1 id="hero-title" class="hero__title">Pare de postar no improviso. Planeje o mês do seu cliente <em>com estratégia.</em></h1>
           <p class="hero__lead">Aprenda a montar o planejamento de conteúdo do mês com um objetivo para cada post, dentro da jornada do público. Menos tempo por cliente, um plano para apresentar e defender.</p>
 
           <div class="hero__actions">
-            <a class="btn btn--main btn--lg" href="[LINK KIWIFY]" data-checkout>Quero o plano. <span class="arr" aria-hidden="true">↗</span></a>
+            <a class="btn btn--solid btn--lg" href="[LINK KIWIFY]" data-checkout>Quero o plano</a>
             <button class="btn btn--ghost btn--lg" type="button" data-video-open hidden>
               <span class="play" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
               Ver apresentação
             </button>
           </div>
-
-          <div class="hero__price">
-            <span class="hero__price-main" data-cfg="installments">[12x de R$ X]</span>
-            <span class="hero__price-sub">ou <span data-cfg="cashPrice">[PREÇO DE ABERTURA]</span> à vista · preço de abertura até <span data-cfg="deadline">[DATA]</span></span>
-          </div>
+          <p class="hero__price"><b data-cfg="installments">[12x de R$ X]</b> ou <span data-cfg="cashPrice">[PREÇO DE ABERTURA]</span> à vista · garantia de <span data-cfg="guarantee">[7 DIAS]</span></p>
         </div>
-
-        <ul class="hero__facts" aria-label="Destaques">
-          <li><b>100%</b> online</li>
-          <li><b>4</b> bônus inclusos</li>
-          <li><b data-cfg="guarantee">[7 DIAS]</b> de garantia</li>
-        </ul>
       </div>
-
-      <p class="hero__word" aria-hidden="true">o plano.</p>
     </section>
 
     <!-- FAIXA ============================================================== -->

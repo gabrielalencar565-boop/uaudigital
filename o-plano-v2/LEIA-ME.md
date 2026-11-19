@@ -1,7 +1,7 @@
 # o plano. — landing page (versão 2, editorial e interativa)
 
 Alternativa à versão em `o-plano/`. Mesmo conteúdo e mesmas regras, com outro conceito visual:
-hero em tela cheia com a foto dos 3, conversa ilustrativa com cliente, calendário "No improviso × Com o plano." que se organiza sozinho,
+capa com a arte dos 3 (img/capa.webp no desktop, img/capa-mobile.webp no celular; textos em HTML), conversa ilustrativa com cliente, calendário "No improviso × Com o plano." que se organiza sozinho,
 jornada do público (Atração → Autoridade → Conversão), módulos com painel fixo que acompanha a rolagem (desktop),
 bônus em leque, oferta com borda animada e CTA final com "o plano." gigante em movimento.
 
