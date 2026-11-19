@@ -20,7 +20,7 @@
 
   const DB_PATH = "edicoes/pagina";
   const TEXT_SEL = "h1,h2,h3,p,li,summary,q,figcaption,a.btn,.badge,.card__tag,.stage__chips span,.ticker__track span";
-  const SKIP_SEL = ".brand, .board, [data-cfg], .sticky-buy, .video-modal, .ed-ui, .ph-label, .final__marquee, .hero__p";
+  const SKIP_SEL = ".brand, .board, [data-cfg], .sticky-buy, .video-modal, .ed-ui, .ph-label, .final__marquee";
   const CFG_FIELDS = [
     ["checkoutUrl", "Link da Kiwify (checkout)", "https://pay.kiwify.com.br/..."],
     ["installments", "Parcelamento", "12x de R$ 19,70"],
@@ -33,7 +33,7 @@
 
   let state = blank();
   let texts = [], images = [], blocks = [];
-  const BLOCK_SEL = ".brand, .hero__ring, .hero__p"; // só posição/largura (logo, círculo e P da capa)
+  const BLOCK_SEL = ".brand, .hero__ring"; // só posição/largura (logo, círculo e P da capa)
   let caps = { db: null, assets: null, downloads: null, canWrite: false, inArtifact: false };
   let selected = null, dirty = false;
 
@@ -266,7 +266,7 @@
   function selectBlock(el) {
     clearSel(); el.classList.add("ed-sel"); selected = el;
     const k = el.dataset.edB;
-    const name = el.matches(".brand") ? "Logo" : el.matches(".hero__ring") ? "Círculo roxo da capa" : "Letra P da capa";
+    const name = el.matches(".brand") ? "Logo" : "Círculo roxo da capa";
     panel(`<p class="ed-panel__title">${name}</p>${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="breset">Voltar ao original</button></div>`);
     bindLayout(k, el);
@@ -284,13 +284,12 @@
         <input type="range" min="0.5" max="2" step="0.05" value="${val}" data-ed="iscale"></label>
       <label class="ed-field">Descrição da imagem (para acessibilidade e Google)
         <input type="text" value="${(img.alt || "").replace(/"/g, "&quot;")}" data-ed="alt"></label>
-      ${img.closest(".hero__art") ? '<div class="ed-row"><button type="button" data-ed="ring">Ajustar círculo roxo</button><button type="button" data-ed="letter">Ajustar letra P</button></div>' : ""}
+      ${img.closest(".hero__art") ? '<div class="ed-row"><button type="button" data-ed="ring">Ajustar círculo roxo</button></div>' : ""}
       ${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="ireset">Voltar ao original</button></div>`);
     bindLayout(k, boxOf(img));
-    const ringBtn = $("[data-ed=ring]", ui.panel), pBtn = $("[data-ed=letter]", ui.panel);
+    const ringBtn = $("[data-ed=ring]", ui.panel);
     if (ringBtn) ringBtn.addEventListener("click", () => selectBlock($(".hero__ring")));
-    if (pBtn) pBtn.addEventListener("click", () => selectBlock($(".hero__p")));
     $("[data-ed=pick]", ui.panel).addEventListener("click", () => ui.file.click());
     const r = $("[data-ed=iscale]", ui.panel), out = $("output", ui.panel);
     r.addEventListener("input", () => {

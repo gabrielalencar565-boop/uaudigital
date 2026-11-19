@@ -17,7 +17,7 @@ No modo de edição:
 | **Mover para os lados ou para cima/baixo** | Barras **Mover para os lados (X)** e **Mover para cima/baixo (Y)**, em pixels. |
 | **Computador × celular** | Largura, posição e espaço valem só no tamanho de tela em que você ajustou: ajuste abrindo no computador para o computador e no celular para o celular. |
 | **Afastar ou aproximar** | Barras **Espaço acima** e **Espaço abaixo** (valores negativos aproximam). |
-| **Logo, círculo roxo e letra P da capa** | Clique no logo para mover ou mudar a largura. Para o círculo e o P, clique na foto da capa e use os botões **Ajustar círculo roxo** e **Ajustar letra P**. |
+| **Logo e círculo roxo da capa** | Clique no logo para mover ou mudar a largura. Para o círculo, clique na foto da capa e use o botão **Ajustar círculo roxo**. |
 | **Painel cobrindo o que você edita** | Clique em **⇆** no painel para mudá-lo de lado. |
 | **Mudar a descrição de uma imagem** | Clique na imagem e edite o campo **Descrição** (é lida por leitores de tela e pelo Google). |
 | **Preço, parcelamento, data, garantia, link da Kiwify e vídeo** | Clique em **Preço e link** na barra de cima. |
@@ -114,7 +114,7 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 
 | Arquivo em `img/` | Onde aparece | Formato ideal |
 | --- | --- | --- |
-| `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo e o "P" atrás são feitos no código. | 1400 × 841 |
+| `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo atrás é feito no código. | 1400 × 841 |
 | `logo-oplano.webp` | Logo na capa e no cartão de preço (fundo transparente, para fundo escuro) | 800 × 147 |
 | `capa-pessoas-mobile.webp` | Mesma foto, menor, para o celular | 900 × 541 |
 | `gabriel.webp` | Quem ensina | 800 × 1000 (vertical 4:5) |
