@@ -431,6 +431,7 @@ body.ed-on .sticky-buy { display: none; }
 body.ed-on [data-ed-t] { outline: 1px dashed rgba(139,85,224,.55); outline-offset: 3px; cursor: text; }
 body.ed-on [data-ed-t]:hover, body.ed-on [data-ed-t]:focus { outline: 2px solid var(--r1); }
 body.ed-on img[data-ed-i] { cursor: pointer; outline: 2px dashed rgba(240,179,74,.7); outline-offset: -2px; }
+body.ed-on [data-ed-b] { cursor: move; outline: 2px dashed rgba(91,214,154,.7); outline-offset: 2px; }
 body.ed-on img[data-ed-i].is-missing { display: block !important; opacity: 0; }
 body.ed-on .ed-sel { outline: 3px solid var(--c) !important; }
 body.ed-on .ticker__track, body.ed-on .final__track { animation-play-state: paused; }

@@ -32,7 +32,8 @@
   ];
 
   let state = blank();
-  let texts = [], images = [];
+  let texts = [], images = [], blocks = [];
+  const BLOCK_SEL = ".brand, .hero__ring, .hero__p"; // só posição/largura (logo, círculo e P da capa)
   let caps = { db: null, assets: null, downloads: null, canWrite: false, inArtifact: false };
   let selected = null, dirty = false;
 
@@ -73,6 +74,8 @@
     texts.forEach((el, i) => { el.dataset.edT = "t" + i; });
     images = scope.flatMap((r) => $$("img", r)).filter((img) => !img.closest(".ed-ui"));
     images.forEach((img, i) => { img.dataset.edI = "i" + i; });
+    blocks = $$(BLOCK_SEL);
+    blocks.forEach((el, i) => { el.dataset.edB = "b" + i; });
   }
 
   function scaleTarget(img) {
@@ -80,7 +83,7 @@
   }
   // elemento que se move/estica quando você ajusta largura, X, Y e espaços
   function boxOf(el) {
-    if (el.dataset.edT) return el;
+    if (el.dataset.edT || el.dataset.edB) return el;
     return scaleTarget(el) || el.closest(".card") || el.closest(".quote__av, .sheet__screen, .ph") || el;
   }
   const LAYOUT = [
@@ -144,6 +147,7 @@
       if (t) t.style.setProperty("--s", d.scale || 1);
       else img.style.transform = d.scale && d.scale !== 1 ? "scale(" + d.scale + ")" : "";
     });
+    blocks.forEach((el) => { if (state.layout[el.dataset.edB]) applyLayout(el, state.layout[el.dataset.edB]); });
     if (window.OPLANO && Object.keys(state.config).length) window.OPLANO.applyConfig(state.config);
   }
 
@@ -205,6 +209,8 @@
     const img = e.target.closest("[data-ed-i]") || pickImageUnder(e);
     const txt = e.target.closest("[data-ed-t]");
     if (txt) { selectText(txt); return; }
+    const blk = e.target.closest("[data-ed-b]");
+    if (blk) { selectBlock(blk); return; }
     if (img) { e.preventDefault(); selectImage(img); return; }
   }, true);
 
@@ -254,6 +260,16 @@
     });
   }
 
+  function selectBlock(el) {
+    clearSel(); el.classList.add("ed-sel"); selected = el;
+    const k = el.dataset.edB;
+    const name = el.matches(".brand") ? "Logo" : el.matches(".hero__ring") ? "Círculo roxo da capa" : "Letra P da capa";
+    panel(`<p class="ed-panel__title">${name}</p>${layoutControls(k)}
+      <div class="ed-row"><button type="button" data-ed="breset">Voltar ao original</button></div>`);
+    bindLayout(k, el);
+    $("[data-ed=breset]", ui.panel).addEventListener("click", () => { delete state.layout[k]; applyLayout(el, null); markDirty(); });
+  }
+
   function selectImage(img) {
     clearSel(); img.classList.add("ed-sel"); selected = img;
     const k = img.dataset.edI, d = state.images[k] || {}, val = d.scale || 1;
@@ -265,9 +281,13 @@
         <input type="range" min="0.5" max="2" step="0.05" value="${val}" data-ed="iscale"></label>
       <label class="ed-field">Descrição da imagem (para acessibilidade e Google)
         <input type="text" value="${(img.alt || "").replace(/"/g, "&quot;")}" data-ed="alt"></label>
+      ${img.closest(".hero__art") ? '<div class="ed-row"><button type="button" data-ed="ring">Ajustar círculo roxo</button><button type="button" data-ed="letter">Ajustar letra P</button></div>' : ""}
       ${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="ireset">Voltar ao original</button></div>`);
     bindLayout(k, boxOf(img));
+    const ringBtn = $("[data-ed=ring]", ui.panel), pBtn = $("[data-ed=letter]", ui.panel);
+    if (ringBtn) ringBtn.addEventListener("click", () => selectBlock($(".hero__ring")));
+    if (pBtn) pBtn.addEventListener("click", () => selectBlock($(".hero__p")));
     $("[data-ed=pick]", ui.panel).addEventListener("click", () => ui.file.click());
     const r = $("[data-ed=iscale]", ui.panel), out = $("output", ui.panel);
     r.addEventListener("input", () => {

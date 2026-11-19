@@ -16,6 +16,7 @@ No modo de edição:
 | **Largura de um texto ou imagem** | Clique nele e use a barra **Largura** (100% = original). |
 | **Mover para os lados ou para cima/baixo** | Barras **Mover para os lados (X)** e **Mover para cima/baixo (Y)**, em pixels. |
 | **Afastar ou aproximar** | Barras **Espaço acima** e **Espaço abaixo** (valores negativos aproximam). |
+| **Logo, círculo roxo e letra P da capa** | Clique no logo para mover ou mudar a largura. Para o círculo e o P, clique na foto da capa e use os botões **Ajustar círculo roxo** e **Ajustar letra P**. |
 | **Painel cobrindo o que você edita** | Clique em **⇆** no painel para mudá-lo de lado. |
 | **Mudar a descrição de uma imagem** | Clique na imagem e edite o campo **Descrição** (é lida por leitores de tela e pelo Google). |
 | **Preço, parcelamento, data, garantia, link da Kiwify e vídeo** | Clique em **Preço e link** na barra de cima. |
