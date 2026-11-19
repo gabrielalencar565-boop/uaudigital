@@ -15,6 +15,7 @@ No modo de edição:
 | **Mudar o tamanho de uma imagem** | Clique na imagem e use a barra **Tamanho da imagem**. Nas fotos dos cards, a barra funciona como **Zoom**. |
 | **Largura de um texto ou imagem** | Clique nele e use a barra **Largura** (100% = original). |
 | **Mover para os lados ou para cima/baixo** | Barras **Mover para os lados (X)** e **Mover para cima/baixo (Y)**, em pixels. |
+| **Computador × celular** | Largura, posição e espaço valem só no tamanho de tela em que você ajustou: ajuste abrindo no computador para o computador e no celular para o celular. |
 | **Afastar ou aproximar** | Barras **Espaço acima** e **Espaço abaixo** (valores negativos aproximam). |
 | **Logo, círculo roxo e letra P da capa** | Clique no logo para mover ou mudar a largura. Para o círculo e o P, clique na foto da capa e use os botões **Ajustar círculo roxo** e **Ajustar letra P**. |
 | **Painel cobrindo o que você edita** | Clique em **⇆** no painel para mudá-lo de lado. |
@@ -114,6 +115,7 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 | Arquivo em `img/` | Onde aparece | Formato ideal |
 | --- | --- | --- |
 | `capa-pessoas.webp` | Foto dos 3 na capa (computador). **Fundo transparente** (PNG ou WebP recortado). O círculo roxo e o "P" atrás são feitos no código. | 1400 × 841 |
+| `logo-oplano.webp` | Logo na capa e no cartão de preço (fundo transparente, para fundo escuro) | 800 × 147 |
 | `capa-pessoas-mobile.webp` | Mesma foto, menor, para o celular | 900 × 541 |
 | `gabriel.webp` | Quem ensina | 800 × 1000 (vertical 4:5) |
 | `bruna.webp` | Quem ensina (Bruna, já incluída) | 800 × 1000 (vertical 4:5) |

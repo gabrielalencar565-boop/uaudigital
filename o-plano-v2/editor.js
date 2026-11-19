@@ -37,12 +37,15 @@
   let caps = { db: null, assets: null, downloads: null, canWrite: false, inArtifact: false };
   let selected = null, dirty = false;
 
-  function blank() { return { texts: {}, textScale: {}, images: {}, config: {}, layout: {} }; }
+  function blank() { return { texts: {}, textScale: {}, images: {}, config: {}, layout: {}, layoutM: {} }; }
+  // Largura/posição/espaço: "layout" vale no computador (≥1080px), "layoutM" no celular e tablet
+  const deskMQ = matchMedia("(min-width: 1080px)");
+  const LK = () => (deskMQ.matches ? "layout" : "layoutM");
   function merge(base, extra) {
     const out = blank();
     [base, extra].forEach((src) => {
       if (!src) return;
-      ["texts", "textScale", "images", "config", "layout"].forEach((k) => Object.assign(out[k], src[k] || {}));
+      ["texts", "textScale", "images", "config", "layout", "layoutM"].forEach((k) => Object.assign(out[k], src[k] || {}));
     });
     return out;
   }
@@ -105,8 +108,8 @@
     box.style.marginBottom = l.mb ? l.mb + "px" : "";
   }
   function layoutControls(k) {
-    const l = state.layout[k] || {};
-    return '<p class="ed-panel__sub">Largura, posição e espaço</p>' + LAYOUT.map(([f, label, min, max, step, unit, def]) => {
+    const l = state[LK()][k] || {};
+    return '<p class="ed-panel__sub">Largura, posição e espaço <small style="font-weight:500;color:#9c95ab">(' + (deskMQ.matches ? 'só no computador' : 'só no celular') + ')</small></p>' + LAYOUT.map(([f, label, min, max, step, unit, def]) => {
       const v = l[f] != null ? l[f] : def;
       return `<label class="ed-field">${label} <output>${v}${unit}</output>
         <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-lay="${f}" data-unit="${unit}" data-def="${def}"></label>`;
@@ -116,10 +119,10 @@
     $$("[data-lay]", ui.panel).forEach((r) => r.addEventListener("input", () => {
       const f = r.dataset.lay, v = parseFloat(r.value), def = parseFloat(r.dataset.def);
       r.previousElementSibling.textContent = v + r.dataset.unit;
-      const l = Object.assign({}, state.layout[k]);
+      const l = Object.assign({}, state[LK()][k]);
       if (v === def) delete l[f]; else l[f] = v;
-      if (Object.keys(l).length) state.layout[k] = l; else delete state.layout[k];
-      applyLayout(box, state.layout[k]); markDirty();
+      if (Object.keys(l).length) state[LK()][k] = l; else delete state[LK()][k];
+      applyLayout(box, state[LK()][k]); markDirty();
     }));
   }
 
@@ -130,10 +133,10 @@
       if (k in state.texts) el.innerHTML = clean(state.texts[k]);
       el.style.fontSize = state.textScale[k] ? state.textScale[k] + "em" : "";
       if (el.matches(".step h3")) { const li = el.closest(".step"); if (li) li.dataset.title = el.textContent.trim(); }
-      if (state.layout[k]) applyLayout(el, state.layout[k]);
+      if (state[LK()][k]) applyLayout(el, state[LK()][k]);
     });
     images.forEach((img) => {
-      if (state.layout[img.dataset.edI]) applyLayout(boxOf(img), state.layout[img.dataset.edI]);
+      if (state[LK()][img.dataset.edI]) applyLayout(boxOf(img), state[LK()][img.dataset.edI]);
       const d = state.images[img.dataset.edI];
       if (!d) return;
       if (d.src) {
@@ -147,7 +150,7 @@
       if (t) t.style.setProperty("--s", d.scale || 1);
       else img.style.transform = d.scale && d.scale !== 1 ? "scale(" + d.scale + ")" : "";
     });
-    blocks.forEach((el) => { if (state.layout[el.dataset.edB]) applyLayout(el, state.layout[el.dataset.edB]); });
+    blocks.forEach((el) => { if (state[LK()][el.dataset.edB]) applyLayout(el, state[LK()][el.dataset.edB]); });
     if (window.OPLANO && Object.keys(state.config).length) window.OPLANO.applyConfig(state.config);
   }
 
@@ -255,7 +258,7 @@
       el.style.fontSize = v === 1 ? "" : v + "em"; markDirty();
     });
     $("[data-ed=treset]", ui.panel).addEventListener("click", () => {
-      delete state.texts[k]; delete state.textScale[k]; delete state.layout[k]; applyLayout(el, null); el.style.fontSize = ""; markDirty();
+      delete state.texts[k]; delete state.textScale[k]; delete state[LK()][k]; applyLayout(el, null); el.style.fontSize = ""; markDirty();
       setStatus("Texto restaurado. Recarregue a página para ver o original.");
     });
   }
@@ -267,7 +270,7 @@
     panel(`<p class="ed-panel__title">${name}</p>${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="breset">Voltar ao original</button></div>`);
     bindLayout(k, el);
-    $("[data-ed=breset]", ui.panel).addEventListener("click", () => { delete state.layout[k]; applyLayout(el, null); markDirty(); });
+    $("[data-ed=breset]", ui.panel).addEventListener("click", () => { delete state[LK()][k]; applyLayout(el, null); markDirty(); });
   }
 
   function selectImage(img) {
@@ -298,7 +301,7 @@
       state.images[k] = Object.assign({}, state.images[k], { alt: e.target.value }); img.alt = e.target.value; markDirty();
     });
     $("[data-ed=ireset]", ui.panel).addEventListener("click", () => {
-      delete state.images[k]; delete state.layout[k]; applyLayout(boxOf(img), null); markDirty(); setStatus("Imagem restaurada. Recarregue a página para ver a original.");
+      delete state.images[k]; delete state[LK()][k]; applyLayout(boxOf(img), null); markDirty(); setStatus("Imagem restaurada. Recarregue a página para ver a original.");
     });
   }
 
@@ -419,6 +422,7 @@
   }
   apply();
   buildUI();
+  deskMQ.addEventListener("change", () => { $$("[data-ed-t],[data-ed-b]").forEach((el) => applyLayout(el, null)); images.forEach((img) => applyLayout(boxOf(img), null)); apply(); });
   ui.fab.hidden = !wantsEdit;
 
   // Dentro do link do Claude: salva direto na página e mostra o botão para o dono

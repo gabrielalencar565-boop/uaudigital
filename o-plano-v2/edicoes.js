@@ -1,7 +1,11 @@
 /* Edições feitas no modo de edição da página (abra a página com ?editar no fim do endereço).
    Este arquivo é substituído pelo "Baixar edicoes.js" do modo de edição. Vazio = página original. */
 window.EDICOES = {
-  "texts": {},
+  "texts": {
+    "t95": "Diretor e Sócio da UAU Digital",
+    "t101": "Diretor e Sócio a Uau Digital",
+    "t98": "Estrategista da Uau Digital"
+  },
   "textScale": {},
   "images": {
     "i0": {
@@ -31,6 +35,10 @@ window.EDICOES = {
     },
     "t0": {
       "x": -96
+    },
+    "i1": {
+      "x": -96
     }
-  }
+  },
+  "layoutM": {}
 };
