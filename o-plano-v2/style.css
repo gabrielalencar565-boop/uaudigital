@@ -70,7 +70,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ---------- Hero (capa) ---------- */
 .hero { position: relative; color: var(--t-light); background: #0E0E0E; overflow: hidden; isolation: isolate; padding: 0 0 56px; }
-.hero__art { position: relative; isolation: isolate; container-type: inline-size; padding-top: 12%; margin-bottom: 8px; }
+/* No celular a foto é 22% maior que a tela e centralizada (corta só as bordas laterais, nunca rostos) */
+.hero__art { position: relative; isolation: isolate; container-type: inline-size; width: 122%; margin: 0 0 8px -11%; padding-top: 12%; }
 .hero__ring {
   position: absolute; z-index: -2; left: 20%; top: 4%; width: 46%; aspect-ratio: 1; border-radius: 50%;
   background: radial-gradient(circle, #0E0E0E 0 27%, transparent 28%), linear-gradient(135deg, var(--r1), var(--r2) 60%, var(--r3));
@@ -350,10 +351,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
   .hero { min-height: min(100svh, 920px); display: flex; align-items: center; padding: 80px 0; }
   /* duas colunas: texto à esquerda, foto à direita — a foto nunca fica atrás do texto */
-  .hero__grid { width: 100%; display: grid; grid-template-columns: min(600px, 46%) minmax(0, 1fr); align-items: center; gap: 24px; padding-left: max(var(--gut), calc((100vw - var(--max)) / 2 + var(--gut))); }
+  .hero__grid { width: 100%; display: grid; grid-template-columns: min(540px, 40%) minmax(0, 1fr); align-items: center; gap: 24px; padding-left: max(var(--gut), calc((100vw - var(--max)) / 2 + var(--gut))); }
   .hero__copy { grid-column: 1; grid-row: 1; padding: 0; max-width: 600px; }
-  .hero__art { grid-column: 2; grid-row: 1; margin: 0; max-width: 1150px; padding-top: 10%; }
-  .hero__title { font-size: clamp(38px, 4.3vw, 64px); }
+  /* No computador a foto ocupa a coluna inteira e passa um pouco da borda direita */
+  .hero__art { grid-column: 2; grid-row: 1; width: 105%; margin: 0; padding-top: 8%; }
+  .hero__title { font-size: clamp(36px, 3.9vw, 62px); }
   .hero__lead { font-size: clamp(16px, 1.3vw, 18px); }
   .hero__actions { display: flex; flex-wrap: wrap; }
   .hero__actions .btn--solid { min-width: min(370px, 100%); }
