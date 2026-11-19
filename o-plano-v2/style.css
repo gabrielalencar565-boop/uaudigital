@@ -441,20 +441,14 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .gain__n { font-size: 30px; font-weight: 800; letter-spacing: -.04em; color: var(--s-purple); -webkit-text-stroke: 0; }
 .gain p { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 700; color: var(--text); }
 
-/* ---------- Módulos ---------- */
-.mods { display: grid; gap: 10px; max-width: 900px; margin: 0 auto; }
-.mod { border-radius: 24px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
-.mod[open] { background: var(--s-card-2); }
-.mod summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; padding: 20px 64px 20px 22px; position: relative; }
-.mod summary::-webkit-details-marker { display: none; }
-.mod summary::after { content: "+"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 20px; color: #fff; background: var(--s-grad); transition: transform .3s; }
-.mod[open] summary::after { transform: translateY(-50%) rotate(45deg); }
-.mod__n { grid-column: 1 / -1; font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--s-yellow); }
-.mod__t { font-size: 24px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
-.mod__who { justify-self: start; grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--muted); }
-.mod__list { display: grid; gap: 0; padding: 0 22px 18px; }
-.mod__list li { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); color: #CFCBDA; font-size: 16px; }
-.mod__list b { flex: none; min-width: 40px; color: var(--s-lilac); }
+/* ---------- Como funciona ---------- */
+.how { display: grid; gap: 12px; }
+.hcard { display: flex; flex-direction: column; gap: 10px; padding: 28px 24px; border-radius: 28px; background: var(--s-card); border: 1px solid var(--s-line); }
+.hcard__n { font-size: 14px; font-weight: 800; letter-spacing: .2em; color: var(--s-yellow); }
+.hcard h3 { font-size: 24px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; color: #F4F2FA; }
+.hcard p { margin: 0; font-size: 16px; line-height: 1.45; color: var(--s-muted-d); }
+.hcard--hl { background: var(--s-grad); border-color: transparent; }
+.hcard--hl p { color: rgba(255,255,255,.88); }
 .mods__cta { display: flex; justify-content: center; margin-top: 30px; }
 .mods__cta .btn { min-width: min(360px, 100%); }
 
@@ -519,11 +513,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .scard { min-height: 200px; padding: 32px 28px; }
   .gains__list { grid-template-columns: repeat(2, 1fr); }
   .team { grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .mod summary { grid-template-columns: auto 1fr auto; }
-  .mod__n { grid-column: auto; min-width: 96px; }
-  .mod__who { grid-column: auto; justify-self: end; }
+  .how { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .hcard { min-height: 220px; padding: 34px 30px; }
 }
 @media (min-width: 1080px) {
+  .how { grid-template-columns: repeat(4, 1fr); }
   .gains__list { grid-template-columns: repeat(5, 1fr); }
   .gain { grid-template-columns: 1fr; align-content: start; gap: 14px; padding: 24px 22px; min-height: 170px; }
 }

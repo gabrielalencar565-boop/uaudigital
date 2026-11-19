@@ -95,7 +95,7 @@ A página é dividida em blocos com comentários, para você se localizar:
 | `2. DOR` | "Você trabalha o mês inteiro…", lista de dores e conversa ilustrativa |
 | `3. ANTES × DEPOIS` | Calendário "No improviso × Com o plano." (cada post tem `data-m` = texto no improviso e `data-p` = texto com o plano) |
 | `4. O MÉTODO` | As 6 etapas do método e "Ao terminar, você vai conseguir" |
-| `5. MÓDULOS` | Módulos e aulas do curso (cada `<details class="mod">`) |
+| `5. COMO FUNCIONA` | "Você não só assiste. Você planeja junto." (4 cards) |
 | `6. PARA QUEM É` | É para você / Não é para você |
 | `7. BÔNUS` | Os 4 bônus |
 | `8. QUEM ENSINA` | Seu texto e `[BIO]` |
