@@ -19,8 +19,8 @@
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
   const DB_PATH = "edicoes/pagina-v3";
-  const TEXT_SEL = "h1,h2,h3,p,li,summary,q,figcaption,a.btn,.badge,.card__tag,.stage__chips span,.ticker__track span";
-  const SKIP_SEL = ".brand, [data-cfg], .sticky-buy, .vsl, .window, .ticker, .banner__fan, .ed-ui, .ph-label, .topbar";
+  const TEXT_SEL = "h1,h2,h3,p,li,summary,q,figcaption,a.buy,.badge,.card__tag,.stage__chips span,.ticker__track span";
+  const SKIP_SEL = ".brand, [data-cfg], .sticky-buy, .vsl, .screen, .ticker, .logos, .ed-ui, .topbar, .reel__btn, .steps";
   const CFG_FIELDS = [
     ["checkoutUrl", "Link da Kiwify (checkout)", "https://pay.kiwify.com.br/..."],
     ["installments", "Parcelamento", "12x de R$ 19,70"],
@@ -83,7 +83,7 @@
   }
 
   function scaleTarget(img) {
-    return img.closest(".vsl__poster") || img.closest(".teacher__media") || null;
+    return img.closest(".vsl") || img.closest(".teacher__media") || null;
   }
   // elemento que se move/estica quando você ajusta largura, X, Y e espaços
   function boxOf(el) {
@@ -220,7 +220,7 @@
 
   // imagens que ficam atrás de outros elementos (ex.: dentro de cards)
   function pickImageUnder(e) {
-    const box = e.target.closest(".ph, .vsl__poster, .bcard__img, .bon__img, .tm__av, .tool__media");
+    const box = e.target.closest(".vsl, .kit__item, .team li");
     return box ? $("img[data-ed-i]", box) : null;
   }
 
@@ -285,7 +285,7 @@
         <input type="range" min="0.5" max="2" step="0.05" value="${val}" data-ed="iscale"></label>
       <label class="ed-field">Descrição da imagem (para acessibilidade e Google)
         <input type="text" value="${(img.alt || "").replace(/"/g, "&quot;")}" data-ed="alt"></label>
-      ${img.closest(".vsl__poster") ? '<div class="ed-row"><button type="button" data-ed="ring">Ajustar círculo roxo</button></div>' : ""}
+      ${img.closest(".vsl") ? '<div class="ed-row"><button type="button" data-ed="ring">Ajustar círculo roxo</button></div>' : ""}
       ${layoutControls(k)}
       <div class="ed-row"><button type="button" data-ed="ireset">Voltar ao original</button></div>`);
     bindLayout(k, boxOf(img));

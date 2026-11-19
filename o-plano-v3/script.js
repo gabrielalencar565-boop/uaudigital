@@ -26,7 +26,7 @@ const CONFIG = {
   const hasIO = "IntersectionObserver" in window;
   const isPlaceholder = (v) => !v || /^\[.*\]$/.test(String(v).trim());
 
-  /* Preço, prazo, garantia, vídeo e link de compra (também usado pelo modo de edição) */
+  /* Link de compra (com os parâmetros de rastreio da URL) */
   const toCheckoutUrl = () => {
     if (isPlaceholder(CONFIG.checkoutUrl)) return null;
     try {
@@ -51,15 +51,16 @@ const CONFIG = {
       const left = end - Date.now();
       if (!(left > 0)) { box.hidden = true; clearInterval(cdTimer); return; }
       const m = Math.floor(left / 60000);
-      box.querySelector('[data-cd="d"]').textContent = String(Math.floor(m / 1440)).padStart(2, "0") + "d";
-      box.querySelector('[data-cd="h"]').textContent = String(Math.floor((m % 1440) / 60)).padStart(2, "0") + "h";
-      box.querySelector('[data-cd="m"]').textContent = String(m % 60).padStart(2, "0") + "m";
+      $('[data-cd="d"]', box).textContent = String(Math.floor(m / 1440)).padStart(2, "0") + "d";
+      $('[data-cd="h"]', box).textContent = String(Math.floor((m % 1440) / 60)).padStart(2, "0") + "h";
+      $('[data-cd="m"]', box).textContent = String(m % 60).padStart(2, "0") + "m";
       box.hidden = false;
     };
     tick();
     if (end > Date.now()) cdTimer = setInterval(tick, 20000);
   };
 
+  /* Preços, prazo, garantia, vídeo e links (também usado pelo modo de edição) */
   const applyConfig = (patch) => {
     if (patch) Object.keys(patch).forEach((k) => { if (k in CONFIG && patch[k] != null) CONFIG[k] = patch[k]; });
     $$("[data-cfg]").forEach((el) => { const v = CONFIG[el.dataset.cfg]; if (v) el.textContent = v; });
@@ -73,17 +74,9 @@ const CONFIG = {
   window.OPLANO = { config: CONFIG, applyConfig };
   if (!applyConfig()) console.warn("[o plano.] Defina CONFIG.checkoutUrl no script.js — os botões estão levando para a oferta.");
   $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
-  $$("[data-checkout]").forEach((a) => {
-    a.addEventListener("click", () => {
-      if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano.", currency: "BRL" });
-    });
-  });
-
-  /* Imagens que ainda não existem: mostra o rótulo do espaço reservado */
-  $$("img[data-ph]").forEach((img) => {
-    const miss = () => img.classList.add("is-missing");
-    if (img.complete && img.naturalWidth === 0) miss(); else img.addEventListener("error", miss, { once: true });
-  });
+  $$("[data-checkout]").forEach((a) => a.addEventListener("click", () => {
+    if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano.", currency: "BRL" });
+  }));
 
   /* Vídeo de vendas: troca a capa pelo player ao clicar */
   const vsl = $("[data-vsl]"), play = $("[data-vsl-play]");
@@ -102,20 +95,37 @@ const CONFIG = {
     });
   }
 
-  /* Carrossel de resultados: setas + barra de progresso */
-  const car = $("[data-carousel]");
-  if (car) {
-    const track = $("[data-carousel-track]", car), bar = $("[data-carousel-bar]", car);
-    const prev = $("[data-carousel-prev]", car), next = $("[data-carousel-next]", car);
-    const step = () => { const c = track.firstElementChild; return c ? c.getBoundingClientRect().width + 14 : 300; };
+  /* Depoimentos em vídeo: toca um por vez, com som */
+  const reels = $$(".reel");
+  const stopAll = (except) => reels.forEach((r) => {
+    const v = $("video", r);
+    if (r !== except && !v.paused) { v.pause(); r.classList.remove("is-playing"); v.controls = false; }
+  });
+  reels.forEach((r) => {
+    const v = $("video", r), btn = $("[data-reel]", r);
+    btn.addEventListener("click", () => {
+      stopAll(r);
+      v.muted = false; v.controls = true;
+      r.classList.add("is-playing");
+      v.play().catch(() => {});
+    });
+    v.addEventListener("ended", () => { r.classList.remove("is-playing"); v.controls = false; v.load(); });
+    v.addEventListener("pause", () => { if (v.ended) return; });
+  });
+
+  /* Carrossel dos depoimentos (celular e tablet) */
+  const track = $("[data-car-track]");
+  if (track) {
+    const bar = $("[data-car-bar]"), prev = $("[data-car-prev]"), next = $("[data-car-next]");
     const upd = () => {
       const max = track.scrollWidth - track.clientWidth;
-      const vis = track.scrollWidth ? track.clientWidth / track.scrollWidth : 1;
-      bar.style.width = Math.max(vis * 100, 12) + "%";
-      bar.style.left = (max > 0 ? (track.scrollLeft / max) * (100 - Math.max(vis * 100, 12)) : 0) + "%";
+      const vis = Math.max((track.clientWidth / track.scrollWidth) * 100, 14);
+      bar.style.width = vis + "%";
+      bar.style.left = (max > 0 ? (track.scrollLeft / max) * (100 - vis) : 0) + "%";
       prev.disabled = track.scrollLeft <= 2;
       next.disabled = track.scrollLeft >= max - 2;
     };
+    const step = () => (track.firstElementChild ? track.firstElementChild.getBoundingClientRect().width + 16 : 300);
     prev.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: reduceMotion ? "auto" : "smooth" }));
     next.addEventListener("click", () => track.scrollBy({ left: step(), behavior: reduceMotion ? "auto" : "smooth" }));
     track.addEventListener("scroll", upd, { passive: true });
@@ -123,35 +133,17 @@ const CONFIG = {
     upd();
   }
 
-  /* Plataforma por dentro: abas */
-  const tabs = $("[data-tabs]");
-  if (tabs) {
-    const btns = $$("[data-tab]", tabs), panes = $$("[data-pane]", tabs);
-    const side = $$(".window__side span", tabs), desc = $("[data-tab-desc]", tabs);
-    let auto = null;
-    const show = (i) => {
-      btns.forEach((b, j) => b.setAttribute("aria-selected", String(i === j)));
-      panes.forEach((p, j) => { p.hidden = i !== j; p.classList.toggle("is-on", i === j); });
-      side.forEach((s, j) => s.classList.toggle("is-on", i === j));
-      if (desc) desc.textContent = panes[i].dataset.desc || "";
-      const b = btns[i];
-      if (b && b.parentElement.scrollWidth > b.parentElement.clientWidth) b.parentElement.scrollTo({ left: b.offsetLeft - 16, behavior: "smooth" });
-    };
-    btns.forEach((b, i) => b.addEventListener("click", () => { clearInterval(auto); auto = null; show(i); }));
-    // Passa sozinho pelas abas enquanto está na tela, até a pessoa clicar numa
-    if (hasIO && !reduceMotion) {
-      let cur = 0, started = false;
-      new IntersectionObserver(([e]) => {
-        if (e.isIntersecting && !started) {
-          started = true;
-          auto = setInterval(() => { cur = (cur + 1) % btns.length; show(cur); }, 4200);
-        } else if (!e.isIntersecting && auto) { clearInterval(auto); auto = null; started = false; }
-      }, { threshold: 0.45 }).observe($(".window", tabs));
-      btns.forEach((b) => b.addEventListener("click", () => { started = true; }));
-    }
-  }
+  /* Método: cada etapa mostra a sua tela da plataforma */
+  const steps = $$("[data-step]"), panes = $$("[data-pane]");
+  steps.forEach((b) => b.addEventListener("click", () => {
+    const i = +b.dataset.step;
+    steps.forEach((s) => s.setAttribute("aria-selected", String(s === b)));
+    panes.forEach((p) => { p.hidden = +p.dataset.pane !== i; });
+    const list = b.closest(".steps");
+    if (list.scrollWidth > list.clientWidth) list.scrollTo({ left: b.parentElement.offsetLeft - 16, behavior: reduceMotion ? "auto" : "smooth" });
+  }));
 
-  /* Barra de compra fixa (mobile): depois do hero, some na oferta e no CTA final */
+  /* Barra de compra fixa (celular): aparece depois do topo e some na oferta e no fim */
   const sticky = $("[data-sticky]"), hero = $(".hero");
   if (sticky && hero && hasIO) {
     const st = { hero: true, blocked: new Set() };
@@ -164,15 +156,6 @@ const CONFIG = {
     };
     new IntersectionObserver(([e]) => { st.hero = e.isIntersecting; upd(); }).observe(hero);
     const bo = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? st.blocked.add(e.target) : st.blocked.delete(e.target))); upd(); });
-    [$(".price"), $("#cta-final")].filter(Boolean).forEach((el) => bo.observe(el));
-  }
-
-  /* Revelar ao rolar */
-  const reveals = $$(".reveal");
-  if (hasIO && !reduceMotion) {
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -10% 0px", threshold: 0.08 });
-    reveals.forEach((el) => io.observe(el));
-  } else {
-    reveals.forEach((el) => el.classList.add("is-in"));
+    [$(".offer__r"), $(".final")].filter(Boolean).forEach((el) => bo.observe(el));
   }
 })();
