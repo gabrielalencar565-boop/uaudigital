@@ -24,13 +24,9 @@ const CONFIG = {
   const hasIO = "IntersectionObserver" in window;
   const isPlaceholder = (v) => !v || /^\[.*\]$/.test(String(v).trim());
 
-  /* Textos de preço/prazo */
-  $$("[data-cfg]").forEach((el) => { const v = CONFIG[el.dataset.cfg]; if (v) el.textContent = v; });
-  $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
-
-  /* Checkout + UTMs + Pixel */
-  let checkoutUrl = null;
-  if (!isPlaceholder(CONFIG.checkoutUrl)) {
+  /* Preço, prazo, garantia e link de compra (também usado pelo modo de edição) */
+  const toCheckoutUrl = () => {
+    if (isPlaceholder(CONFIG.checkoutUrl)) return null;
     try {
       const url = new URL(CONFIG.checkoutUrl, location.href);
       if (CONFIG.forwardTrackingParams) {
@@ -38,13 +34,22 @@ const CONFIG = {
           if (/^(utm_|src$|sck$|fbclid$)/.test(k) && !url.searchParams.has(k)) url.searchParams.set(k, v);
         });
       }
-      checkoutUrl = url.toString();
-    } catch (e) { checkoutUrl = CONFIG.checkoutUrl; }
-  } else {
-    console.warn("[o plano.] Defina CONFIG.checkoutUrl no script.js — os botões estão levando para a oferta.");
-  }
+      return url.toString();
+    } catch (e) { return CONFIG.checkoutUrl; }
+  };
+  const applyConfig = (patch) => {
+    if (patch) Object.keys(patch).forEach((k) => { if (k in CONFIG && patch[k] != null) CONFIG[k] = patch[k]; });
+    $$("[data-cfg]").forEach((el) => { const v = CONFIG[el.dataset.cfg]; if (v) el.textContent = v; });
+    const href = toCheckoutUrl();
+    $$("[data-checkout]").forEach((a) => { a.href = href || "#oferta"; });
+    const vbtn = $("[data-video-open]");
+    if (vbtn) vbtn.hidden = !CONFIG.videoEmbedUrl;
+    return href;
+  };
+  window.OPLANO = { config: CONFIG, applyConfig };
+  if (!applyConfig()) console.warn("[o plano.] Defina CONFIG.checkoutUrl no script.js — os botões estão levando para a oferta.");
+  $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
   $$("[data-checkout]").forEach((a) => {
-    a.href = checkoutUrl || "#oferta";
     a.addEventListener("click", () => {
       if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano.", currency: "BRL" });
     });
@@ -58,10 +63,10 @@ const CONFIG = {
 
   /* Vídeo em janela */
   const openBtn = $("[data-video-open]"), modal = $("[data-video-modal]"), box = $("[data-video-box]");
-  if (CONFIG.videoEmbedUrl && openBtn && modal && typeof modal.showModal === "function") {
-    openBtn.hidden = false;
+  if (openBtn && modal && typeof modal.showModal === "function") {
     openBtn.addEventListener("click", () => {
       const src = CONFIG.videoEmbedUrl;
+      if (!src) return;
       let media;
       if (/\.(mp4|webm)(\?|$)/i.test(src)) {
         media = Object.assign(document.createElement("video"), { src, controls: true, autoplay: true, playsInline: true });

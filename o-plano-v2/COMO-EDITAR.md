@@ -1,18 +1,47 @@
 # Como editar a landing page do o plano.
 
-A página tem só 3 arquivos e uma pasta de imagens:
+## Jeito mais fácil: modo de edição (sem mexer em código)
+
+**No link do Claude:** abra a página e clique em **✎ Editar página** (canto inferior esquerdo). Esse botão só aparece para você, que é dono do link.
+**Na sua hospedagem ou no computador:** abra a página com `?editar` no fim do endereço, por exemplo `seusite.com.br/?editar`. Quem visita a página normalmente não vê o botão.
+
+No modo de edição:
+
+| O que fazer | Como |
+| --- | --- |
+| **Mudar um texto** | Clique no texto e escreva. Para negrito, selecione e aperte Ctrl+B (Cmd+B no Mac). |
+| **Mudar o tamanho de um texto** | Clique no texto e use a barra **Tamanho do texto** no painel da direita. |
+| **Trocar uma imagem** | Clique na imagem e em **Trocar imagem**. Ela é reduzida e otimizada sozinha. |
+| **Mudar o tamanho de uma imagem** | Clique na imagem e use a barra **Tamanho da imagem**. Nas fotos dos cards, a barra funciona como **Zoom**. |
+| **Mudar a descrição de uma imagem** | Clique na imagem e edite o campo **Descrição** (é lida por leitores de tela e pelo Google). |
+| **Preço, parcelamento, data, garantia, link da Kiwify e vídeo** | Clique em **Preço e link** na barra de cima. |
+| **Desfazer** | Clique no texto ou na imagem e em **Voltar ao original**. |
+
+**Para guardar:**
+- **No link do Claude:** clique em **Salvar**. A alteração já aparece para quem abrir o link.
+- **Na sua hospedagem:** clique em **Baixar edicoes.js** e substitua o arquivo `edicoes.js` da pasta da página pelo que você baixou. As imagens trocadas vão dentro desse arquivo.
+
+Depois de subir o novo `edicoes.js`, se a página ainda mostrar a versão antiga, recarregue com Ctrl+Shift+R (no Mac, Cmd+Shift+R) para limpar o cache.
+
+> As palavras do calendário "No improviso × Com o plano." e a faixa "o plano." gigante do final não entram no modo de edição. Para mudá-las, veja a seção 2 abaixo ou peça ao Claude.
+
+---
+
+## Editando direto nos arquivos (opcional)
+
+A página tem estes arquivos e uma pasta de imagens:
 
 | Arquivo | Para que serve |
 | --- | --- |
-| `index.html` | **Todos os textos** da página |
-| `script.js` | **Preço, link da Kiwify, data, garantia e vídeo** (bloco `CONFIG` logo no começo) |
-| `style.css` | Cores, fontes e layout (não precisa mexer para trocar texto ou imagem) |
-| `img/` | **Todas as imagens** |
+| `index.html` | Todos os textos originais da página |
+| `script.js` | Preço, link da Kiwify, data, garantia e vídeo (bloco `CONFIG` logo no começo) |
+| `edicoes.js` | O que você mudou no modo de edição (tem prioridade sobre o `index.html` e o `script.js`) |
+| `editor.js` | O modo de edição em si (não precisa mexer) |
+| `style.css` | Cores, fontes e layout |
+| `img/` | Todas as imagens |
 
 Para editar, abra os arquivos num editor de texto. O VS Code é gratuito: https://code.visualstudio.com
 Para ver o resultado, dê dois cliques no `index.html` e ele abre no navegador.
-
----
 
 ## 1. Preço, link de compra, data e garantia
 
