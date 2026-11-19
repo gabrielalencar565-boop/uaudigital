@@ -36,7 +36,8 @@ button { font: inherit; color: inherit; }
 .h2 { font-size: clamp(34px, 8vw, 62px); font-weight: 800; letter-spacing: -.045em; }
 .h2 em { font-style: normal; color: var(--em); }
 .lead { margin-top: 16px; font-size: 17px; color: var(--muted); }
-mark { color: var(--mark-fg); background: var(--mark-bg); padding: 0 .14em; border-radius: .16em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+/* Palavra-chave em degradê, nas cores do "O" da logo (roxo escuro em cima, mais claro embaixo) */
+mark { color: #6B33B6; background: linear-gradient(180deg, #8A54DE 0%, #6B33B6 55%, #4A1FAA 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 .02em; }
 .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; background: var(--grad); color: #fff; }
 .tag--soft { background: var(--card-2); color: var(--em); border: 1px solid var(--line); }
 .tag--y { background: var(--yellow); color: var(--ink); }
