@@ -119,15 +119,15 @@ Enquanto uma imagem não existe, a página mostra um espaço listrado com o tama
 | `bruna.webp` | Quem ensina (Bruna) | 800 × 1000 (vertical 4:5) |
 | `ayrton.webp` | Quem ensina (Ayrton) | 800 × 1000 (vertical 4:5) |
 | `mockup-aula.webp` | Print da aula no painel dos módulos | 1440 × 900 (16:10) |
-| `bonus-raio-x.webp` | Bônus 1 | 600 × 680 |
-| `bonus-5-minutos.webp` | Bônus 2 | 600 × 680 |
-| `bonus-1-pagina.webp` | Bônus 3 | 600 × 680 |
-| `bonus-ebook.webp` | Bônus 4 | 600 × 680 |
+| `bonus-briefing.webp` | Bônus 1 (Briefing Estratégico) | 600 × 680 |
+| `bonus-guia.webp` | Bônus 2 (O Guia do Social Media Estratégico) | 600 × 680 |
+| `bonus-precificacao.webp` | Bônus 3 (Aula de Precificação) | 600 × 680 |
+| `bonus-plataforma.webp` | Bônus 4 (Plataforma para montar o planejamento) | 600 × 680 |
 | `depoimento-1.webp`, `-2`, `-3` | Foto redonda de quem deu o depoimento | 200 × 200 |
 | `og-o-plano.jpg` | Prévia quando o link é enviado no WhatsApp ou no Instagram | 1200 × 630 |
 
 **Dicas:**
-- Pode usar `.jpg` ou `.png`. Nesse caso, troque a extensão no `index.html` (Ctrl+F pelo nome do arquivo, ex.: `bonus-ebook.webp` → `bonus-ebook.jpg`).
+- Pode usar `.jpg` ou `.png`. Nesse caso, troque a extensão no `index.html` (Ctrl+F pelo nome do arquivo, ex.: `bonus-guia.webp` → `bonus-guia.jpg`).
 - Para a página carregar rápido, deixe cada imagem com menos de 300 KB. Dá para converter e comprimir de graça em https://squoosh.app
 - Sempre que trocar uma foto, atualize o texto do `alt="..."` dela no `index.html` (ele descreve a imagem para quem usa leitor de tela).
 

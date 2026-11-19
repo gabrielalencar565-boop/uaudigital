@@ -522,6 +522,46 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .gain { grid-template-columns: 1fr; align-content: start; gap: 14px; padding: 24px 22px; min-height: 170px; }
 }
 
+
+/* ---------- Oferta (estilo slide) ---------- */
+.stack { display: grid; gap: 12px; }
+.stack__main, .stack__item { display: flex; flex-direction: column; gap: 8px; border-radius: 28px; }
+.stack__main { padding: 30px 26px; background: var(--s-grad); color: #fff; box-shadow: 0 40px 70px -40px rgba(59,14,141,.8); }
+.stack__main h3 { font-size: clamp(32px, 8vw, 48px); font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.stack__main p { margin: 0; color: rgba(255,255,255,.88); font-size: 16px; line-height: 1.45; max-width: 460px; }
+.stack__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.stack__chips span { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+.stack__item { padding: 22px 24px; background: #fff; border: 1px solid rgba(23,20,31,.08); justify-content: center; }
+.stack__item h3 { font-size: 21px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; color: var(--s-ink); }
+.stack__tag { font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--s-purple); }
+.stack__main .stack__tag { color: var(--s-yellow); }
+
+.price { display: grid; gap: 22px; margin-top: 14px; padding: 30px 26px; border-radius: 28px; background: var(--s-black); color: #F4F2FA; text-align: center; }
+.price__from { margin: 0; color: var(--s-muted-d); }
+.price__big { margin: 4px 0; font-size: clamp(46px, 13vw, 88px); font-weight: 800; line-height: 1; letter-spacing: -.05em; color: var(--s-lilac); }
+.price__cash { margin: 0; font-size: 17px; }
+.price__cash b { color: var(--s-yellow); }
+.price__act { display: grid; gap: 12px; justify-items: center; }
+.price__act .btn { width: 100%; max-width: 420px; }
+.price__small { margin: 0; font-size: 13px; color: var(--s-muted-d); }
+.price__small b { color: #F4F2FA; }
+
+.guar { display: flex; align-items: center; gap: 14px; max-width: 640px; margin: 18px auto 0; padding: 16px 20px; border-radius: 999px; background: #fff; border: 1px solid rgba(23,20,31,.08); color: var(--s-purple); }
+.guar svg { flex: none; }
+.guar p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--s-muted-l); }
+.guar b { color: var(--s-ink); }
+
+@media (max-width: 759px) { .guar { border-radius: 22px; align-items: flex-start; } }
+@media (min-width: 760px) {
+  .stack { grid-template-columns: 1.3fr 1fr 1fr; grid-template-rows: auto auto; gap: 14px; }
+  .stack__main { grid-row: span 2; padding: 40px 36px; justify-content: flex-end; min-height: 320px; }
+  .stack__item { min-height: 150px; }
+  .price { grid-template-columns: 1fr 1fr; align-items: center; text-align: left; padding: 40px 48px; gap: 40px; }
+  .price__act { justify-items: stretch; }
+  .price__act .btn { max-width: none; }
+  .price__small { text-align: center; }
+}
+
 /* =========================================================================
    Modo de edição (só aparece com ?editar no endereço ou para o dono no link do Claude)
    ========================================================================= */

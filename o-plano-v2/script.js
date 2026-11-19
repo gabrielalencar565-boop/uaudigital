@@ -131,7 +131,7 @@ const CONFIG = {
     };
     new IntersectionObserver(([e]) => { st.hero = e.isIntersecting; upd(); }).observe(hero);
     const bo = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? st.blocked.add(e.target) : st.blocked.delete(e.target))); upd(); });
-    [$(".offer"), $("#cta-final")].filter(Boolean).forEach((el) => bo.observe(el));
+    [$(".price"), $("#cta-final")].filter(Boolean).forEach((el) => bo.observe(el));
   }
 
   /* Revelar ao rolar */
