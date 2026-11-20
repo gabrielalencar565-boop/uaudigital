@@ -51,7 +51,7 @@ const CONFIG = {
   $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
   $$("[data-checkout]").forEach((a) => {
     a.addEventListener("click", () => {
-      if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano.", currency: "BRL" });
+      if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano. v2", currency: "BRL" });
     });
   });
 
@@ -133,6 +133,18 @@ const CONFIG = {
     const bo = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? st.blocked.add(e.target) : st.blocked.delete(e.target))); upd(); });
     [$(".ticket__price"), $("#cta-final")].filter(Boolean).forEach((el) => bo.observe(el));
   }
+
+  /* Depoimentos em vídeo: toca um por vez, com som */
+  const reels = $$(".reel");
+  reels.forEach((r) => {
+    const v = $("video", r), btn = $("[data-reel]", r);
+    btn.addEventListener("click", () => {
+      reels.forEach((o) => { const ov = $("video", o); if (o !== r && !ov.paused) { ov.pause(); ov.controls = false; o.classList.remove("is-playing"); } });
+      v.muted = false; v.controls = true; r.classList.add("is-playing");
+      v.play().catch(() => {});
+    });
+    v.addEventListener("ended", () => { r.classList.remove("is-playing"); v.controls = false; v.load(); });
+  });
 
   /* Revelar ao rolar */
   const reveals = $$(".reveal");

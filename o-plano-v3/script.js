@@ -75,7 +75,7 @@ const CONFIG = {
   if (!applyConfig()) console.warn("[o plano.] Defina CONFIG.checkoutUrl no script.js — os botões estão levando para a oferta.");
   $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
   $$("[data-checkout]").forEach((a) => a.addEventListener("click", () => {
-    if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano.", currency: "BRL" });
+    if (typeof window.fbq === "function") window.fbq("track", "InitiateCheckout", { content_name: "o plano. v3", currency: "BRL" });
   }));
 
   /* Vídeo de vendas: troca a capa pelo player ao clicar */
@@ -93,6 +93,19 @@ const CONFIG = {
       }
       vsl.replaceChildren(media);
     });
+  }
+
+  /* Antes × depois: alterna o calendário; vira sozinho na primeira vez que aparece */
+  const board = $("[data-board]");
+  if (board) {
+    const bb = $$("[data-board-set]", board);
+    let touched = false;
+    const set = (st) => { board.dataset.state = st; bb.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.boardSet === st))); };
+    bb.forEach((b) => b.addEventListener("click", () => { touched = true; set(b.dataset.boardSet); }));
+    if (hasIO && !reduceMotion) {
+      const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); setTimeout(() => { if (!touched) set("plan"); }, 1400); } }, { threshold: 0.5 });
+      io.observe($(".board__frame", board));
+    }
   }
 
   /* Depoimentos em vídeo: toca um por vez, com som */

@@ -20,7 +20,7 @@
 
   const DB_PATH = "edicoes/pagina-v3";
   const TEXT_SEL = "h1,h2,h3,p,li,summary,q,figcaption,a.buy,.badge,.card__tag,.stage__chips span,.ticker__track span";
-  const SKIP_SEL = ".brand, [data-cfg], .sticky-buy, .vsl, .screen, .ticker, .ed-ui, .topbar, .reel__btn, .steps";
+  const SKIP_SEL = ".board, .brand, [data-cfg], .sticky-buy, .vsl, .screen, .ticker, .ed-ui, .topbar, .reel__btn, .steps";
   const CFG_FIELDS = [
     ["checkoutUrl", "Link da Kiwify (checkout)", "https://pay.kiwify.com.br/..."],
     ["installments", "Parcelamento", "12x de R$ 19,70"],

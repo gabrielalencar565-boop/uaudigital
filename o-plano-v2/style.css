@@ -568,6 +568,23 @@ a.btn--light[data-checkout]:hover { background: #fff; }
 .sticky-buy a.btn[data-checkout] { min-height: 50px; padding: 6px 54px 6px 20px; font-size: 16px; }
 .sticky-buy a.btn[data-checkout]::after { width: 38px; height: 38px; right: 6px; font-size: 17px; }
 
+/* ---------- Depoimentos em vídeo de clientes da UAU ---------- */
+.reels { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(-1 * var(--gut)); padding: 4px var(--gut) 10px; scroll-padding-inline: var(--gut); }
+.reels::-webkit-scrollbar { display: none; }
+.reel { flex: 0 0 72%; max-width: 300px; scroll-snap-align: start; display: flex; flex-direction: column; border-radius: 26px; overflow: hidden; background: var(--s-card); border: 1px solid var(--s-line); }
+.reel__media { position: relative; aspect-ratio: 9 / 16; background: #000; }
+.reel video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.reel__btn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border: 0; border-radius: 999px; background: rgba(7,6,14,.62); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: opacity .3s; }
+.reel__btn span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: var(--s-purple); }
+.reel__btn svg { margin-left: 2px; }
+.reel.is-playing .reel__btn { opacity: 0; pointer-events: none; }
+.reel__who { display: grid; gap: 2px; flex: 1; align-content: start; padding: 18px 18px 20px; }
+.reel__who q { margin-bottom: 10px; font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.02em; color: #F4F2FA; quotes: "“" "”"; }
+.reel__who b { font-size: 14px; color: #F4F2FA; }
+.reel__who small { font-size: 12.5px; color: var(--s-muted-d); }
+@media (min-width: 760px) { .reel { flex-basis: 40%; } }
+@media (min-width: 1080px) { .reels { overflow: visible; margin: 0; padding: 0; } .reel { flex: 1 1 0; max-width: none; } }
+
 /* =========================================================================
    Modo de edição (só aparece com ?editar no endereço ou para o dono no link do Claude)
    ========================================================================= */

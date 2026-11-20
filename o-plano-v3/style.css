@@ -288,6 +288,42 @@ mark { color: #6B33B6; background: linear-gradient(180deg, #8A54DE 0%, #6B33B6 5
 }
 
 
+/* ---------- Dor + antes × depois ---------- */
+.blk--dor { background: linear-gradient(180deg, #07060E, #0D0A16); }
+.dor { display: grid; gap: 48px; align-items: center; }
+.dor .h2 { margin-bottom: 26px; }
+.pains li { display: grid; grid-template-columns: 40px 1fr; gap: 10px; padding: 16px 0; border-top: 1px solid var(--line); font-size: 18px; font-weight: 600; line-height: 1.35; }
+.pains li:last-child { border-bottom: 1px solid var(--line); }
+.pains span { padding-top: 3px; font-size: 13px; font-weight: 800; letter-spacing: .1em; color: var(--lilac); }
+.board { width: 100%; max-width: 560px; margin: 0 auto; }
+.board__switch { position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 0 auto 18px; padding: 5px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.board__switch button { position: relative; z-index: 1; min-height: 46px; border: 0; border-radius: 999px; background: none; font-weight: 700; font-size: 15px; color: var(--muted); cursor: pointer; transition: color .3s; }
+.board__switch button[aria-pressed="true"] { color: #fff; }
+.board__pill { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc(50% - 5px); border-radius: 999px; background: #34303E; transition: transform .45s cubic-bezier(.3,.8,.3,1), background .45s; }
+.board[data-state="plan"] .board__pill { transform: translateX(100%); background: var(--grad); }
+.board__frame { padding: 16px; border-radius: 24px; background: var(--card); border: 1px solid var(--line); }
+.board__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; padding: 2px 4px 14px; font-size: 15px; }
+.board__status { font-size: 13px; color: var(--muted); }
+.board__status::before, .board__caption::before { content: attr(data-messy-text); }
+.board[data-state="plan"] .board__status::before, .board[data-state="plan"] .board__caption::before { content: attr(data-plan-text); }
+.board[data-state="plan"] .board__status { color: var(--lilac); }
+.board__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.board__grid li { display: flex; flex-direction: column; gap: 6px; min-height: 112px; padding: 10px; border-radius: 14px; background: #1E1B26; border: 1px dashed rgba(255,255,255,.18); color: var(--muted);
+  transform: translate(var(--x), var(--y)) rotate(var(--r)); filter: grayscale(1); transition: transform .7s cubic-bezier(.3,.8,.3,1), background .5s, border-color .5s, filter .5s, color .5s; }
+.board__grid small { font-size: 11px; font-weight: 700; color: var(--yellow); }
+.board__grid b { font-size: 13px; line-height: 1.25; font-weight: 600; }
+.board__grid b::before { content: attr(data-m); }
+.board__grid .tag { margin-top: auto; align-self: flex-start; padding: 3px 9px; font-style: normal; font-size: 11px; background: #34303E; color: var(--muted); transition: background .5s, color .5s; }
+.board__grid .tag::before { content: attr(data-m); }
+.board[data-state="plan"] .board__grid li { transform: none; filter: none; background: #221D2C; border: 1px solid var(--line); color: var(--fg); }
+.board[data-state="plan"] .board__grid b::before, .board[data-state="plan"] .board__grid .tag::before { content: attr(data-p); }
+.board[data-state="plan"] .tag--a { background: var(--lilac); color: var(--ink); }
+.board[data-state="plan"] .tag--b { background: var(--p1); color: #fff; }
+.board[data-state="plan"] .tag--c { background: var(--yellow); color: var(--ink); }
+.board__caption { margin-top: 18px; text-align: center; font-size: clamp(18px, 4.6vw, 22px); font-weight: 700; letter-spacing: -.02em; }
+@media (min-width: 1080px) { .dor { grid-template-columns: 1.05fr .95fr; gap: 72px; } .board__grid li { min-height: 124px; padding: 12px; } .board__grid b { font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .board__grid li { transition: none; } }
+
 /* ---------- Barra fixa no celular ---------- */
 .sticky-buy { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px var(--gut-r) calc(10px + env(safe-area-inset-bottom, 0px)) var(--gut); background: rgba(7,6,14,.94); border-top: 1px solid rgba(255,255,255,.1); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transform: translateY(110%); transition: transform .3s; }
 .sticky-buy.is-visible { transform: none; }
