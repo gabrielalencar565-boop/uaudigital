@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import { buildCarouselPages } from "../lib/carousel-pages";
 import { format, parseISO } from "date-fns";
 import { lateDays, lateLabel, manualPostState } from "../lib/manual-post";
 import { ptBR } from "date-fns/locale";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle, RefreshCw, Crop, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Bookmark, Trash2, X, ImagePlus, Loader2, CalendarDays, Clock, Camera, Check, Instagram, AlertTriangle, RefreshCw, Crop, Plus, Film, Play } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +39,7 @@ const sb = supabase as any;
 
 interface Props {
   publication: CalendarPublication | null;
-  media: { id: string; url: string; type: string | null; sourceId?: string | null }[];
+  media: { id: string; url: string; type: string | null; name?: string | null; sourceId?: string | null }[];
   clientId: string | null;
   clientName: string;
   clientLogoUrl?: string | null;
@@ -447,11 +448,19 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
   // toStorageRenderUrl's own comment for the full story). Videos are left untouched — the
   // image-transform endpoint can't serve video, and the object-endpoint cache issue only
   // ever affected image content-types.
-  const images = media
-    .filter((m) => m.type?.startsWith("image/"))
-    .map((m) => ({ ...m, url: toStorageRenderUrl(m.url) ?? m.url }));
+  // Carrossel: cada página pode ser foto ou vídeo. O vídeo é guardado como video/* + uma miniatura "<nome>-poster.jpg"; as duas viram UMA página
+  // (a miniatura é a capa, o vídeo toca no lugar dela). `ids` = todos os arquivos da página (ordenar e apagar valem para todos).
+  const images: { id: string; url: string; type: string | null; sourceId?: string | null; videoUrl: string | null; ids: string[] }[] =
+    publication.content_type === "carrossel"
+      ? buildCarouselPages(media).map((pg) => ({ id: pg.id, url: pg.url ? (toStorageRenderUrl(pg.url) ?? pg.url) : "", type: "image/jpeg", videoUrl: pg.videoUrl, ids: pg.ids }))
+      : media
+          .filter((m) => m.type?.startsWith("image/"))
+          .map((m) => ({ ...m, url: toStorageRenderUrl(m.url) ?? m.url, videoUrl: null, ids: [m.id] }));
   const videos = media.filter((m) => m.type?.startsWith("video/"));
   const isCarousel = publication.content_type === "carrossel" && images.length > 1;
+  const deletePage = async (img: { id: string; ids: string[] }) => {
+    for (const id of img.ids) await deleteCoverImage(id, { silent: id !== img.ids[0] });
+  };
 
   const handleReorderDrop = (targetIndex: number) => {
     if (dragImageIndex === null || dragImageIndex === targetIndex) {
@@ -463,7 +472,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     const [moved] = reordered.splice(dragImageIndex, 1);
     reordered.splice(targetIndex, 0, moved);
     reorderCarousel.mutate(
-      { orderedIds: reordered.map((img) => img.id) },
+      { groups: reordered.map((img) => img.ids) },
       { onError: (e: any) => toast.error(e?.message ?? "Erro ao reordenar o carrossel") },
     );
     setDragImageIndex(null);
@@ -610,17 +619,31 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                 ) : images.length > 0 ? (
                   <>
                     {/* sempre no enquadramento padrão do Instagram (4:5 no feed), mesmo que o arquivo tenha outra proporção */}
+                    {(images[carouselIndex] ?? images[0]).videoUrl ? (
+                      <div className="mx-auto block overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4 / 5", width: "min(100%, 54.4vh)" }}>
+                        <video
+                          key={(images[carouselIndex] ?? images[0]).videoUrl!}
+                          src={(images[carouselIndex] ?? images[0]).videoUrl!}
+                          poster={(images[carouselIndex] ?? images[0]).url || undefined}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setViewerOpen(true)}
+                        className="mx-auto block overflow-hidden rounded-xl"
+                        style={{ aspectRatio: "4 / 5", width: "min(100%, 54.4vh)" }}
+                      >
+                        <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="h-full w-full cursor-zoom-in object-cover" />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setViewerOpen(true)}
-                      className="mx-auto block overflow-hidden rounded-xl"
-                      style={{ aspectRatio: "4 / 5", width: "min(100%, 54.4vh)" }}
-                    >
-                      <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="h-full w-full cursor-zoom-in object-cover" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteCoverImage(images[carouselIndex]?.id ?? images[0].id)}
+                      onClick={() => deletePage(images[carouselIndex] ?? images[0])}
                       title="Remover mídia"
                       className={cn(
                         "absolute top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80",
@@ -629,7 +652,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
-                    {instagramFormat && (
+                    {instagramFormat && !(images[carouselIndex] ?? images[0]).videoUrl && (
                       <button
                         type="button"
                         onClick={() => reframeImage(images[carouselIndex] ?? images[0])}
@@ -791,14 +814,17 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                               dragOverImageIndex === idx && dragImageIndex !== idx ? "border-primary" : "border-transparent",
                             )}
                           >
-                            <img src={img.url} alt="" className="pointer-events-none h-full w-full object-cover" />
+                            {img.url ? <img src={img.url} alt="" className="pointer-events-none h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center bg-muted"><Film className="h-5 w-5 text-muted-foreground" /></span>}
+                            {img.videoUrl && (
+                              <span className="pointer-events-none absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white"><Play className="h-2.5 w-2.5 fill-white" /></span>
+                            )}
                             <span className="pointer-events-none absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-[9px] font-semibold text-white">
                               {idx + 1}
                             </span>
                           </div>
                         </HoverCardTrigger>
                         <HoverCardContent side="top" className="w-auto overflow-hidden rounded-md p-0">
-                          <img src={img.url} alt="" className="max-h-80 max-w-80 object-contain" />
+                          {img.url && <img src={img.url} alt="" className="max-h-80 max-w-80 object-contain" />}
                         </HoverCardContent>
                       </HoverCard>
                     ))}
@@ -815,7 +841,7 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas. Máx. 20 fotos — cada uma em 1080x1350.</p>
+                  <p className="text-xs text-muted-foreground">Arraste as miniaturas para mudar a ordem das páginas. Máx. 20 fotos — cada uma em 1080x1350. As com ▶ são vídeos.</p>
                 </div>
               )}
 

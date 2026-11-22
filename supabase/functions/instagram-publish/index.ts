@@ -108,15 +108,33 @@ async function fetchMediaForTask(admin: ReturnType<typeof createClient>, taskId:
   // useTaskAttachmentsMap (src/features/calendario/hooks/use-calendar-data.ts).
   const { data, error } = await admin
     .from("pm_attachments")
-    .select("public_url, file_type, order_index, created_at")
+    .select("public_url, file_type, file_name, order_index, created_at")
     .eq("task_id", taskId)
     .eq("category", "final")
     .order("order_index", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as { public_url: string | null; file_type: string | null }[])
-    .filter((a) => a.public_url)
-    .map((a) => ({ url: a.public_url as string, type: a.file_type }));
+  const rows = ((data ?? []) as { public_url: string | null; file_type: string | null; file_name: string | null; order_index: number | null; created_at: string }[]).filter((a) => a.public_url);
+
+  // Todo vídeo enviado vem com uma miniatura "<nome>-poster.jpg" (só serve de capa na tela). Ela NÃO é uma página: sem este filtro um carrossel
+  // de vídeos saía com cada página duas vezes (o vídeo e a foto da miniatura) e um Story/vídeo podia pegar a miniatura no lugar do vídeo.
+  // O vídeo herda a posição da própria miniatura, que é quem guarda a ordem escolhida em "Ordem das páginas do carrossel".
+  const posterBase = (n: string | null) => (n && /-poster\.jpe?g$/i.test(n) ? n.replace(/-poster\.jpe?g$/i, "").toLowerCase() : null);
+  const videoBase = (n: string | null) => (n ? n.replace(/\.[^./]+$/, "").toLowerCase() : null);
+  const videoBases = new Set(rows.filter((r) => r.file_type?.startsWith("video/")).map((r) => videoBase(r.file_name)).filter((b): b is string => !!b));
+  const posterOrder = new Map<string, number>();
+  for (const r of rows) {
+    const b = posterBase(r.file_name);
+    if (b && videoBases.has(b) && !posterOrder.has(b)) posterOrder.set(b, r.order_index ?? 0);
+  }
+  return rows
+    .filter((r) => { const b = posterBase(r.file_name); return !(r.file_type?.startsWith("image/") && b && videoBases.has(b)); })
+    .map((r) => {
+      const b = r.file_type?.startsWith("video/") ? videoBase(r.file_name) : null;
+      return { url: r.public_url as string, type: r.file_type, order: (b && posterOrder.get(b)) ?? r.order_index ?? 0, created: r.created_at };
+    })
+    .sort((a, b) => a.order - b.order || a.created.localeCompare(b.created))
+    .map(({ url, type }) => ({ url, type }));
 }
 
 // The chosen Reel cover can point at an attachment that isn't even one of this task's own
