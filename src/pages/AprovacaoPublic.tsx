@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { buildCarouselPages } from "@/features/calendario/lib/carousel-pages";
 import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -633,7 +634,11 @@ export default function AprovacaoPublic() {
       </div>
 
       {selected && (() => {
-        const images = selected.media.filter((m) => m.type?.startsWith("image/"));
+        // Carrossel: vídeo + miniatura "-poster" viram uma página só (a miniatura é a capa e o vídeo toca nela)
+        const carouselPages = selected.content_type === "carrossel" ? buildCarouselPages(selected.media) : null;
+        const images: { id?: string; url: string; type: string | null; videoUrl?: string | null }[] = carouselPages
+          ? carouselPages.map((pg) => ({ id: pg.id, url: pg.url, type: "image/jpeg", videoUrl: pg.videoUrl }))
+          : selected.media.filter((m) => m.type?.startsWith("image/"));
         const videos = selected.media.filter((m) => m.type?.startsWith("video/"));
         const isStory = selected.content_type === "story";
         const hasVideo = selected.content_type === "reel" && videos.length > 0;
@@ -740,7 +745,19 @@ export default function AprovacaoPublic() {
                       </div>
                     ) : images.length > 0 ? (
                       <>
-                        <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
+                        {(images[carouselIndex] ?? images[0]).videoUrl ? (
+                          <video
+                            key={(images[carouselIndex] ?? images[0]).videoUrl!}
+                            src={(images[carouselIndex] ?? images[0]).videoUrl!}
+                            poster={(images[carouselIndex] ?? images[0]).url || undefined}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="max-h-[68vh] w-full rounded-xl bg-black object-cover"
+                          />
+                        ) : (
+                          <img src={images[carouselIndex]?.url ?? images[0].url} alt="" className="max-h-[68vh] w-full rounded-xl object-cover" />
+                        )}
                         {isCarousel && (
                           <>
                             <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">

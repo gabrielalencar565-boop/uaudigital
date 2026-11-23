@@ -1,4 +1,5 @@
 import { MonthYearSelect } from "@/components/MonthYearSelect";
+import { buildCarouselPages } from "../lib/carousel-pages";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
@@ -649,7 +650,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   // of drag/scroll jank on larger Cronogramas. mediaFor/thumbnailFor/imagesFor below keep
   // the exact same call signatures — this only changes recompute-per-call into a lookup.
   const mediaByTask = useMemo(() => {
-    const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null }[]>();
+    const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null; name?: string | null }[]>();
     for (const p of allRelevantPublications) {
       const list = attachmentsQ.data?.get(p.task_id) ?? [];
       const coverId = p.cover_attachment_id;
@@ -1638,7 +1639,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                   const images = media.filter((m) => m.type?.startsWith("image/"));
                   const thumb = images[0] ? toGridThumbUrl(images[0].thumbUrl) : null;
                   const isCarousel = p.content_type === "carrossel" && images.length > 1;
-                  const isVideoish = p.content_type === "reel";
+                  const isVideoish = p.content_type === "reel" || (p.content_type === "carrossel" && buildCarouselPages(media).some((pg) => pg.videoUrl));
                   return (
                     // Instagram's feed post ratio (1080x1350 = 4:5), mirrors the public preview's Feed.
                     <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} data-unscheduled-alert={alertModeFor(p) ? "" : undefined} className={cn("group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted", alertClass(alertModeFor(p)))}>

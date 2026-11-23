@@ -234,14 +234,14 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
       // (category "material") are internal working files, never client-facing.
       const { data, error } = await sb
         .from("pm_attachments")
-        .select("id, task_id, public_url, thumbnail_url, file_type, order_index, source_attachment_id")
+        .select("id, task_id, public_url, thumbnail_url, file_type, file_name, order_index, source_attachment_id")
         .in("task_id", taskIds)
         .eq("category", "final")
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null; sourceId?: string | null }[]>();
-      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null; source_attachment_id: string | null }[]) {
+      const map = new Map<string, { id: string; url: string; thumbUrl: string; type: string | null; name?: string | null; sourceId?: string | null }[]>();
+      for (const row of (data ?? []) as { id: string; task_id: string; public_url: string | null; thumbnail_url: string | null; file_type: string | null; file_name: string | null; source_attachment_id: string | null }[]) {
         if (!row.public_url) continue;
         const prev = map.get(row.task_id) ?? [];
         // url stays full-resolution — PublicationPreviewPanel reads this same map directly
@@ -249,7 +249,7 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
         // time, see uploadImageThumbnail in use-pm-data.ts) is a small Supabase
         // Storage-hosted JPEG meant only for the grid/list/feed cards below; older rows
         // uploaded before that existed just fall back to the full original there too.
-        prev.push({ id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type, sourceId: row.source_attachment_id });
+        prev.push({ id: row.id, url: row.public_url, thumbUrl: row.thumbnail_url ?? row.public_url, type: row.file_type, name: row.file_name, sourceId: row.source_attachment_id });
         map.set(row.task_id, prev);
       }
       return map;
@@ -264,9 +264,11 @@ export function useTaskAttachmentsMap(taskIds: string[]) {
 export function useReorderCarouselImages() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orderedIds }: { orderedIds: string[] }) => {
+    // groups: cada página pode ter mais de um arquivo (miniatura + vídeo); todos recebem o mesmo order_index
+    mutationFn: async ({ orderedIds, groups }: { orderedIds?: string[]; groups?: string[][] }) => {
+      const list = groups ?? (orderedIds ?? []).map((id) => [id]);
       const results = await Promise.all(
-        orderedIds.map((id, index) => sb.from("pm_attachments").update({ order_index: index }).eq("id", id)),
+        list.flatMap((ids, index) => ids.map((id) => sb.from("pm_attachments").update({ order_index: index }).eq("id", id))),
       );
       const failed = results.find((r) => r.error);
       if (failed?.error) throw failed.error;
