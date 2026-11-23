@@ -2114,7 +2114,6 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
     const resolved = resolveAlterationOrigin(task, childTasks.map((c) => c.post_type));
     // A planning with design AND video posts has no single origin, but it is a planning alteration
     const origin: AlterationOrigin | null = resolved.mixed && task.stage_current === "alteracoes" ? "planejamento" : resolved.origin;
-    const isPautaReview = origin === "planejamento";
     const originalStage = origin ? WORK_STAGE_BY_ORIGIN[origin] : "design";
     const resolvedReturnPostType = origin ?? "design";
 
@@ -2160,7 +2159,9 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
         .eq("task_id", task.id);
 
       // Reactivate the revisão task — use revisao_pauta key for planejamento returns
-      const revisaoAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      // Mesmo revisor da 1ª rodada: planejamento → revisao_pauta, design → revisao_design, vídeo → revisao_video (antes caía no "revisao" genérico
+      // e a segunda rodada ia para outra pessoa, ex.: a Isadora em vez do Diretor de Arte).
+      const revisaoAssigneeKey = resolveAssigneeStageKey(originalStage, "revisao");
       const fixedAssignee = getFixedAssignee(stageAssignees, revisaoAssigneeKey, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, revisaoAssigneeKey, task.client_id);
       const revisaoUpdates: any = {
@@ -2233,7 +2234,7 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
       toast.success("Ajuste concluído. Retornou para Revisão");
     } else {
       // Fallback: no paused revisão found, just change stage on current task
-      const fallbackAssigneeKey = isPautaReview ? "revisao_pauta" : "revisao";
+      const fallbackAssigneeKey = resolveAssigneeStageKey(originalStage, "revisao");
       const fixedAssignee = getFixedAssignee(stageAssignees, fallbackAssigneeKey, task.client_id);
       const fixedWatchers = getFixedWatchers(stageAssignees, fallbackAssigneeKey, task.client_id);
 
