@@ -108,13 +108,7 @@ export function PmImageViewer({ images, initialIndex, open, onClose }: Props) {
               className="w-full h-full bg-white rounded"
             />
           ) : /\.(mp4|mov|webm|avi|mkv)$/i.test(current.name) ? (
-            <video
-              key={current.url}
-              src={current.url}
-              controls
-              autoPlay
-              className="max-w-full max-h-full"
-            />
+            <VideoPlayer key={current.url} url={current.url} name={current.name} onDownload={() => handleDownload(current.url, current.name)} />
           ) : (
             <ViewerImage url={current.url} name={current.name} />
           )}
@@ -140,4 +134,31 @@ function ViewerImage({ url, name }: { url: string; name: string }) {
   }
 
   return <img src={src ?? url} alt={name} className="max-w-full max-h-full object-contain" />;
+}
+
+/** Vídeo do visualizador. Se o navegador não conseguir tocar (comum em computador antigo com vídeo de iPhone, que vem em HEVC/H.265), mostra o aviso e o botão de baixar em vez de uma tela preta. */
+function VideoPlayer({ url, name, onDownload }: { url: string; name: string; onDownload: () => void }) {
+  const [erro, setErro] = useState(false);
+  if (erro) {
+    return (
+      <div className="flex max-w-md flex-col items-center gap-3 rounded-xl bg-white/10 p-6 text-center text-white">
+        <p className="text-sm font-medium">Este computador não conseguiu abrir o vídeo.</p>
+        <p className="text-xs text-white/70">Vídeos gravados no iPhone usam um formato (HEVC) que alguns computadores mais antigos não tocam. Baixe o arquivo para assistir em outro aparelho ou no player do sistema.</p>
+        <Button type="button" variant="secondary" size="sm" className="gap-2" onClick={onDownload}>
+          <Download className="h-4 w-4" /> Baixar {name}
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <video
+      src={url}
+      controls
+      autoPlay
+      playsInline
+      preload="metadata"
+      onError={() => setErro(true)}
+      className="max-w-full max-h-full"
+    />
+  );
 }
