@@ -96,8 +96,8 @@ export default function PrivacyPolicy() {
               <h2 className="text-base font-semibold text-foreground">5. Retenção e exclusão</h2>
               <p>
                 Mantemos os dados enquanto durar a relação com o cliente ou colaborador. O dono da
-                conta pode revogar o acesso a qualquer momento, e as métricas guardadas podem ser
-                apagadas a pedido. Instruções específicas sobre como solicitar a exclusão de dados
+                conta pode revogar o acesso a qualquer momento. Ao desconectar a conta no
+                aplicativo, o token e as métricas guardadas dela são apagados. Instruções específicas sobre como solicitar a exclusão de dados
                 relacionados à conexão com o Instagram estão na nossa{" "}
                 <a href="/exclusao-de-dados" className="underline">
                   página de Exclusão de Dados

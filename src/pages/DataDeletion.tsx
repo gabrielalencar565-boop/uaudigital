@@ -40,9 +40,9 @@ export default function DataDeletion() {
                 <li>
                   <strong>Pelo próprio aplicativo:</strong> um administrador da Uau Digital pode ir
                   em Clientes → selecionar o cliente → Configurações → "Desconectar". Essa ação
-                  apaga imediatamente o token de acesso armazenado e revoga a conexão — nenhuma
-                  publicação nova nem leitura de métricas é possível a partir desse momento. As
-                  métricas já guardadas são apagadas a pedido (item 3).
+                  apaga imediatamente o token de acesso armazenado e as métricas guardadas desse
+                  cliente (conta, posts e público) e revoga a conexão — nenhuma publicação nova
+                  nem leitura de métricas é possível a partir desse momento.
                 </li>
                 <li>
                   <strong>Pela própria Meta:</strong> qualquer pessoa com acesso à conta do
@@ -55,7 +55,7 @@ export default function DataDeletion() {
                   <a href={`mailto:${CONTACT_EMAIL}`} className="underline">
                     {CONTACT_EMAIL}
                   </a>{" "}
-                  pedindo a exclusão do token, das métricas guardadas ou de ambos. Respondemos e
+                  pedindo a exclusão de qualquer dado relacionado à conexão. Respondemos e
                   confirmamos a exclusão em até 30 dias.
                 </li>
               </ol>

@@ -21,7 +21,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useConnectInstagram, useDisconnectInstagram, useInstagramConnections, useSyncInstagramPhoto } from "@/features/calendario/hooks/use-instagram";
-import { useConnectWithInsights } from "@/features/resultados/hooks/use-resultados";
 import { brandGradientCss } from "@/lib/brand-gradient";
 import { useClients, useTeamMembers } from "@/features/data/queries";
 import { toGridThumbUrl } from "@/features/calendario/components/CalendarioPublicacaoPanel";
@@ -303,7 +302,6 @@ function InstagramCard({ clientId }: { clientId: string }) {
   const canManage = usePermission("action_instagram_connect");
   const connectionsQ = useInstagramConnections(clientId);
   const connect = useConnectInstagram();
-  const connectInsights = useConnectWithInsights();
   const disconnect = useDisconnectInstagram();
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
@@ -314,7 +312,6 @@ function InstagramCard({ clientId }: { clientId: string }) {
 
   const go = (url: string) => { window.location.href = url; };
   const startConnect = () => connect.mutate({ clientId }, { onSuccess: go });
-  const startInsights = () => connectInsights.mutate({ clientId }, { onSuccess: go });
 
   const status = active && !expired
     ? { label: "Conectado", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }
@@ -360,8 +357,8 @@ function InstagramCard({ clientId }: { clientId: string }) {
             </Button>
           ) : (
             <>
-              <Button variant="outline" className="gap-1.5 rounded-full" disabled={connectInsights.isPending} onClick={startInsights}>
-                <RefreshCw className="h-4 w-4" /> Reconectar com métricas
+              <Button variant="outline" className="gap-1.5 rounded-full" disabled={connect.isPending} onClick={startConnect}>
+                <RefreshCw className="h-4 w-4" /> Reconectar Instagram
               </Button>
               <Button variant="ghost" className="gap-1.5 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDisconnect(true)}>
                 <Unplug className="h-4 w-4" /> Desconectar
@@ -375,7 +372,7 @@ function InstagramCard({ clientId }: { clientId: string }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Desconectar o Instagram?</AlertDialogTitle>
-            <AlertDialogDescription>O cliente deixará de publicar automaticamente no Instagram até ser conectado de novo.</AlertDialogDescription>
+            <AlertDialogDescription>O cliente deixará de publicar automaticamente no Instagram e as métricas guardadas dele (conta, posts e público) serão apagadas. Para voltar, é preciso conectar de novo.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

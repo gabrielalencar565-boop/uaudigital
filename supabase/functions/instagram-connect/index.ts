@@ -25,7 +25,10 @@ const REDIRECT_URI = Deno.env.get("INSTAGRAM_OAUTH_REDIRECT_URI")!;
 const IG_LOGIN_APP_ID = Deno.env.get("INSTAGRAM_LOGIN_APP_ID")!.trim();
 const IG_LOGIN_APP_SECRET = Deno.env.get("INSTAGRAM_LOGIN_APP_SECRET")!.trim();
 const IG_LOGIN_REDIRECT_URI = Deno.env.get("INSTAGRAM_LOGIN_OAUTH_REDIRECT_URI")!.trim();
-const IG_LOGIN_OAUTH_SCOPES = "instagram_business_basic,instagram_business_content_publish";
+// Uma só conexão: por padrão já pede a permissão de métricas junto com a de publicar. `with_metrics: false` existe só como saída para uma conta que
+// não consegue autorizar as métricas (a pessoa escolhe "Conectar sem métricas" quando o Instagram recusa).
+const IG_LOGIN_OAUTH_SCOPES_PUBLISH = "instagram_business_basic,instagram_business_content_publish";
+const IG_LOGIN_OAUTH_SCOPES_FULL = `${IG_LOGIN_OAUTH_SCOPES_PUBLISH},instagram_business_manage_insights`;
 
 // Names/set confirmed against this app's own "Permissões e recursos" page (App Dashboard →
 // Casos de uso → API do Instagram → Permissões e recursos), the source of truth for exact
@@ -365,7 +368,7 @@ async function handleSelectPage(admin: ReturnType<typeof createClient>, body: { 
 
 // ── Instagram API with Instagram Login — direct connection, no Facebook Page involved ──
 
-async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string }, agencyId: string | null) {
+async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId: string, body: { client_id?: string; with_metrics?: boolean }, agencyId: string | null) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
 
@@ -383,7 +386,7 @@ async function handleStartIgLogin(admin: ReturnType<typeof createClient>, userId
   url.searchParams.set("client_id", IG_LOGIN_APP_ID);
   url.searchParams.set("redirect_uri", IG_LOGIN_REDIRECT_URI);
   url.searchParams.set("state", state);
-  url.searchParams.set("scope", IG_LOGIN_OAUTH_SCOPES);
+  url.searchParams.set("scope", body.with_metrics === false ? IG_LOGIN_OAUTH_SCOPES_PUBLISH : IG_LOGIN_OAUTH_SCOPES_FULL);
   url.searchParams.set("response_type", "code");
 
   return json({ url: url.toString() });
@@ -497,6 +500,14 @@ async function handleCallbackIgLogin(admin: ReturnType<typeof createClient>, bod
   }
 }
 
+// Quando o Instagram recusa a autorização (ex.: conta que não pode dar a permissão de métricas), a tela de retorno oferece conectar de novo sem métricas.
+async function handleRestartWithoutMetrics(admin: ReturnType<typeof createClient>, userId: string, body: { state?: string }, agencyId: string | null) {
+  if (!body.state) return json({ error: "state is required" }, 400);
+  const { data: row } = await admin.from("instagram_oauth_states").select("client_id").eq("state", body.state).maybeSingle();
+  if (!row?.client_id) return json({ error: "conexão desconhecida — comece de novo pelo cliente" }, 404);
+  return await handleStartIgLogin(admin, userId, { client_id: row.client_id as string, with_metrics: false }, agencyId);
+}
+
 async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { client_id?: string }, agencyId: string | null) {
   const clientId = body.client_id;
   if (!clientId) return json({ error: "client_id is required" }, 400);
@@ -509,6 +520,11 @@ async function handleDisconnect(admin: ReturnType<typeof createClient>, body: { 
     .update({ status: "revoked", access_token: null })
     .eq("client_id", clientId);
   if (error) throw error;
+  // Desconectar também apaga as métricas guardadas desse cliente (conta, posts e público), como diz a página de exclusão de dados.
+  for (const table of ["instagram_metric_snapshots", "instagram_media_insights", "instagram_audience_snapshots"]) {
+    const { error: delError } = await admin.from(table).delete().eq("client_id", clientId);
+    if (delError) throw delError;
+  }
   return json({ success: true });
 }
 
@@ -563,6 +579,8 @@ Deno.serve(async (req) => {
         return await handleStartIgLogin(admin, userId, body, agencyId);
       case "callback_ig_login":
         return await handleCallbackIgLogin(admin, body);
+      case "restart_ig_login_without_metrics":
+        return await handleRestartWithoutMetrics(admin, userId, body, agencyId);
       case "disconnect":
         return await handleDisconnect(admin, body, agencyId);
       default:
