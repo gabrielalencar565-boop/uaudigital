@@ -93,6 +93,7 @@ export default function InstagramCallback() {
   const [outcome, setOutcome] = useState<Outcome>({ status: "loading" });
   const [selectedPageId, setSelectedPageId] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -114,6 +115,20 @@ export default function InstagramCallback() {
     }
     promise.then(setOutcome);
   }, [searchParams]);
+
+  // O Instagram recusou a autorização (ex.: conta que não pode dar a permissão de métricas): tenta de novo só com publicação.
+  async function retryWithoutMetrics() {
+    const state = searchParams.get("state");
+    if (!state) return;
+    setRetrying(true);
+    const { data, error } = await supabase.functions.invoke("instagram-connect", { body: { action: "restart_ig_login_without_metrics", state } });
+    if (error || data?.error || !data?.url) {
+      setRetrying(false);
+      setOutcome({ status: "error", message: await extractError(data, error) });
+      return;
+    }
+    window.location.href = data.url as string;
+  }
 
   async function confirmSelection() {
     if (outcome.status !== "select" || !selectedPageId) return;
@@ -144,6 +159,9 @@ export default function InstagramCallback() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             {(outcome.status === "success" || outcome.status === "error") && <p>{outcome.message}</p>}
+            {outcome.status === "error" && (searchParams.get("state") ?? "").startsWith("ig:") && (
+              <p className="mt-3 text-xs">Se a conta não puder autorizar as métricas, dá para conectar só para publicar e tentar as métricas depois.</p>
+            )}
             {outcome.status === "success" && (outcome.held ?? 0) > 0 && (
               <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-400">
                 {outcome.held === 1 ? "1 post ficou atrasado" : `${outcome.held} posts ficaram atrasados`} enquanto a conta estava desconectada. Nada será publicado até você escolher o que fazer.
@@ -179,6 +197,9 @@ export default function InstagramCallback() {
                   <Button type="button" onClick={() => navigate(tabPath("clientes", { clienteId: outcome.clientId }), { replace: true })}>
                     Ver posts em espera
                   </Button>
+                )}
+                {outcome.status === "error" && (searchParams.get("state") ?? "").startsWith("ig:") && (
+                  <Button type="button" disabled={retrying} onClick={retryWithoutMetrics}>{retrying ? "Abrindo..." : "Conectar sem métricas"}</Button>
                 )}
                 <Button type="button" variant={outcome.status === "success" && (outcome.held ?? 0) > 0 ? "outline" : "default"} disabled={outcome.status === "loading"} onClick={() => navigate("/", { replace: true })}>
                   Voltar para o painel

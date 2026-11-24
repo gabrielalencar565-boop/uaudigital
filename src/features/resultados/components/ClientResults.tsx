@@ -171,10 +171,10 @@ export function ClientResults({ clientId, clientName, logoUrl, username }: { cli
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
           <p className="min-w-0 flex-1 text-sm">
-            A conta deste cliente ainda não deu permissão de métricas. Reconecte o Instagram dele uma vez para liberar os números.
+            A conta deste cliente ainda não deu permissão de métricas. Reconecte o Instagram dele uma vez (a conexão já inclui as métricas) para liberar os números.
           </p>
           <Button size="sm" variant="outline" className="gap-1.5 rounded-full" disabled={connect.isPending} onClick={reconnect}>
-            Reconectar com métricas <ArrowUpRight className="h-3.5 w-3.5" />
+            Reconectar Instagram <ArrowUpRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
