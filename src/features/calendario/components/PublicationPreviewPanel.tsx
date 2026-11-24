@@ -121,11 +121,48 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
     });
   }, [timeOpen]);
 
+  // Legenda: antes só era salva ao sair do campo (onBlur). Fechar com Esc ou clicando fora, trocar de post ou recarregar a página
+  // com o cursor ainda no campo não dispara onBlur, e o texto digitado sumia. Agora salva sozinha 1s depois de parar de digitar,
+  // ao sair do campo, ao trocar de post, ao fechar o painel e ao esconder/recarregar a aba.
+  const captionRef = useRef("");
+  const savedCaptionRef = useRef("");
+  const pubIdRef = useRef<string | null>(null);
+  const captionTimer = useRef<number | undefined>(undefined);
+  const persistCaption = () => {
+    window.clearTimeout(captionTimer.current);
+    const id = pubIdRef.current;
+    if (!id) return;
+    const text = captionRef.current;
+    if (text === savedCaptionRef.current) return;
+    const previous = savedCaptionRef.current;
+    savedCaptionRef.current = text;
+    updatePublication.mutate(
+      { id, caption: text || null },
+      { onError: () => { if (pubIdRef.current === id) savedCaptionRef.current = previous; toast.error("Não foi possível salvar a legenda. Tente de novo."); } },
+    );
+  };
+  const persistCaptionRef = useRef(persistCaption);
+  persistCaptionRef.current = persistCaption;
+
   useEffect(() => {
-    setCaption(publication?.caption ?? "");
+    pubIdRef.current = publication?.id ?? null;
+    const initial = publication?.caption ?? "";
+    captionRef.current = initial;
+    savedCaptionRef.current = initial;
+    setCaption(initial);
     setCarouselIndex(0);
     setCaptionExpanded(false);
+    // ao trocar de post ou fechar: grava o que ficou pendente do post anterior
+    return () => persistCaptionRef.current();
   }, [publication?.id]);
+
+  useEffect(() => {
+    const flush = () => persistCaptionRef.current();
+    const onVisibility = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { window.removeEventListener("pagehide", flush); document.removeEventListener("visibilitychange", onVisibility); };
+  }, []);
 
   if (!publication) return null;
 
@@ -980,8 +1017,13 @@ export function PublicationPreviewPanel({ publication, media, clientId, clientNa
                   value={caption}
                   maxLength={CAPTION_LIMIT}
                   rows={4}
-                  onChange={(e) => setCaption(e.target.value)}
-                  onBlur={() => caption !== (publication.caption ?? "") && save({ caption: caption || null })}
+                  onChange={(e) => {
+                    setCaption(e.target.value);
+                    captionRef.current = e.target.value;
+                    window.clearTimeout(captionTimer.current);
+                    captionTimer.current = window.setTimeout(() => persistCaptionRef.current(), 1000);
+                  }}
+                  onBlur={persistCaption}
                   placeholder="Escreva ou revise a legenda..."
                 />
               </div>
