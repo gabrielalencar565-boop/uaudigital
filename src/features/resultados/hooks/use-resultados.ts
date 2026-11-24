@@ -68,6 +68,8 @@ export function useSyncInsights() {
     onSuccess: (_d, { clientId }) => {
       qc.invalidateQueries({ queryKey: ["instagram_metric_snapshots", clientId] });
       qc.invalidateQueries({ queryKey: ["instagram_media_insights", clientId] });
+      // O perfil da audiência também é gravado no "Atualizar dados"; sem isto o bloco só preenchia depois de recarregar a página.
+      qc.invalidateQueries({ queryKey: ["instagram_audience", clientId] });
       toast.success("Dados atualizados.");
     },
     onError: (e) => {
