@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Camera, Check, CircleDashed, Instagram, Plug, RefreshCw, Shield, Trash2, Unplug } from "lucide-react";
+import { AlertTriangle, Camera, Check, CircleDashed, Instagram, Plug, Shield, Trash2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNowStrict, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -356,14 +356,9 @@ function InstagramCard({ clientId }: { clientId: string }) {
               <Plug className="h-4 w-4" /> {conn ? "Reconectar Instagram" : "Conectar Instagram"}
             </Button>
           ) : (
-            <>
-              <Button variant="outline" className="gap-1.5 rounded-full" disabled={connect.isPending} onClick={startConnect}>
-                <RefreshCw className="h-4 w-4" /> Reconectar Instagram
-              </Button>
-              <Button variant="ghost" className="gap-1.5 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDisconnect(true)}>
-                <Unplug className="h-4 w-4" /> Desconectar
-              </Button>
-            </>
+            <Button variant="ghost" className="gap-1.5 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDisconnect(true)}>
+              <Unplug className="h-4 w-4" /> Desconectar
+            </Button>
           )}
         </div>
       )}
