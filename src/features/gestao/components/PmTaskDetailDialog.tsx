@@ -829,6 +829,22 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
   const extraLike = !!task.is_extra_demand || skipsReview;
   const isCompletedSnapshot = task.status_global === "concluido" && task.stage_current !== "entrega" && !task.parent_task_id && !extraLike;
   const [correctionMode, setCorrectionMode] = useState(false);
+  // Mudar o mês do Magic Number (ou a entrega) de uma etapa JÁ concluída: refaz a pontuação e o check no mês novo, desmarca o mês antigo
+  // (se nenhuma outra tarefa da etapa conta nele) e atualiza as telas. Antes só o campo mudava e o checklist ficava como estava.
+  const refreshAfterMagicMonthChange = async (oldKey: string | null) => {
+    try {
+      if (isCompletedSnapshot) {
+        await supabase.rpc("pm_resync_correction" as any, { _pm_task_id: task.id, _completed_stage: task.stage_current });
+        if (oldKey) await supabase.rpc("pm_unmark_magic_old_month" as any, { _pm_task_id: task.id, _old_month: oldKey });
+      }
+    } catch (e) {
+      console.error("Error resyncing Magic Number month:", e);
+      toast.error("O mês mudou, mas não consegui atualizar o checklist. Tente de novo.");
+    }
+    for (const key of ["magic2", "tasks", "performance_scores", "performance_scores_metas", "performance_scores_annual", "deadline_report_tasks"]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
 
   // Late-task justification dialog
   const [lateAppeal, setLateAppeal] = useState<{ open: boolean; action: (() => void | Promise<void>) | null }>({ open: false, action: null });
@@ -2513,7 +2529,16 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
           </PropertyRow>
 
           <PropertyRow icon={<Calendar className="h-3.5 w-3.5" />} label="Entrega">
-            <DatePickerInline value={task.due_date ?? ""} onChange={(v) => updateTask.mutate({ id: task.id, due_date: v || null })} />
+            <DatePickerInline
+              value={task.due_date ?? ""}
+              onChange={(v) => {
+                const oldKey = effectiveMonthKey(task);
+                updateTask.mutate({ id: task.id, due_date: v || null }, {
+                  // sem mês escolhido à mão, a entrega define o mês do Magic Number
+                  onSuccess: () => { if (!task.reference_month) void refreshAfterMagicMonthChange(oldKey); },
+                });
+              }}
+            />
           </PropertyRow>
 
           {/* Compacto: só o selo do mês do Magic Number; ao clicar abre o resto (exceção e mês do conteúdo) */}
@@ -2553,14 +2578,25 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
                             kind="count"
                             referenceMonth={task.reference_month}
                             dueDate={task.due_date}
-                            onChange={(v) => updateTask.mutate({ id: task.id, reference_month: v } as any, {
-                              onSuccess: () => toast.success(v ? `${magicLabel} e pontuação em ${monthLabel(v)}` : `${magicLabel} no mês do prazo`),
-                            })}
+                            onChange={(v) => {
+                              const oldKey = effectiveMonthKey(task);
+                              updateTask.mutate({ id: task.id, reference_month: v } as any, {
+                                onSuccess: () => {
+                                  toast.success(v ? `${magicLabel} e pontuação em ${monthLabel(v)}` : `${magicLabel} no mês do prazo`);
+                                  void refreshAfterMagicMonthChange(oldKey);
+                                },
+                              });
+                            }}
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              if (task.reference_month) updateTask.mutate({ id: task.id, reference_month: null } as any, { onSuccess: () => toast.success(`${magicLabel} no mês do prazo`) });
+                              if (task.reference_month) {
+                                const oldKey = effectiveMonthKey(task);
+                                updateTask.mutate({ id: task.id, reference_month: null } as any, {
+                                  onSuccess: () => { toast.success(`${magicLabel} no mês do prazo`); void refreshAfterMagicMonthChange(oldKey); },
+                                });
+                              }
                               setCountElsewhere(false);
                             }}
                             className="whitespace-nowrap text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
