@@ -48,6 +48,7 @@ import { AlteracaoReviewPanel } from "./AlteracaoReviewPanel";
 import type { PmTask } from "../pm-types";
 import { toast } from "sonner";
 import { SmartCaptionEditor } from "./SmartCaptionEditor";
+import { PostCaptionField } from "./PostCaptionField";
 import { LinkOrDateDialog, type LinkPane } from "./LinkOrDateDialog";
 import { nextStagePostTypeFilter } from "../lib/link-existing-task";
 import { SpellCheckText } from "./SpellCheckText";
@@ -3152,6 +3153,11 @@ function TaskContentView({ task, parentTask, childTasks, childTasksLoading, atta
             minHeight="100px"
           />
         </div>
+
+        {/* Legenda: em cada post de uma tarefa (e na tarefa avulsa de design ou vídeo, que vira um post) */}
+        {(task.parent_task_id || (!childTasksLoading && childTasks.length === 0 && (task.post_type === "video" || task.post_type === "design"))) && (
+          <PostCaptionField key={task.id} taskId={task.id} readOnly={isCompletedSnapshot && !correctionMode} />
+        )}
 
 
         {/* Subtasks — use planning layout for parent tasks at planejamento, pdf, agendamento, entrega,
