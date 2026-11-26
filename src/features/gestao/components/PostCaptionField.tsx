@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquareText, Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,32 +112,23 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
     setEditing(false);
   };
 
-  // Minimalista, com o mesmo título e a mesma caixa da Descrição. O campo só vira editável depois do clique.
-  const box = "w-full min-h-[100px] rounded-lg border border-border/40 bg-background px-3 py-2 text-sm leading-relaxed";
+  // Visual minimalista: sem caixa nem título quando está vazio; com texto, só o rótulo, o lápis e a legenda.
   return (
     <div className="border-t border-border/20 pt-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-bold">Legenda</h3>
-        </div>
-        {editing && (
-          <span className="text-xs text-muted-foreground">
-            {status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}
-          </span>
-        )}
-      </div>
-
       {editing ? (
         <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Legenda</span>
+            <span>{status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}</span>
+          </div>
           <Textarea
             autoFocus
             value={draft}
             maxLength={CAPTION_LIMIT}
             rows={5}
             aria-label="Legenda do post"
+            className="bg-transparent text-sm leading-relaxed"
             placeholder="Escreva a legenda deste post..."
-            className={box}
             onChange={(e) => {
               setDraft(e.target.value);
               draftRef.current = e.target.value;
@@ -151,28 +142,25 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
           </div>
         </div>
       ) : saved ? (
-        <div className="relative">
-          <p className={`${box} whitespace-pre-wrap break-words ${locked ? "" : "pr-12"}`}>{saved}</p>
-          {!locked && (
-            <button
-              type="button"
-              onClick={startEditing}
-              className="absolute right-1.5 top-1.5 rounded-lg border border-border/30 bg-muted/80 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Editar legenda"
-              title="Editar legenda"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          )}
+        <div>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Legenda</span>
+            {!locked && (
+              <button type="button" onClick={startEditing} className="rounded p-1 transition-colors hover:text-foreground" aria-label="Editar legenda" title="Editar legenda">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{saved}</p>
         </div>
       ) : (
         <button
           type="button"
           onClick={startEditing}
           disabled={locked || !captionQ.data}
-          className={`${box} block text-left align-top text-muted-foreground/50 transition-colors hover:border-border hover:text-muted-foreground disabled:pointer-events-none`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
-          <span className="block min-h-[82px]">Escrever legenda...</span>
+          <Plus className="h-4 w-4" /> Escrever legenda
         </button>
       )}
 
