@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquareText, Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,27 +112,21 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
     setEditing(false);
   };
 
+  // Visual minimalista: sem caixa nem título quando está vazio; com texto, só o rótulo, o lápis e a legenda.
   return (
     <div className="border-t border-border/20 pt-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-bold">Legenda do post</h3>
-        </div>
-        {editing && (
-          <span className="text-xs text-muted-foreground">
-            {status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}
-          </span>
-        )}
-      </div>
-
       {editing ? (
         <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Legenda</span>
+            <span>{status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}</span>
+          </div>
           <Textarea
             autoFocus
             value={draft}
             maxLength={CAPTION_LIMIT}
             rows={5}
+            aria-label="Legenda do post"
             placeholder="Escreva a legenda deste post..."
             onChange={(e) => {
               setDraft(e.target.value);
@@ -142,31 +136,34 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
             }}
             onBlur={() => void persistRef.current()}
           />
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Salva sozinha. É a mesma legenda do Cronograma.</p>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void finish()}>Concluir</Button>
+          <div className="flex justify-end">
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void finish()}>Concluir</Button>
           </div>
         </div>
       ) : saved ? (
-        <div className="space-y-2">
-          <p className="whitespace-pre-wrap break-words rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-sm">{saved}</p>
-          {!locked && (
-            <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={startEditing}>
-              <Pencil className="h-3.5 w-3.5" /> Editar legenda
-            </Button>
-          )}
+        <div>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Legenda</span>
+            {!locked && (
+              <button type="button" onClick={startEditing} className="rounded p-1 transition-colors hover:text-foreground" aria-label="Editar legenda" title="Editar legenda">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{saved}</p>
         </div>
       ) : (
-        <Button type="button" size="sm" variant="outline" className="gap-1.5" disabled={locked || !captionQ.data} onClick={startEditing}>
-          <MessageSquareText className="h-3.5 w-3.5" /> Escrever legenda
-        </Button>
+        <button
+          type="button"
+          onClick={startEditing}
+          disabled={locked || !captionQ.data}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" /> Escrever legenda
+        </button>
       )}
 
-      {published ? (
-        <p className="mt-2 text-xs text-muted-foreground">Este post já foi publicado: a legenda não muda mais.</p>
-      ) : captionQ.data?.publicationId && !editing ? (
-        <p className="mt-2 text-xs text-muted-foreground">Este post está no Cronograma: é a mesma legenda nos dois lugares.</p>
-      ) : null}
+      {published && <p className="mt-2 text-xs text-muted-foreground">Este post já foi publicado: a legenda não muda mais.</p>}
     </div>
   );
 }
