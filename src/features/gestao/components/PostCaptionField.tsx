@@ -146,7 +146,7 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
 
       {captionQ.data?.inCalendar && (
         <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-          No Cronograma este post está com outra legenda, e é ela que vale. Para mudar o que será publicado, edite por lá.
+          {saved ? "No Cronograma este post está com outra legenda, e é ela que vale." : "Este post já está no Cronograma com uma legenda, e é ela que vale."} Para mudar o que será publicado, edite por lá.
         </p>
       )}
     </div>
