@@ -22,6 +22,7 @@ import DriveCallback from "./pages/DriveCallback";
 import { StageCatalogProvider } from "./features/gestao/StageCatalogProvider";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
+import TermsOfUse from "./pages/TermsOfUse";
 import NotFound from "./pages/NotFound";
 import { RedirectNotice } from "@/components/redirect/RedirectNotice";
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/f/:slug" element={<FormularioPublic />} />
         <Route path="/privacidade" element={<PrivacyPolicy />} />
         <Route path="/exclusao-de-dados" element={<DataDeletion />} />
+        <Route path="/termos" element={<TermsOfUse />} />
         <Route
           path="/admin/instagram-callback"
           element={
