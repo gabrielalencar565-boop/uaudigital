@@ -33,8 +33,7 @@ drop trigger if exists pm_tasks_inherit_caption on public.pm_tasks;
 create trigger pm_tasks_inherit_caption before insert on public.pm_tasks
   for each row execute function public.pm_tasks_inherit_caption();
 
--- 2) Mudou a legenda em uma etapa: as outras cópias do post acompanham. No Cronograma, só preenche publicação sem legenda ou que ainda
---    está igual à da tarefa; se alguém ajustou o texto lá, vale o do Cronograma. Publicado ou publicando não é mexido.
+-- 2) É UMA legenda só. Mudou no post: as outras cópias do post e a publicação no Cronograma ficam iguais (publicado ou publicando não é mexido).
 create or replace function public.pm_tasks_propagate_caption()
 returns trigger
 language plpgsql
@@ -49,15 +48,13 @@ begin
      set caption = new.caption
    where (id = v_key or post_key = v_key) and id <> new.id and deleted_at is null
      and client_id is not distinct from new.client_id and caption is distinct from new.caption;
-  if coalesce(new.caption, '') <> '' then
-    update public.calendar_publications cp
-       set caption = new.caption
-      from public.pm_tasks t
-     where cp.task_id = t.id and (t.id = v_key or t.post_key = v_key)
-       and t.client_id is not distinct from new.client_id
-       and cp.deleted_at is null and cp.instagram_status in ('not_published', 'pending', 'failed')
-       and (coalesce(cp.caption, '') = '' or cp.caption = old.caption);
-  end if;
+  update public.calendar_publications cp
+     set caption = new.caption
+    from public.pm_tasks t
+   where cp.task_id = t.id and (t.id = v_key or t.post_key = v_key)
+     and t.client_id is not distinct from new.client_id
+     and cp.deleted_at is null and cp.instagram_status in ('not_published', 'pending', 'failed')
+     and cp.caption is distinct from new.caption;
   return null;
 end;
 $$;
@@ -67,4 +64,35 @@ create trigger pm_tasks_propagate_caption after update of caption on public.pm_t
   for each row when (old.caption is distinct from new.caption)
   execute function public.pm_tasks_propagate_caption();
 
-revoke all on function public.pm_tasks_inherit_caption(), public.pm_tasks_propagate_caption() from public, anon, authenticated;
+-- 3) O caminho de volta: legenda escrita no Cronograma vai para o post em todas as etapas.
+create or replace function public.calendar_publication_caption_to_task()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_key uuid;
+  v_client uuid;
+begin
+  if pg_trigger_depth() > 1 then return null; end if; -- veio da própria tarefa: nada a devolver
+  if tg_op = 'INSERT' then
+    if coalesce(new.caption, '') = '' then return null; end if; -- publicação nova sem legenda não apaga a do post
+  elsif new.caption is not distinct from old.caption then
+    return null;
+  end if;
+  select coalesce(t.post_key, t.id), t.client_id into v_key, v_client from public.pm_tasks t where t.id = new.task_id;
+  if v_key is null then return null; end if;
+  update public.pm_tasks
+     set caption = new.caption
+   where (id = v_key or post_key = v_key or id = new.task_id) and deleted_at is null
+     and client_id is not distinct from v_client and caption is distinct from new.caption;
+  return null;
+end;
+$$;
+
+drop trigger if exists calendar_publication_caption_to_task on public.calendar_publications;
+create trigger calendar_publication_caption_to_task after insert or update of caption on public.calendar_publications
+  for each row execute function public.calendar_publication_caption_to_task();
+
+revoke all on function public.pm_tasks_inherit_caption(), public.pm_tasks_propagate_caption(), public.calendar_publication_caption_to_task() from public, anon, authenticated;

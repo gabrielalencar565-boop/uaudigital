@@ -11,7 +11,8 @@ const sb = supabase as any;
 
 /**
  * Legenda do post, escrita dentro da tarefa. Texto simples de propósito: é o que vai para o Instagram.
- * O banco leva a legenda para as cópias do post nas outras etapas e para o Cronograma (ver migration pm_tasks_post_caption_follows).
+ * É UMA legenda só: se o post já está no Cronograma, este campo mostra e grava a própria legenda de lá; senão, grava na tarefa.
+ * O banco mantém iguais as cópias do post nas etapas e o Cronograma (ver migration pm_tasks_post_caption_follows).
  * Só vira campo depois de "Escrever legenda" / "Editar legenda". Salva sozinha (1s sem digitar, ao sair do campo, ao fechar e ao esconder a aba).
  */
 export function PostCaptionField({ taskId, readOnly = false }: { taskId: string; readOnly?: boolean }) {
@@ -25,12 +26,21 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
       const key: string = data?.post_key ?? taskId;
       const { data: copies } = await sb.from("pm_tasks").select("id").is("deleted_at", null).or(`id.eq.${key},post_key.eq.${key}`);
       const ids = [...new Set([taskId, ...(copies ?? []).map((c: { id: string }) => c.id)])];
-      const { data: pubs } = await sb.from("calendar_publications").select("caption").in("task_id", ids).is("deleted_at", null);
-      const saved: string = data?.caption ?? "";
-      // texto que alguém ajustou no Cronograma: lá é o que vale
-      const inCalendar: string | null = (pubs ?? []).map((p: { caption: string | null }) => p.caption ?? "").find((c: string) => c !== "" && c !== saved) ?? null;
-      return { caption: saved, inCalendar };
+      const { data: pubs, error: pubsError } = await sb
+        .from("calendar_publications")
+        .select("id, caption, instagram_status")
+        .in("task_id", ids)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false });
+      if (pubsError) throw pubsError;
+      const pub = (pubs ?? [])[0] as { id: string; caption: string | null; instagram_status: string } | undefined;
+      return {
+        caption: (pub ? pub.caption : data?.caption) ?? "",
+        publicationId: pub?.id ?? null,
+        published: pub?.instagram_status === "published" || pub?.instagram_status === "publishing",
+      };
     },
+    refetchOnMount: "always", // pode ter sido editada no Cronograma
   });
 
   const [editing, setEditing] = useState(false);
@@ -39,6 +49,7 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
   const draftRef = useRef("");
   const savedRef = useRef("");
   const editingRef = useRef(false);
+  const publicationRef = useRef<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
   const persist = async () => {
@@ -49,7 +60,10 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
     const previous = savedRef.current;
     savedRef.current = text;
     setStatus("saving");
-    const { data, error } = await sb.from("pm_tasks").update({ caption: text || null }).eq("id", taskId).select("id");
+    const publicationId = publicationRef.current;
+    const { data, error } = publicationId
+      ? await sb.from("calendar_publications").update({ caption: text || null }).eq("id", publicationId).select("id")
+      : await sb.from("pm_tasks").update({ caption: text || null }).eq("id", taskId).select("id");
     if (error || !data?.length) {
       savedRef.current = previous;
       setStatus("idle");
@@ -59,6 +73,7 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
     setStatus("saved");
     qc.invalidateQueries({ queryKey });
     qc.invalidateQueries({ queryKey: ["calendar_publications"] });
+    qc.invalidateQueries({ queryKey: ["calendar_publication"] });
   };
   const persistRef = useRef(persist);
   persistRef.current = persist;
@@ -80,7 +95,10 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
   }, [taskId]);
 
   const saved = captionQ.data?.caption ?? "";
+  const published = captionQ.data?.published ?? false;
+  const locked = readOnly || published;
   const startEditing = () => {
+    publicationRef.current = captionQ.data?.publicationId ?? null;
     draftRef.current = saved;
     savedRef.current = saved;
     editingRef.current = true;
@@ -125,30 +143,30 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
             onBlur={() => void persistRef.current()}
           />
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Salva sozinha e vai junto para o Cronograma.</p>
+            <p className="text-xs text-muted-foreground">Salva sozinha. É a mesma legenda do Cronograma.</p>
             <Button type="button" size="sm" variant="secondary" onClick={() => void finish()}>Concluir</Button>
           </div>
         </div>
       ) : saved ? (
         <div className="space-y-2">
           <p className="whitespace-pre-wrap break-words rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-sm">{saved}</p>
-          {!readOnly && (
+          {!locked && (
             <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={startEditing}>
               <Pencil className="h-3.5 w-3.5" /> Editar legenda
             </Button>
           )}
         </div>
       ) : (
-        <Button type="button" size="sm" variant="outline" className="gap-1.5" disabled={readOnly || !captionQ.data} onClick={startEditing}>
+        <Button type="button" size="sm" variant="outline" className="gap-1.5" disabled={locked || !captionQ.data} onClick={startEditing}>
           <MessageSquareText className="h-3.5 w-3.5" /> Escrever legenda
         </Button>
       )}
 
-      {captionQ.data?.inCalendar && (
-        <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-          {saved ? "No Cronograma este post está com outra legenda, e é ela que vale." : "Este post já está no Cronograma com uma legenda, e é ela que vale."} Para mudar o que será publicado, edite por lá.
-        </p>
-      )}
+      {published ? (
+        <p className="mt-2 text-xs text-muted-foreground">Este post já foi publicado: a legenda não muda mais.</p>
+      ) : captionQ.data?.publicationId && !editing ? (
+        <p className="mt-2 text-xs text-muted-foreground">Este post está no Cronograma: é a mesma legenda nos dois lugares.</p>
+      ) : null}
     </div>
   );
 }
