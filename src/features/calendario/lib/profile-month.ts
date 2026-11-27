@@ -58,6 +58,15 @@ export function togglePinned(pinned: string[], id: string): string[] {
   return pinned.length >= MAX_PINNED ? pinned : [...pinned, id];
 }
 
+/**
+ * Regra da equipe: os fixados precisam ser postados todos no mesmo dia. O dia é o do primeiro fixado; "mixed" indica que as
+ * datas mudaram depois (pelo calendário, por exemplo) e já não batem.
+ */
+export function pinnedDay(pinned: string[], posts: { id: string; date: string | null }[]) {
+  const dates = pinned.map((id) => posts.find((p) => p.id === id)).filter((p): p is { id: string; date: string | null } => !!p).map((p) => p.date);
+  return { day: dates[0] ?? null, mixed: dates.some((d) => !d || d !== dates[0]) };
+}
+
 export function moveItem<T>(list: T[], index: number, step: -1 | 1): T[] {
   const target = index + step;
   if (index < 0 || index >= list.length || target < 0 || target >= list.length) return list;

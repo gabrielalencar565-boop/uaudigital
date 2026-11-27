@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from "@/lib/utils";
 import type { CalendarPublication } from "../calendar-types";
 import { buildCarouselPages } from "../lib/carousel-pages";
-import { HIGHLIGHT_TITLE_LIMIT, MAX_HIGHLIGHTS, MAX_PINNED, NAME_LIMIT, moveItem, startingProfile, togglePinned, type Highlight, type ProfileDraft, type ProfileRow } from "../lib/profile-month";
+import { HIGHLIGHT_TITLE_LIMIT, MAX_HIGHLIGHTS, MAX_PINNED, NAME_LIMIT, moveItem, pinnedDay, startingProfile, togglePinned, type Highlight, type ProfileDraft, type ProfileRow } from "../lib/profile-month";
 import { uploadProfileImage, usePreviousFeedPublications, useProfileMonths, useSaveProfileMonth } from "../hooks/use-profile-month";
 import { useCoverAttachmentsById, useTaskAttachmentsMap } from "../hooks/use-calendar-data";
 import { ProfilePreview, type ProfileTile } from "./ProfilePreview";
@@ -131,6 +131,9 @@ function StudioBody({ clientId, clientName, clientLogoUrl, username, month, cycl
   // fixado que foi removido do calendário não pode ocupar uma das 3 vagas sem aparecer
   const visiblePinned = postsLoading ? draft.pinned_publication_ids : draft.pinned_publication_ids.filter((id) => tiles.some((t) => t.id === id));
   const preview = { ...draft, pinned_publication_ids: visiblePinned };
+  const pins = pinnedDay(visiblePinned, tiles);
+  const daysMismatch = !postsLoading && pins.mixed;
+  const dayLabel = pins.day ? `${pins.day.slice(8, 10)}/${pins.day.slice(5, 7)}` : null;
 
   const patch = (values: Partial<ProfileDraft>) => setDraft((d) => ({ ...d, ...values }));
   const patchHighlight = (id: string, values: Partial<Highlight>) =>
@@ -261,7 +264,12 @@ function StudioBody({ clientId, clientName, clientLogoUrl, username, month, cycl
                     })}
                   </ol>
                 )}
-                <p className="mb-2 text-xs text-muted-foreground">Toque num post para fixar ou desafixar.{visiblePinned.length > 1 ? " Use as setas para mudar a ordem." : ""}</p>
+                {daysMismatch && <p role="alert" className="mb-2 text-xs text-destructive">Os fixados estão em dias diferentes. Desafixe os que não são do mesmo dia para salvar.</p>}
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Os fixados precisam ser postados no mesmo dia.{" "}
+                  {visiblePinned.length === 0 ? "Escolha o primeiro." : dayLabel && !daysMismatch ? `Liberados só os posts de ${dayLabel}.` : ""}
+                  {visiblePinned.length > 1 ? " Use as setas para mudar a ordem." : ""}
+                </p>
                 <div className="grid max-h-64 grid-cols-5 gap-1.5 overflow-y-auto p-0.5 sm:grid-cols-6">
                   {tiles.map((t) => {
                     const position = visiblePinned.indexOf(t.id);
@@ -272,7 +280,7 @@ function StudioBody({ clientId, clientName, clientLogoUrl, username, month, cycl
                         type="button"
                         aria-pressed={position >= 0}
                         aria-label={`Fixar o post de ${label}`}
-                        disabled={position < 0 && visiblePinned.length >= MAX_PINNED}
+                        disabled={position < 0 && (visiblePinned.length >= MAX_PINNED || !t.date || (visiblePinned.length > 0 && t.date !== pins.day))}
                         onClick={() => patch({ pinned_publication_ids: togglePinned(visiblePinned, t.id) })}
                         className={cn("relative aspect-[4/5] overflow-hidden rounded-lg bg-muted transition disabled:opacity-40", position >= 0 && "ring-2 ring-foreground")}
                       >
@@ -295,7 +303,7 @@ function StudioBody({ clientId, clientName, clientLogoUrl, username, month, cycl
 
       <div className="flex items-center justify-between gap-3 border-t border-border/40 px-5 py-3">
         <p className="min-w-0 text-xs text-muted-foreground" aria-live="polite">{status}</p>
-        <Button type="button" size="sm" className="h-9 shrink-0 rounded-full px-5 text-xs" disabled={save.isPending || !!uploading || (!dirty && !!savedId)} onClick={onSave}>
+        <Button type="button" size="sm" className="h-9 shrink-0 rounded-full px-5 text-xs" disabled={save.isPending || !!uploading || daysMismatch || (!dirty && !!savedId)} onClick={onSave}>
           {save.isPending ? "Salvando…" : "Salvar perfil"}
         </Button>
       </div>
