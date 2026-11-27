@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon, Download,
+  Loader2, CalendarX, LayoutGrid, Grid3x3, List, X, Check, MessageSquareWarning, Film, Image as ImageIcon, Video, Smartphone, File, Clock, CalendarDays, ChevronLeft, ChevronRight, Images, Aperture, Play, Heart, MessageCircle, Send, Bookmark, Sun, Moon, Download, Pin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toStorageRenderUrl } from "@/lib/storage-image-url";
+import { profileGrid, readHighlights } from "@/features/calendario/lib/profile-month";
 import { toast } from "sonner";
 import { TAG_COLORS } from "@/features/gestao/pm-constants";
 import { useAppSettings } from "@/features/data/queries";
@@ -343,6 +344,16 @@ async function callFn(body: Record<string, unknown>) {
   return data;
 }
 
+/** Perfil do mês montado pela equipe no Estúdio do feed; vem nulo quando o mês não foi salvo. */
+type PublicProfile = {
+  username: string | null;
+  photoUrl: string | null;
+  displayName: string | null;
+  highlights: unknown;
+  pinnedIds: string[];
+  olderPinned: { id: string; publishDate: string | null; thumbUrl: string | null; isCarousel: boolean; isVideo: boolean }[];
+};
+
 export default function AprovacaoPublic() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
@@ -351,6 +362,7 @@ export default function AprovacaoPublic() {
   const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const [calendarInfo, setCalendarInfo] = useState<{ cycleStart: string; cycleEnd: string; status: string; updatedAt: string } | null>(null);
   const [publications, setPublications] = useState<PublicationData[]>([]);
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [view, setView] = useState<"lista" | "feed">("feed");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
@@ -417,6 +429,7 @@ export default function AprovacaoPublic() {
       setClientName(data.clientName);
       setClientLogoUrl(toStorageRenderUrl(data.clientLogoUrl) ?? null);
       setCalendarInfo(data.calendar);
+      setProfile(data.profile ?? null);
       setPublications(
         (data.publications as PublicationData[]).map((p) => ({
           ...p,
@@ -490,6 +503,22 @@ export default function AprovacaoPublic() {
       .sort((a, b) => `${b.publish_date}T${b.publish_time ?? "00:00"}`.localeCompare(`${a.publish_date}T${a.publish_time ?? "00:00"}`));
   }, [publications]);
 
+  // Perfil do mês: destaques acima do feed e fixados no topo (a foto do mês, se houver, entra no cabeçalho)
+  const highlights = readHighlights(profile?.highlights).map((h) => ({ ...h, cover_url: toStorageRenderUrl(h.cover_url) ?? null }));
+  const headerPhoto = toStorageRenderUrl(profile?.photoUrl) ?? clientLogoUrl;
+  const feedGrid = profileGrid(
+    [
+      ...feedItems.map((p) => ({ id: p.id, thumb: firstImageUrl(p), contentType: p.content_type, canOpen: true })),
+      ...(profile?.olderPinned ?? []).map((p) => ({
+        id: p.id,
+        thumb: toStorageRenderUrl(p.thumbUrl) ?? null,
+        contentType: p.isVideo ? "reel" : p.isCarousel ? "carrossel" : "imagem",
+        canOpen: false,
+      })),
+    ],
+    profile?.pinnedIds ?? [],
+  );
+
   const navList = view === "feed" ? feedItems : listOrder;
   const navIndex = navList.findIndex((p) => p.id === selectedId);
   const selected = navIndex >= 0 ? navList[navIndex] : (publications.find((p) => p.id === selectedId) ?? null);
@@ -542,8 +571,8 @@ export default function AprovacaoPublic() {
           </div>
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 sm:h-24 sm:w-24">
-              {clientLogoUrl ? (
-                <img src={clientLogoUrl} alt="" className="h-full w-full object-cover" />
+              {headerPhoto ? (
+                <img src={headerPhoto} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span className="text-2xl font-bold text-white sm:text-3xl">{clientName?.charAt(0)?.toUpperCase() || "C"}</span>
               )}
@@ -592,19 +621,49 @@ export default function AprovacaoPublic() {
             ))}
           </div>
         ) : (
-          <div className="mx-auto grid max-w-md grid-cols-3 gap-1.5 sm:max-w-none">
-            {feedItems.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
-            {feedItems.map((p) => {
-              const ContentIcon = CONTENT_TYPE_ICON[p.content_type] ?? File;
-              return (
+          <>
+            {highlights.length > 0 && (
+              <ul aria-label="Destaques" className="no-scrollbar mx-auto mb-4 flex max-w-md gap-4 overflow-x-auto sm:max-w-none">
+                {highlights.map((h) => (
+                  <li key={h.id} className="w-[72px] shrink-0 text-center">
+                    <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-border">
+                      {h.cover_url ? (
+                        <img src={h.cover_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <span className="grid h-14 w-14 place-items-center rounded-full bg-muted text-base font-semibold">{h.title.slice(0, 1).toUpperCase()}</span>
+                      )}
+                    </span>
+                    <span className="mt-1 block truncate text-xs">{h.title}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mx-auto grid max-w-md grid-cols-3 gap-1.5 sm:max-w-none">
+              {feedGrid.length === 0 && <p className="col-span-3 p-8 text-center text-sm text-muted-foreground">Nada pronto para mostrar ainda.</p>}
+              {feedGrid.map(({ post, pinned }) => {
+                const ContentIcon = CONTENT_TYPE_ICON[post.contentType] ?? File;
+                const content = (
+                  <>
+                    {post.thumb ? <img src={post.thumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
+                    <ContentIcon className="absolute left-1.5 top-1.5 h-4 w-4 text-white drop-shadow" />
+                    {pinned && (
+                      <span aria-label="Post fixado" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55">
+                        <Pin className="h-3.5 w-3.5 rotate-45 fill-white text-white" />
+                      </span>
+                    )}
+                  </>
+                );
                 // Instagram's feed post ratio (1080x1350 = 4:5), not the profile grid's square crop.
-                <button key={p.id} type="button" onClick={() => setSelectedId(p.id)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
-                  {firstImageUrl(p) ? <img src={firstImageUrl(p)!} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <ImageIcon className="m-auto h-6 w-6 text-muted-foreground" />}
-                  <ContentIcon className="absolute left-1.5 top-1.5 h-4 w-4 text-white drop-shadow" />
-                </button>
-              );
-            })}
-          </div>
+                const className = "group relative aspect-[4/5] overflow-hidden rounded-lg bg-muted";
+                return post.canOpen ? (
+                  <button key={post.id} type="button" onClick={() => setSelectedId(post.id)} className={className}>{content}</button>
+                ) : (
+                  // fixado de um ciclo anterior: aparece no feed, mas não é para aprovar neste link
+                  <div key={post.id} className={cn(className, "flex")}>{content}</div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {canApproveAll && (

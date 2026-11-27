@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { CalendarPublication, CalendarStatus, PublicationCalendar, PublicationContentType } from "../calendar-types";
+import type { FeedChange, FeedSlot } from "../lib/feed-swap";
 
 const sb = supabase as any;
 
@@ -116,6 +117,46 @@ export function useSetPublicationDate() {
       qc.invalidateQueries({ queryKey: ["calendar_publications_unscheduled"] });
       qc.invalidateQueries({ queryKey: ["publication_calendars"] });
     },
+  });
+}
+
+// "Salvar ordem" do feed ao lado: cada post recebe a data e o horário da nova vaga. Só grava em quem continua como estava
+// (mesma data/horário, não publicado); se qualquer um falhar, volta os que já tinham sido gravados para não ficarem dois
+// posts na mesma vaga. O calendário de cada data é ajustado pelo banco (trg_calendar_publications_refile_by_date).
+export function useSaveFeedOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (changes: FeedChange[]) => {
+      const move = async (id: string, from: FeedSlot, to: FeedSlot) => {
+        let query = sb.from("calendar_publications")
+          .update({ publish_date: to.date, publish_time: to.time })
+          .eq("id", id)
+          .not("instagram_status", "in", "(published,publishing)");
+        query = from.date ? query.eq("publish_date", from.date) : query.is("publish_date", null);
+        query = from.time ? query.eq("publish_time", from.time) : query.is("publish_time", null);
+        const { data, error } = await query.select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Um dos posts mudou enquanto você organizava. Confira as datas e tente de novo.");
+      };
+      const done: FeedChange[] = [];
+      try {
+        for (const change of changes) {
+          await move(change.id, change.base, change.slot);
+          done.push(change);
+        }
+      } catch (error) {
+        for (const change of done.reverse()) {
+          await move(change.id, change.slot, change.base).catch(() => {
+            throw new Error("A ordem foi salva só em parte. Confira as datas dos posts no calendário.");
+          });
+        }
+        throw error;
+      }
+    },
+    onSettled: () => Promise.all(
+      ["calendar_publications", "calendar_publication", "calendar_publications_unscheduled", "publication_calendars", "today_scheduled_publications"]
+        .map((key) => qc.invalidateQueries({ queryKey: [key] })),
+    ),
   });
 }
 

@@ -5,12 +5,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Bookmark, Play, Instagram, Plus, Send, SquareCheck, Trash2, X, ArchiveRestore } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Film, LayoutGrid, List, Grid3x3, Image as ImageIcon, Link2, Copy, RefreshCw, ArrowUpRight, UserRound, CircleDashed, Clock, AlertTriangle, CheckCircle2, Check, CalendarDays, Wand2, Bookmark, Play, Instagram, Plus, Send, SquareCheck, Trash2, X, ArchiveRestore } from "lucide-react";
 import { TAG_COLORS, stageLabel } from "@/features/gestao/pm-constants";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,13 @@ import { useDefaultFlowWithDates, getFixedAssignee } from "@/features/gestao/com
 import { useSession } from "@/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
 import {
-  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate,
+  useCalendarPublications, useCalendarsForClient, useCalendarsForCycle, useCapaTaskIds, useCoverAttachmentsById, useInstagramRiskSummary, usePublishCycle, useScheduleCyclePublications, useUnscheduleCyclePublications, useUnpublishCycle, useTaskAttachmentsMap, useTaskCompletionMap, useUpdateCalendarShare, useUpdateCalendarStatus, useUnscheduledPublicationsForClient, useSetPublicationDate, useSaveFeedOrder,
   type ClientInstagramRisk, useRemoveCalendarPublications, useRemovedPublicationsForClient, useRestorePublications } from "../hooks/use-calendar-data";
 import { PublicacoesRemovidasDialog } from "./PublicacoesRemovidasDialog";
+import { FeedSidePanel } from "./FeedSidePanel";
+import { ProfileStudioDialog } from "./ProfileStudioDialog";
+import { profileMonthKey } from "../lib/profile-month";
+import { applyDraft, byFeedOrder, draftChanges, validDraft, type FeedDraft } from "../lib/feed-swap";
 import { manualPostState } from "../lib/manual-post";
 import { CALENDAR_STATUS_LABELS, CONTENT_TYPE_LABELS, PUBLICATION_STATUS_LABELS, type CalendarPublication, type CalendarStatus } from "../calendar-types";
 import { PublicationCard, CONTENT_TYPE_ICON, publicationTypeColor, publicationTypeLabel } from "./PublicationCard";
@@ -150,7 +154,13 @@ function SelectOverlay({ selected, onClick }: { selected: boolean; onClick: () =
   );
 }
 
-function DraggablePublication({ publication, images, onClick, isCapa, alert = false, selecting = false, selected = false }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean; alert?: AlertMode; selecting?: boolean; selected?: boolean }) {
+const VIEW_OPTIONS = [
+  { value: "calendario" as const, label: "Calendário", icon: LayoutGrid },
+  { value: "lista" as const, label: "Lista", icon: List },
+  { value: "feed" as const, label: "Feed", icon: Grid3x3 },
+];
+
+function DraggablePublication({ publication, images, onClick, isCapa, alert = false, selecting = false, selected = false, moved = false }: { publication: CalendarPublication; images?: string[]; onClick: () => void; isCapa?: boolean; alert?: AlertMode; selecting?: boolean; selected?: boolean; moved?: boolean }) {
   const { setNodeRef, listeners, attributes, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: publication.id,
     data: { publication },
@@ -158,7 +168,7 @@ function DraggablePublication({ publication, images, onClick, isCapa, alert = fa
   });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   return (
-    <div ref={setNodeRef} style={style} className={cn("relative", alertClass(alert))} data-unscheduled-alert={alert ? "" : undefined}>
+    <div ref={setNodeRef} style={style} className={cn("relative", moved && "rounded-xl ring-2 ring-amber-400", alertClass(alert))} data-unscheduled-alert={alert ? "" : undefined}>
       <PublicationCard
         publication={publication}
         images={images}
@@ -326,6 +336,17 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
   }, [fixedClientId]);
   const [cursor, setCursor] = useState(() => anchorForDate(new Date(), dayFor));
   const [view, setView] = useState<"calendario" | "lista" | "feed">("calendario");
+  const CurrentViewIcon = VIEW_OPTIONS.find((o) => o.value === view)!.icon;
+  // Prévia do feed ao lado do calendário; o rascunho é a nova ordem ainda não salva
+  const [feedSideOpen, setFeedSideOpen] = useState(false);
+  const [feedDraft, setFeedDraft] = useState<FeedDraft>({});
+  const [studioOpen, setStudioOpen] = useState(false);
+  const saveFeedOrder = useSaveFeedOrder();
+  const discardFeedDraft = () => {
+    if (Object.keys(feedDraft).length === 0) return;
+    setFeedDraft({});
+    toast.info("A ordem do feed que não foi salva foi descartada.");
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Seleção em massa: marca várias publicações e remove todas de uma vez do calendário
   const [selectMode, setSelectMode] = useState(false);
@@ -734,14 +755,21 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     return publications.filter((p) => activePubStatusFilters.has(p.status));
   }, [publications, activePubStatusFilters]);
 
+  const activeFeedDraft = useMemo(() => validDraft(feedDraft, publications), [feedDraft, publications]);
+  // o mês, o cliente ou um dos posts mudou por fora: o rascunho não vale mais
+  useEffect(() => {
+    if (saveFeedOrder.isPending) return;
+    if (Object.keys(feedDraft).length > 0 && Object.keys(activeFeedDraft).length === 0) discardFeedDraft();
+  }, [feedDraft, activeFeedDraft, saveFeedOrder.isPending]);
+
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarPublication[]>();
-    for (const p of statusFilteredPublications) {
+    for (const p of applyDraft(statusFilteredPublications, activeFeedDraft)) {
       const key = p.publish_date ?? UNSCHEDULED_ID;
       map.set(key, [...(map.get(key) ?? []), p]);
     }
     return map;
-  }, [statusFilteredPublications]);
+  }, [statusFilteredPublications, activeFeedDraft]);
 
   const weeks = useMemo(() => {
     const start = periodStart;
@@ -803,6 +831,15 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     () => [...allRelevantPublications].sort((a, b) => (a.publish_date ?? "9999") > (b.publish_date ?? "9999") ? 1 : -1),
     [allRelevantPublications],
   );
+
+  const sideFeed = useMemo(() => applyDraft(feedItems, activeFeedDraft).sort(byFeedOrder), [feedItems, activeFeedDraft]);
+  const showFeedSide = feedSideOpen && view === "calendario" && !!calendar;
+  const handleSaveFeedOrder = () => {
+    saveFeedOrder.mutate(draftChanges(activeFeedDraft), {
+      onSuccess: () => { setFeedDraft({}); toast.success("Nova ordem salva."); },
+      onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar a ordem"),
+    });
+  };
 
   const navList = view === "feed" ? feedItems : listOrder;
   const navIndex = navList.findIndex((p) => p.id === selectedId);
@@ -891,6 +928,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
     const targetDayKey = String(over.id);
     const newDate = targetDayKey === UNSCHEDULED_ID ? null : targetDayKey;
     if (publication.publish_date === newDate) return;
+    if (Object.keys(activeFeedDraft).length > 0) {
+      toast.info("Salve ou desfaça a nova ordem do feed antes de mover posts pelo calendário.");
+      return;
+    }
     // A "sem data" publication's calendar_id may point at an unrelated holding cycle —
     // setPublicationDate re-files it into whichever cycle actually contains the dropped day.
     setPublicationDate.mutate({ id: publication.id, clientId, date: newDate });
@@ -1328,13 +1369,52 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
 
           <div className="mx-1 hidden h-6 w-px bg-border/60 sm:block" />
 
-          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-            <TabsList className="h-9 rounded-full">
-              <TabsTrigger value="calendario" className="gap-1.5 rounded-full text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Calendário</TabsTrigger>
-              <TabsTrigger value="lista" className="gap-1.5 rounded-full text-xs"><List className="h-3.5 w-3.5" /> Lista</TabsTrigger>
-              <TabsTrigger value="feed" className="gap-1.5 rounded-full text-xs"><Grid3x3 className="h-3.5 w-3.5" /> Feed</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-9 gap-2 rounded-full bg-muted/40 px-4 text-xs hover:bg-muted hover:text-foreground focus-visible:ring-muted-foreground/40" aria-label={`Visualização: ${VIEW_OPTIONS.find((o) => o.value === view)!.label}`}>
+                <CurrentViewIcon className="h-3.5 w-3.5" /> {VIEW_OPTIONS.find((o) => o.value === view)!.label} <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 space-y-0.5 rounded-3xl p-1.5">
+              {VIEW_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  className={cn("h-9 gap-2 rounded-full px-3 text-xs focus:bg-muted focus:text-foreground", view === option.value && "bg-muted")}
+                  onSelect={() => { if (option.value !== "calendario") discardFeedDraft(); setView(option.value); }}
+                >
+                  <option.icon className="h-3.5 w-3.5" /> {option.label}
+                  {view === option.value && <Check className="ml-auto h-3.5 w-3.5" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {view === "calendario" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              role="switch"
+              aria-checked={feedSideOpen}
+              className="h-9 gap-2 rounded-full bg-muted/40 pl-4 pr-3 text-xs hover:bg-muted hover:text-foreground focus-visible:ring-muted-foreground/40"
+              onClick={() => { if (feedSideOpen) discardFeedDraft(); setFeedSideOpen(!feedSideOpen); }}
+            >
+              <Instagram className="h-3.5 w-3.5" /> Feed ao lado
+              <span aria-hidden className={cn("relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors", feedSideOpen ? "bg-foreground" : "bg-muted-foreground/30")}>
+                <span className={cn("absolute left-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform", feedSideOpen && "translate-x-3.5 bg-background")} />
+              </span>
+            </Button>
+          )}
+          {clientId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2 rounded-full border-foreground bg-foreground px-4 text-xs font-semibold text-background hover:bg-foreground/85 hover:text-background focus-visible:ring-muted-foreground/40"
+              onClick={() => { discardFeedDraft(); setStudioOpen(true); }}
+            >
+              <Wand2 className="h-3.5 w-3.5" /> Estúdio do feed <ArrowUpRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
           </div>
           </>
           )}
@@ -1450,6 +1530,8 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
       </AlertDialog>
 
       {view !== "feed" && (
+      <div className={cn(showFeedSide && "flex flex-col gap-4 md:flex-row md:items-start")}>
+      <div className={cn("space-y-4", showFeedSide && "min-w-0 flex-1")}>
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <DropZone id={UNSCHEDULED_ID} className="space-y-2 rounded-2xl border border-dashed border-border/40 p-3">
             <p className="text-xs font-semibold uppercase text-muted-foreground">Publicações sem data</p>
@@ -1583,7 +1665,7 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
                             )}
                           </div>
                           {dayPubs.map((p) => (
-                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => openPub(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} selecting={selectMode} selected={bulkIds.has(p.id)} />
+                            <DraggablePublication key={p.id} publication={p} images={imagesFor(p)} onClick={() => openPub(p.id)} isCapa={isCapaTask(p.task_id)} alert={alertModeFor(p)} selecting={selectMode} selected={bulkIds.has(p.id)} moved={!!activeFeedDraft[p.id]} />
                           ))}
                         </DropZone>
                       );
@@ -1620,6 +1702,34 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
               )}
             </>
         </DndContext>
+      </div>
+      {showFeedSide && (
+        <aside className="order-first w-full md:order-none md:w-[260px] md:shrink-0 lg:w-[300px] 2xl:w-[360px]">
+          <FeedSidePanel
+            publications={publications}
+            feed={sideFeed}
+            draft={activeFeedDraft}
+            onDraftChange={setFeedDraft}
+            mediaFor={(p) => {
+              const media = mediaFor(p.task_id);
+              return {
+                thumb: thumbnailFor(p.task_id),
+                pages: imagesFor(p).length,
+                isVideo: p.content_type === "reel" || (p.content_type === "carrossel" && buildCarouselPages(media).some((pg) => pg.videoUrl)),
+              };
+            }}
+            outsideCount={outsideFeed.length}
+            clientName={clientName}
+            clientLogoUrl={clientLogoUrl}
+            sensors={sensors}
+            saving={saveFeedOrder.isPending}
+            onSave={handleSaveFeedOrder}
+            onOpen={openPub}
+            onClose={() => { discardFeedDraft(); setFeedSideOpen(false); }}
+          />
+        </aside>
+      )}
+      </div>
       )}
 
       {!calendar && view !== "feed" && (
@@ -1689,6 +1799,30 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
           )}
 
       </div>
+      )}
+
+      {studioOpen && clientId && (
+        <ProfileStudioDialog
+          clientId={clientId}
+          clientName={clientName ?? "Cliente"}
+          clientLogoUrl={clientLogoUrl ?? null}
+          username={igConnectionMap.get(clientId)?.instagram_username ?? clientName ?? "perfil"}
+          month={profileMonthKey(cycleEndKey)}
+          cycleStart={cycleStartKey}
+          calendarIds={(calendarsQ.data ?? []).map((c) => c.id)}
+          currentTiles={feedItems.map((p) => {
+            const media = mediaFor(p.task_id);
+            return {
+              id: p.id,
+              thumb: thumbnailFor(p.task_id),
+              date: p.publish_date,
+              isCarousel: p.content_type === "carrossel" && imagesFor(p).length > 1,
+              isVideo: p.content_type === "reel" || (p.content_type === "carrossel" && buildCarouselPages(media).some((pg) => pg.videoUrl)),
+            };
+          })}
+          toThumb={toGridThumbUrl}
+          onClose={() => setStudioOpen(false)}
+        />
       )}
 
       <PublicationPreviewPanel

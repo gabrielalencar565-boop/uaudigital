@@ -15,6 +15,71 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Perfil do mês montado no Estúdio do feed (foto, nome, destaques e fixados). Só vai para o cliente o que a equipe SALVOU para o
+// mês deste calendário (o mês em que o período termina, mesma regra do Estúdio: lib/profile-month.ts → profileMonthKey).
+// Fixado de um ciclo anterior vai só com a imagem de capa (sem legenda nem status), e apenas se for deste mesmo cliente.
+// deno-lint-ignore no-explicit-any
+async function loadProfile(admin: any, calendar: { client_id: string; cycle_end: string }, shownIds: string[]) {
+  const month = `${String(calendar.cycle_end).slice(0, 7)}-01`;
+  const { data: row, error } = await admin
+    .from("client_profile_months")
+    .select("photo_url, display_name, highlights, pinned_publication_ids")
+    .eq("client_id", calendar.client_id)
+    .eq("month", month)
+    .maybeSingle();
+  if (error) throw error;
+  if (!row) return null;
+
+  const pinnedIds: string[] = row.pinned_publication_ids ?? [];
+  const olderPinned: { id: string; publishDate: string | null; thumbUrl: string | null; isCarousel: boolean; isVideo: boolean }[] = [];
+  const outside = pinnedIds.filter((id) => !shownIds.includes(id));
+  if (outside.length > 0) {
+    const { data: calendars } = await admin.from("publication_calendars").select("id").eq("client_id", calendar.client_id);
+    const { data: pubs } = await admin
+      .from("calendar_publications")
+      .select("id, task_id, content_type, publish_date, cover_attachment_id")
+      .in("id", outside)
+      .in("calendar_id", (calendars ?? []).map((c: { id: string }) => c.id))
+      .is("deleted_at", null)
+      .neq("content_type", "story");
+    for (const p of pubs ?? []) {
+      const { data: atts } = await admin
+        .from("pm_attachments")
+        .select("id, public_url, file_type")
+        .eq("task_id", p.task_id)
+        .eq("category", "final")
+        .order("order_index", { ascending: true })
+        .order("created_at", { ascending: true });
+      const media = (atts ?? []).filter((a: { public_url: string | null }) => a.public_url);
+      const images = media.filter((a: { file_type: string | null }) => a.file_type?.startsWith("image/"));
+      let cover = p.content_type !== "carrossel" && p.cover_attachment_id ? media.find((a: { id: string }) => a.id === p.cover_attachment_id) : undefined;
+      if (!cover && p.content_type !== "carrossel" && p.cover_attachment_id) {
+        const { data: external } = await admin.from("pm_attachments").select("id, public_url, file_type").eq("id", p.cover_attachment_id).maybeSingle();
+        cover = external?.public_url ? external : undefined;
+      }
+      if (media.length === 0 && !cover) continue;
+      const thumb = cover?.file_type?.startsWith("image/") ? cover : images[0];
+      olderPinned.push({
+        id: p.id,
+        publishDate: p.publish_date,
+        thumbUrl: thumb?.public_url ?? null,
+        isCarousel: p.content_type === "carrossel" && images.length > 1,
+        isVideo: p.content_type === "reel",
+      });
+    }
+  }
+
+  const { data: instagram } = await admin.from("instagram_connections").select("instagram_username").eq("client_id", calendar.client_id).maybeSingle();
+  return {
+    username: instagram?.instagram_username ?? null,
+    photoUrl: row.photo_url,
+    displayName: row.display_name,
+    highlights: row.highlights,
+    pinnedIds,
+    olderPinned,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -107,10 +172,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // uma falha no perfil não pode derrubar o link de aprovação
+      const profile = await loadProfile(admin, calendar, (pubs ?? []).map((p: any) => p.id)).catch((e) => {
+        console.error("public-calendario-publicacao profile error:", e instanceof Error ? e.message : e?.message ?? e);
+        return null;
+      });
+
       // Puts the publication's chosen cover attachment first, so the public page's
       // existing "just show media[0]" logic picks it up with no changes on its side.
       // The `id` is stripped afterward — it's only needed to locate the cover here.
       return json({
+        profile,
         clientName: client?.name ?? "Cliente",
         clientLogoUrl: client?.logo_url ?? null,
         calendar: {

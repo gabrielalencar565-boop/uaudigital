@@ -48,16 +48,16 @@ describe("PostCaptionField", () => {
     expect(screen.getByRole("textbox")).toBeTruthy();
   });
 
-  it("salva ao concluir e passa a mostrar o texto com o botão de editar", async () => {
+  it("salva ao sair do campo e o texto continua na caixa, sem lápis nem Concluir", async () => {
     setup();
     const button = await screen.findByRole("button", { name: /Escrever legenda/ });
     await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(button);
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Pão quentinho" } });
-    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
-    expect(await screen.findByRole("button", { name: /Editar legenda/ })).toBeTruthy();
-    expect(screen.getByText("Pão quentinho")).toBeTruthy();
-    expect(db.updates).toEqual([["pm_tasks", "Pão quentinho"]]);
+    fireEvent.blur(screen.getByRole("textbox"));
+    await waitFor(() => expect(db.updates).toEqual([["pm_tasks", "Pão quentinho"]]));
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Pão quentinho");
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("grava o que ficou pendente quando a tarefa é fechada no meio da digitação", async () => {
@@ -73,18 +73,22 @@ describe("PostCaptionField", () => {
   it("no Cronograma é a mesma legenda: mostra a de lá e grava lá, inclusive ao apagar", async () => {
     db.pubs = [{ id: "pub1", caption: "legenda do cronograma", instagram_status: "not_published" }];
     setup();
-    expect(await screen.findByText("legenda do cronograma")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Editar legenda/ }));
-    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("legenda do cronograma");
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    const field = (await screen.findByDisplayValue("legenda do cronograma")) as HTMLTextAreaElement;
+    fireEvent.focus(field); // é só clicar no texto
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.blur(field);
     await waitFor(() => expect(db.updates).toEqual([["calendar_publications", null]]));
+    expect(await screen.findByRole("button", { name: /Escrever legenda/ })).toBeTruthy();
   });
 
   it("post já publicado não deixa editar", async () => {
     db.pubs = [{ id: "pub1", caption: "no ar", instagram_status: "published" }];
     setup();
     expect(await screen.findByText(/já foi publicado/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Editar legenda/ })).toBeNull();
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    expect(field.readOnly).toBe(true);
+    fireEvent.focus(field);
+    fireEvent.blur(field);
+    expect(db.updates).toEqual([]);
   });
 });
