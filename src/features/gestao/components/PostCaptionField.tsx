@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus } from "lucide-react";
+import { MessageSquareText, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,7 +12,7 @@ const sb = supabase as any;
  * Legenda do post, escrita dentro da tarefa. Texto simples de propósito: é o que vai para o Instagram.
  * É UMA legenda só: se o post já está no Cronograma, este campo mostra e grava a própria legenda de lá; senão, grava na tarefa.
  * O banco mantém iguais as cópias do post nas etapas e o Cronograma (ver migration pm_tasks_post_caption_follows).
- * Só vira campo depois de "Escrever legenda" / "Editar legenda". Salva sozinha (1s sem digitar, ao sair do campo, ao fechar e ao esconder a aba).
+ * Vazia, só vira campo depois de "Escrever legenda"; com texto, é só clicar e digitar (como a Descrição). Salva sozinha (1s sem digitar, ao sair do campo, ao fechar e ao esconder a aba).
  */
 export function PostCaptionField({ taskId, readOnly = false }: { taskId: string; readOnly?: boolean }) {
   const qc = useQueryClient();
@@ -71,6 +70,7 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
       return;
     }
     setStatus("saved");
+    qc.setQueryData(queryKey, (old: any) => (old ? { ...old, caption: text } : old)); // sem piscar o texto antigo ao sair do campo
     qc.invalidateQueries({ queryKey });
     qc.invalidateQueries({ queryKey: ["calendar_publications"] });
     qc.invalidateQueries({ queryKey: ["calendar_publication"] });
@@ -98,6 +98,7 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
   const published = captionQ.data?.published ?? false;
   const locked = readOnly || published;
   const startEditing = () => {
+    if (editingRef.current || locked) return; // voltar o foco não pode descartar o que está sendo digitado
     publicationRef.current = captionQ.data?.publicationId ?? null;
     draftRef.current = saved;
     savedRef.current = saved;
@@ -106,52 +107,54 @@ export function PostCaptionField({ taskId, readOnly = false }: { taskId: string;
     setStatus("idle");
     setEditing(true);
   };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const finish = async () => {
     await persistRef.current();
+    if (document.activeElement === textareaRef.current) return; // voltou a clicar enquanto salvava
+    if (draftRef.current !== savedRef.current) return; // não salvou: o texto fica no campo
     editingRef.current = false;
     setEditing(false);
   };
+  const value = editing ? draft : saved;
+  const showField = editing || !!saved;
+  // a caixa cresce com o texto, como a da Descrição
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    if (el.scrollHeight) el.style.height = `${el.scrollHeight + 2}px`;
+  }, [value, showField]);
 
-  // Visual minimalista: sem caixa nem título quando está vazio; com texto, só o rótulo, o lápis e a legenda.
+  // Mesmo visual e mesmo jeito da Descrição (título com ícone + caixa que edita ao clicar). Vazia, mostra só o "Escrever legenda".
   return (
     <div className="border-t border-border/20 pt-4">
-      {editing ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>Legenda</span>
-            <span>{status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}</span>
+      {showField ? (
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold">Legenda</h3>
+            {editing && (
+              <span className="ml-auto text-xs text-muted-foreground">{status === "saving" ? "Salvando… · " : status === "saved" ? "Salva · " : ""}{draft.length}/{CAPTION_LIMIT}</span>
+            )}
           </div>
           <Textarea
-            autoFocus
-            value={draft}
+            ref={textareaRef}
+            autoFocus={!saved} // só quando acabou de clicar em "Escrever legenda"
+            value={value}
+            readOnly={locked}
             maxLength={CAPTION_LIMIT}
-            rows={5}
             aria-label="Legenda do post"
-            className="bg-transparent text-sm leading-relaxed"
+            className="min-h-[100px] w-full resize-none overflow-hidden rounded-lg border-border/40 bg-background px-3 py-2 text-sm leading-relaxed text-foreground focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
             placeholder="Escreva a legenda deste post..."
+            onFocus={startEditing}
             onChange={(e) => {
               setDraft(e.target.value);
               draftRef.current = e.target.value;
               window.clearTimeout(timer.current);
               timer.current = window.setTimeout(() => void persistRef.current(), 1000);
             }}
-            onBlur={() => void persistRef.current()}
+            onBlur={() => void finish()}
           />
-          <div className="flex justify-end">
-            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void finish()}>Concluir</Button>
-          </div>
-        </div>
-      ) : saved ? (
-        <div>
-          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>Legenda</span>
-            {!locked && (
-              <button type="button" onClick={startEditing} className="rounded p-1 transition-colors hover:text-foreground" aria-label="Editar legenda" title="Editar legenda">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{saved}</p>
         </div>
       ) : (
         <button
