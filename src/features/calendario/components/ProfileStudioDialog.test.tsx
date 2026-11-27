@@ -16,7 +16,9 @@ vi.mock("../hooks/use-calendar-data", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
-const tiles = ["01", "02", "03", "04"].map((day) => ({ id: `p${day}`, thumb: null, date: `2026-12-${day}`, isCarousel: false, isVideo: false }));
+// p01–p03 e p05 são do dia 01/12; p04 é de outro dia
+const tiles = ["01", "02", "03", "04", "05"].map((n) => ({ id: `p${n}`, thumb: null, date: n === "04" ? "2026-12-02" : "2026-12-01", isCarousel: false, isVideo: false }));
+const pick = (n: number) => screen.getAllByRole("button", { name: /^Fixar o post de/ })[n - 1] as HTMLButtonElement;
 const onClose = vi.fn();
 const setup = () => render(
   <ProfileStudioDialog
@@ -32,8 +34,8 @@ describe("Estúdio do feed", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: /Novo destaque/ }));
     fireEvent.change(screen.getByLabelText("Nome do destaque 1"), { target: { value: "Natal" } });
-    fireEvent.click(screen.getByRole("button", { name: "Fixar o post de 03/12" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fixar o post de 01/12" }));
+    fireEvent.click(pick(3));
+    fireEvent.click(pick(1));
     const preview = screen.getByRole("region", { name: "Prévia do perfil" });
     expect(within(preview).getByText("Natal")).toBeTruthy();
     expect(preview.querySelectorAll("[data-pinned]").length).toBe(2);
@@ -51,13 +53,35 @@ describe("Estúdio do feed", () => {
 
   it("não deixa fixar um quarto post", () => {
     setup();
-    for (const day of ["01", "02", "03"]) fireEvent.click(screen.getByRole("button", { name: `Fixar o post de ${day}/12` }));
-    expect((screen.getByRole("button", { name: "Fixar o post de 04/12" }) as HTMLButtonElement).disabled).toBe(true);
+    for (const n of [1, 2, 3]) fireEvent.click(pick(n));
+    expect(pick(5).disabled).toBe(true);
+  });
+
+  it("depois do primeiro, só libera posts programados para o mesmo dia", () => {
+    setup();
+    expect(pick(4).disabled).toBe(false);
+    fireEvent.click(pick(1));
+    expect(pick(4).disabled).toBe(true);
+    expect(pick(2).disabled).toBe(false);
+    expect(screen.getByText(/Liberados só os posts de 01\/12/)).toBeTruthy();
+    fireEvent.click(pick(1)); // desafixou: pode escolher outro dia
+    fireEvent.click(pick(4));
+    expect(pick(1).disabled).toBe(true);
+  });
+
+  it("se as datas dos fixados deixarem de bater, avisa e não deixa salvar", () => {
+    state.rows = [{ id: "dez", month: "2026-12-01", photo_url: null, display_name: "Uau", highlights: [], pinned_publication_ids: ["p01", "p04"] }];
+    setup();
+    fireEvent.change(screen.getByLabelText("Nome no perfil"), { target: { value: "Uau!" } });
+    expect(screen.getByRole("alert").textContent).toMatch(/dias diferentes/);
+    expect((screen.getByRole("button", { name: "Salvar perfil" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Desafixar o 2º" }));
+    expect((screen.getByRole("button", { name: "Salvar perfil" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("reorganiza e desafixa pelos fixados, e salva na nova ordem", async () => {
     setup();
-    for (const day of ["01", "02", "03"]) fireEvent.click(screen.getByRole("button", { name: `Fixar o post de ${day}/12` }));
+    for (const n of [1, 2, 3]) fireEvent.click(pick(n));
     fireEvent.click(screen.getByRole("button", { name: "Mover o 3º para a esquerda" }));
     fireEvent.click(screen.getByRole("button", { name: "Mover o 1º para a direita" }));
     fireEvent.click(screen.getByRole("button", { name: "Salvar perfil" }));

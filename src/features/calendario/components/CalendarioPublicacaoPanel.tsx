@@ -1721,6 +1721,10 @@ export function CalendarioPublicacaoPanel({ onOpenTask, focusRequest, onFocusHan
             outsideCount={outsideFeed.length}
             clientName={clientName}
             clientLogoUrl={clientLogoUrl}
+            clientId={clientId!}
+            month={profileMonthKey(cycleEndKey)}
+            username={clientId ? igConnectionMap.get(clientId)?.instagram_username : null}
+            onEditProfile={() => { discardFeedDraft(); setStudioOpen(true); }}
             sensors={sensors}
             saving={saveFeedOrder.isPending}
             onSave={handleSaveFeedOrder}
